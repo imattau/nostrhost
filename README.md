@@ -12,7 +12,8 @@ bus**: identity, policy, approval, execution, catalogue and audit state flow
 as signed events, projected into YunoHost by small resolvers. The design is
 primitive-first — standard Nostr (NIP-42/44/51/65/66/77/78/86/89/98) is used
 wherever possible and custom kinds are reserved for genuine NostrHost
-semantics. See `docs/CONTROL-PLANE.md` and `docs/NIP-MAPPING.md`.
+semantics. See `docs/CONTROL-PLANE.md`, `docs/NIP-MAPPING.md` and
+`docs/STATELAYER.md` (ngit / NIP-34 configuration-state + Restic data linkage).
 
 See `docs/BASELINE.md` for the current stage and `docs/ROADMAP.md` provenance.
 
