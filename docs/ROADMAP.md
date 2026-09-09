@@ -423,11 +423,19 @@ enforced on the protected control kinds.
 
 ---
 
-# 7. Introduce `nostrhost-state` with ngit / NIP-34 — ⏳ NEXT
+# 7. Introduce `nostrhost-state` with ngit / NIP-34 — ◑ (Stage A proven)
 
 This is the correct point to introduce durable configuration-state management.
 Identity, policy and execution semantics (§4–§6) now exist, so state history
 can become authoritative enough to support rollback and reconciliation.
+
+**Stage A (state history) is implemented and proven on the testbed**:
+semantic export (domains/apps/services/identities/packages/capabilities),
+the git-backed state repository (server-pubkey identity), automatic pre/post
+snapshots linked to operation event ids, known-good markers, semantic diffs,
+and the NIP-34 kind-30617 repository announcement discoverable as
+`nostr://<server-npub>/nostrhost-state`. Restic snapshot *linkage* machinery
+is in place; the Restic client and assisted rollback are Stage B.
 
 The state layer uses **ngit / NIP-34 as the Nostr-aligned repository model**,
 with normal Git objects underneath. Plain Git remains the storage engine, but
@@ -941,7 +949,7 @@ on identity, policy and execution semantics, which now exist.
 3.  Identity events + projection                            ✅
 4.  Capability / delegation events                          ◑
 5.  Approval + execution events (structured ops + state machine) ✅
-6.  nostrhost-state Stage A            (ngit / NIP-34)      ⏳  ← NEXT
+6.  nostrhost-state Stage A            (ngit / NIP-34)      ◑  (Stage A proven; next: portal, then Stage B)
 7.  Portal Nostr authentication (+ native session creation) ⏳
 8.  Restic linkage + known-good + assisted rollback (Stage B) ⏳
 9.  Admin interface                                         ⏳
@@ -1002,15 +1010,15 @@ and NIP-46 privileged approvals.
 ```text
 ✓ structured operation executor
 ✓ operation state machine
-⏳ semantic state exporter
-⏳ ngit / NIP-34-backed state repository
-⏳ server-npub repository ownership/discovery
-⏳ automatic pre/post state snapshots
-⏳ Nostr operation provenance (commits linked to operation events)
-⏳ known-good state markers
-⏳ Restic snapshot linkage
-⏳ semantic diff
-⏳ assisted rollback plan generation
+✓ semantic state exporter                     (Stage A)
+✓ ngit / NIP-34-backed state repository       (Stage A)
+✓ server-npub repository ownership/discovery  (Stage A: announce kind 30617)
+✓ automatic pre/post state snapshots          (Stage A)
+✓ Nostr operation provenance (commits linked to operation events)   (Stage A)
+✓ known-good state markers                    (Stage A)
+◑ Restic snapshot linkage                     (manifest machinery done; Restic client is Stage B)
+✓ semantic diff                               (Stage A)
+⏳ assisted rollback plan generation           (Stage B)
 ```
 
 The first release of this layer stops short of fully automatic reconciliation.
