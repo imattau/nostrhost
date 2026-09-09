@@ -31,6 +31,26 @@ the reference baseline and (b) run upstream's own test suites against the
 pinned forks when a build pipeline exists. No fork modification is expected
 or allowed in Stage 1.
 
+## Phase 2 usage: the control plane
+
+Phase 2 (the internal relay) is additive and is exercised on the testbed
+before any fork change:
+
+1. Build and run `nostrhost-control` on the VM with a generated operator key
+   (`config.example.toml` → `config.toml`, set `operator_pubkey`).
+2. Verify the local relay end-to-end with a go-nostr/nostr-sdk client:
+   - publish + query a regular event (NIP-01)
+   - confirm control kinds (`2200`-`2204`, `31100` …) are rejected until
+     NIP-42 AUTH, then accepted for the authenticated operator
+   - exercise NIP-86 as the operator (`banpubkey`, `allowkind`,
+     `listallowedkinds`) and confirm the relay enforces it
+   - confirm loopback-only binding (`ss -ltnp | grep <port>`)
+3. Record the relay's behaviour (NIP-11 document, policy state) as the
+   Phase-2 reference for later phases.
+
+`nostrhost-control`'s own integration tests (NIP-11/42/86) run in CI
+(`.github/workflows/libraries.yml`); the VM adds the "on a real host" check.
+
 ## Notes
 
 - Prefer snapshots over reinstalls; reinstalling is slow and loses the
