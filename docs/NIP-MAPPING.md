@@ -63,25 +63,38 @@ Guiding philosophy (roadmap §3 / `CONTROL-PLANE.md` §2.0):
 After the mapping, NostrHost-only kinds are small:
 
 - server-authoritative identity/role/capability definitions (addressable)
-- NostrHost delegation events (only if NIP-26 + capability events are insufficient)
 - YunoHost operation request / approval / rejection / execution-result (regular; the audit chain)
-- package attestation (only if 32267/30063/CI standards don't fit)
+- package/CI attestation (no standard fits; supersedes the bespoke `30080`)
 - system / service / backup / security events (regular)
 
-## 4. Open questions to resolve at Phase 2
+NostrHost delegation is **NIP-26** (agent signing) + a small capability event
+for scope grants; no separate bespoke delegation kind is planned unless that
+combination proves insufficient.
 
-1. **NIP-86 roles vs NostrHost roles.** Does `assignrole`/`createrole`
-   (relay-scoped) carry NostrHost admin roles, or do we need capability
-   events on top?
-2. **NIP-26 vs delegation events.** Does NIP-26 delegated-signing suffice for
-   agents, or do scope-bearing delegation events remain necessary?
-3. **Catalogue schema.** Relationship between the existing `nostr-yunohost`
-   schema (`1100`, `30078–30080`) and NIP-89/32267/30063/30267; whether to
-   migrate or bridge.
-4. **Settings placement.** Confirm NIP-78 (`30078`/`78`) on the internal relay
-   is acceptable for user settings (single-tenant loopback; NIP-42 owner
-   gate).
-5. **Audit read model.** Projector/index derived from the operation chain for
-   admin reporting (kind/schema not yet chosen).
-6. **Custom-kind numbers.** Final allocation only after the above; validated
-   against the live NIPs registry and existing catalogue kinds.
+## 4. Open questions — resolved at Phase 2
+
+> Status: **resolved.** These decisions are locked into the control-plane
+> design and the event protocol (`CONTROL-PLANE.md`, `RELAY-SELECTION.md`,
+> `nostrhost-control/EVENT-PROTOCOL.md`).
+
+1. **NIP-86 roles vs NostrHost roles → split.** NIP-86 (`assignrole`/
+   `createrole`) carries **relay-level** access roles only. NostrHost
+   authorisation (admin/agent/approval authority) is **server-authoritative
+   capability events** on top, evaluated by the policy engine.
+2. **NIP-26 vs delegation events → NIP-26 + capability events.** NIP-26
+   covers agent *signing* delegation; a small NostrHost capability event
+   carries scope grants. No bespoke delegation event kind.
+3. **Catalogue schema → migrate to standard kinds.** Software discovery uses
+   **32267** software-application, **30063** release-artifact sets, **30267**
+   app-curation sets (replaces the bespoke `30078` declaration / `30079`
+   endorsement). **CI attestation stays custom** (replaces `30080`). This
+   resolves the `30078`/NIP-78 collision.
+4. **Settings placement → NIP-78 on the internal relay** (kinds `30078`/`78`),
+   NIP-42-gated to the owner. Confirmed for single-tenant loopback.
+5. **Audit read model → derived index.** The signed operation chain is
+   authoritative; a projector builds an index for admin reporting. Schema is
+   defined in the event protocol (Phase 2) and implemented as a projector
+   (Phase 6).
+6. **Custom-kind numbers → allocated in the event protocol** (`EVENT-PROTOCOL.md`),
+   validated against the live NIPs registry and the retained catalogue kinds
+   (`30063`, `30267`, `32267`, custom CI attestation).

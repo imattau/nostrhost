@@ -19,3 +19,6 @@
 [submodule "libs/nostrhost-catalog"]
 	path = libs/nostrhost-catalog
 	url = https://github.com/imattau/nostrhost-catalog.git
+[submodule "libs/nostrhost-control"]
+	path = libs/nostrhost-control
+	url = https://github.com/imattau/nostrhost-control.git

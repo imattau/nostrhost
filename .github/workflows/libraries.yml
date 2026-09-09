@@ -40,3 +40,23 @@ jobs:
       - name: go test
         working-directory: libs/nostrhost-catalog
         run: go test ./...
+
+  control-lib:
+    name: Go control plane (nostrhost-control)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: libs/nostrhost-control/go.mod
+
+      - name: go test
+        working-directory: libs/nostrhost-control
+        run: go test ./...
+
+      - name: go build
+        working-directory: libs/nostrhost-control
+        run: go build -buildvcs=false ./cmd/nostrhost-control

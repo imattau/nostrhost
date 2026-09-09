@@ -196,6 +196,11 @@ the Go catalogue stack) and **strfry** (battle-tested, plugin write-policy,
 already packaged for YunoHost). Evaluation result is recorded in this file
 when decided.
 
+**Decision (Phase 2):** build the relay on **khatru** (the standard relay
+framework, MIT), embedded in `nostrhost-control` — native NIP-86/42/77, Go,
+fits the stack. strfry remains the fallback for stock-YunoHost packaging.
+See `RELAY-SELECTION.md` for the full comparison.
+
 ## 4. Redundancy
 
 Adopting the relay removes enough bespoke infrastructure that it changes the
@@ -260,3 +265,16 @@ mapped onto existing Nostr primitives (2.0). The running table — and the
 review of which pieces of YunoHost's control plane each standard replaces —
 lives in `NIP-MAPPING.md`. This is the Phase-2 design step that must precede
 custom-kind allocation.
+
+Resolved decisions (locked at Phase 2; see `NIP-MAPPING.md` §4):
+
+- **Relay access/admin = NIP-42 + NIP-86** (relay-scoped roles only);
+  NostrHost authorisation = server-authoritative capability events.
+- **Agent delegation = NIP-26** for signing + a small NostrHost capability
+  event for scope grants.
+- **Catalogue = standard kinds** (32267 software-application, 30063
+  release-artifact sets, 30267 app-curation sets) with **CI attestation
+  custom** (replaces the bespoke 30078/30079/30080; resolves the
+  30078/NIP-78 collision).
+- **Settings = NIP-78** on the internal relay; **audit = derived read model**
+  over the signed operation chain.

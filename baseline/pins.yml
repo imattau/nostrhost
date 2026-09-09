@@ -85,3 +85,12 @@ libraries:
     path: libs/nostrhost-catalog
     branch: main
     pin_commit: 7f60191bc3d8d35679c7499ee3500b6e95c5feed
+
+  - component: control         # control plane: local relay + event model (Phase 2)
+    repo: imattau/nostrhost-control
+    path: libs/nostrhost-control
+    branch: main
+    pin_commit: 26a295f0caf7adca600ea9fb960814772d5880db
+    stack: khatru-based Go relay (NIP-11/42/77/86/98)
+    event_protocol: libs/nostrhost-control/EVENT-PROTOCOL.md
+    selection: docs/RELAY-SELECTION.md

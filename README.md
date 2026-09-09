@@ -25,10 +25,11 @@ nostrhost/
 │   ├── portal/       #   imattau/nostrhost-portal    (Nuxt/Vue/TS portal)
 │   ├── admin/        #   imattau/nostrhost-admin     (Vue/Vite/TS admin)
 │   └── ssowat/       #   imattau/nostrhost-ssowat    (NGINX auth)
-├── libs/             # git submodules: reusable component libraries (Stage 2)
+├── libs/             # git submodules: reusable component libraries
 │   ├── nostrhost-auth/     #   identity/challenge/verify/npub/mappings/NIP-05
 │   ├── nostrhost-policy/   #   roles/scopes/NIP-98/delegation/approvals/audit
-│   └── nostrhost-catalog/  #   catalogue schema/relay/attestation/trust
+│   ├── nostrhost-catalog/  #   catalogue schema/relay/attestation/trust
+│   └── nostrhost-control/  #   control plane: local relay + event model (Phase 2)
 ├── baseline/
 │   └── pins.yml      # authoritative component → fork → pinned ref mapping
 ├── scripts/
