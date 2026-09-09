@@ -74,6 +74,37 @@ identity layer. End-to-end on the testbed:
 CI covers the projector/authoring logic as unit tests
 (`fork-identity` job); the VM validates real LDAP account creation.
 
+## Phase 3 operation vertical slice
+
+The control executor (`nostr-operationsd`) proves the architectural claim —
+signed Nostr events drive YunoHost through a controlled execution boundary:
+
+```text
+agent key ──2200 request──▶ relay ──policy──▶ 2201 approval ──▶ executor ──▶ safe op ──▶ 2204 result
+```
+
+The full loopback path was proven against a real `nostrhost-control` in
+development (fresh relay, allowlist + NIP-86 `allowpubkey` for the agent):
+grant 31100 (`server.read`) → request `system.version` → admin approval →
+executor published 2203 then 2204 `{"ok": true}` → both persisted on the
+relay as the audit trail; `nostr-opctl status` rendered
+`REQUESTED → APPROVED → EXECUTING → DONE`. The state machine refuses any
+non-legal transition even when correctly signed.
+
+Remaining on the VM (real YunoHost in the loop):
+
+1. Start `nostr-operationsd` (executor daemon).
+2. `nostr-opctl grant --pubkey <agent> --scopes server.read` (or reuse the
+   operator key as an admin agent).
+3. `nostr-opctl request --tool system.version --agent-sk <agent>` then
+   `nostr-opctl approve <request-id>`.
+4. Verify `nostr-opctl status` shows the full chain, and — with a read-only
+   tool that returns real data — that the result content matches the host
+   (`app.list` should enumerate the VM's installed apps).
+
+CI covers the engine/state machine as unit tests (same `fork-identity` job,
+now 50 tests); the VM validates real YunoHost tool execution.
+
 ## Notes
 
 - Prefer snapshots over reinstalls; reinstalling is slow and loses the
