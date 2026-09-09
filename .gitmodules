@@ -1,0 +1,12 @@
+[submodule "forks/yunohost"]
+	path = forks/yunohost
+	url = https://github.com/imattau/nostrhost-yunohost.git
+[submodule "forks/portal"]
+	path = forks/portal
+	url = https://github.com/imattau/nostrhost-portal.git
+[submodule "forks/admin"]
+	path = forks/admin
+	url = https://github.com/imattau/nostrhost-admin.git
+[submodule "forks/ssowat"]
+	path = forks/ssowat
+	url = https://github.com/imattau/nostrhost-ssowat.git

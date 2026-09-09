@@ -1,0 +1,62 @@
+# nostrhost fork baseline pins
+#
+# Authoritative record of which YunoHost component, at which upstream stable
+# ref, each nostrhost fork is pinned to. The umbrella commits these exact
+# commits as git submodule pointers under forks/.
+#
+# "live_server" is the version the connected YunoHost MCP servers report and
+# must match the pin (the derivative baseline must behave identically to it).
+#
+# pins are upstream "debian/<x>" release tags (the tags the stable apt
+# pipeline ships from). Forks are git forks of the upstream repos, held
+# source-identical at these refs until the derivative intentionally changes
+# behaviour.
+
+version: 1
+
+# Components forked under imattau and held as submodules under forks/.
+forks:
+  - component: yunohost        # core server-management engine (python)
+    upstream_repo: YunoHost/yunohost
+    fork_repo: imattau/nostrhost-yunohost
+    path: forks/yunohost
+    upstream_branch: dev
+    pin: debian/12.1.41.2
+    pin_commit: c206fff7466ee36b6ed1774a2607d5f52e9be342
+    live_server: 12.1.41.2
+
+  - component: portal          # Nuxt/Vue/TypeScript user portal
+    upstream_repo: YunoHost/yunohost-portal
+    fork_repo: imattau/nostrhost-portal
+    path: forks/portal
+    upstream_branch: dev
+    pin: debian/12.1.2
+    pin_commit: fbe0764dec23a455504430fb785a450cefb0b563
+    live_server: 12.1.2
+
+  - component: admin           # Vue/Vite/TypeScript admin interface
+    upstream_repo: YunoHost/yunohost-admin
+    fork_repo: imattau/nostrhost-admin
+    path: forks/admin
+    upstream_branch: dev
+    pin: debian/12.1.15
+    pin_commit: 707318b8d171a7a4c100dbb79c3d34d51dee4303
+    live_server: 12.1.15
+
+  - component: ssowat          # NGINX single-sign-on layer
+    upstream_repo: YunoHost/SSOwat
+    fork_repo: imattau/nostrhost-ssowat
+    path: forks/ssowat
+    upstream_branch: dev
+    pin: debian/12.1.1
+    pin_commit: a59b558bbbcaeb00199a19ce952bf3c75ce78bef
+    live_server: 12.1.1
+
+# Upstream dependencies pinned by the same stable tags, but NOT forked in
+# Stage 1 (the derivative builds against upstream versions of these).
+dependencies:
+  - component: moulinette      # python API layer yunohost depends on
+    upstream_repo: YunoHost/moulinette
+    upstream_branch: dev
+    pin: debian/12.1.4
+    live_server: 12.1.4
