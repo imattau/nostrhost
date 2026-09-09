@@ -274,3 +274,32 @@ into the executor and proven on the VM:
 Restic snapshot *linkage* machinery is in place (state manifest `[backup]`
 section, `DATA_AFFECTING_TOOLS`, `restic_hook`); the actual Restic client and
 assisted rollback are Stage B. Fork tests now 69 (state layer adds 10).
+
+## §8 passwordless Nostr login (server side) proven (2026-09-09)
+
+`src/nostr_login.py` + the two portalapi routes (`GET /nostr/challenge`,
+`POST /nostr/login`) are deployed and proven live on the VM:
+
+- **Challenge**: `GET /yunohost/portalapi/nostr/challenge` issues a fresh
+  single-use nonce bound to the request domain (persistent ChallengeStore from
+  nostrhost-auth, 90s TTL).
+- **Verification**: the browser signs a kind-22242 event with
+  `challenge`/`domain`/`action` tags; `verify_challenge_response` (the same
+  library the MCP server uses) checks the signature + binding. The pubkey is
+  resolved to an account via the identity store (kind-31102 link), and
+  `create_portal_session()` mints the passwordless `yunohost.portal` cookie
+  (with `passwordless: true`; the stored `pwd` is an unbreakable sentinel).
+- **Session works**: `/me` with the cookie returns the user infos (dave).
+- **Privilege boundary**: the portal-api service runs as `ynh-portal` and must
+  not hold the root-only operator/server keys. Login notices (kind 2206) are
+  therefore signed by a dedicated low-privilege *notice key* written by the
+  bootstrap to `/etc/nostrhost/portal.toml` (0640 root:ynh-portal) and
+  allowlisted on the relay as a writer-only pubkey (`notice_pubkey`). The
+  notice lands on the relay signed by that key, not by root keys.
+- **Fixes found live**: `default_auth()` in nostr_identity now degrades to
+  None (instead of raising PermissionError) when the caller can't read the
+  root-only operator.toml - NIP-42 auth is only needed for protected kinds.
+
+Client side (`pages/nostr-login.vue`, NIP-07 sign-in) is implemented in the
+portal fork; its build/deploy needs the portal's node/yarn pipeline (no node
+on the VM) - follow-up deploy step.
