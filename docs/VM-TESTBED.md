@@ -222,3 +222,26 @@ Proven on the VM through the full signed chain:
   `{"ok": true, "result": {"service": "dnsmasq", "status": "running"}}`
 - `dnsmasq` was genuinely restarted (systemd `ActiveEnterTimestamp`
   14:15:54 → 21:01:38), so the write reached real machine state.
+
+## NIP-42 restored and proven (2026-09-10)
+
+The loopback `require_auth_kinds = []` bypass was removed — the relay now
+enforces NIP-42 on the default protected set (control kinds 2200-2204,
+31100, 31102, …). The fork's clients gained NIP-42 client auth:
+
+- `publish_to_relay` signs a kind-22242 AUTH event (operator key), waits for
+  its acknowledgement, then re-sends the EVENT (ignoring the pre-auth
+  rejection). khatru applies the authenticated pubkey in a per-message
+  goroutine, so re-sending without waiting races the auth state.
+- daemon subscribe loops and `nostr-opctl status` answer the read-side AUTH
+  challenge, wait for the AUTH OK, and re-send the REQ before processing the
+  replay.
+
+Proven on the VM: an unauthenticated REQ/EVENT for a control kind is
+rejected with an AUTH challenge; with auth, the identity slice (link → LDAP →
+resolve) and the operation slice (service.restart through the signed chain,
+server-key-signed result) both work end-to-end. Fork tests now 60.
+
+Also during this run: the rebuilt VM disk had lost its 30G size (3G root was
+100% full) — `qemu-img resize disk.qcow2 24G` + `growpart`/`resize2fs` fixed
+it.
