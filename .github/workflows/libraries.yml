@@ -60,3 +60,24 @@ jobs:
       - name: go build
         working-directory: libs/nostrhost-control
         run: go build -buildvcs=false ./cmd/nostrhost-control
+
+  fork-identity:
+    name: Fork identity layer (Phase 3)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install deps
+        run: |
+          pip install -q pytest coincurve nostr-sdk websockets
+          pip install -q -e libs/nostrhost-auth
+
+      - name: Run nostr identity tests (fork, nostrhost branch)
+        working-directory: forks/yunohost
+        run: python -m pytest -c /dev/null tests_nostr/ -q

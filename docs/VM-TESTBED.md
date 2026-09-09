@@ -51,6 +51,29 @@ before any fork change:
 `nostrhost-control`'s own integration tests (NIP-11/42/86) run in CI
 (`.github/workflows/libraries.yml`); the VM adds the "on a real host" check.
 
+## Phase 3 usage: identity events + projection
+
+The first fork modification (`yunohost` → `nostrhost` branch) adds the native
+identity layer. End-to-end on the testbed:
+
+1. Install the forked `yunohost` package (with `nostrhost-auth`, `coincurve`,
+   `websockets`) on the VM, and run `nostrhost-control` with
+   `require_auth_kinds = []` (loopback posture) + allowlist mode.
+2. Configure `/etc/nostrhost/operator.toml` (operator key, control relay,
+   admins) — root-only (`0600`).
+3. Start `nostr-identityd` (projector).
+4. Provision an identity: `nostr-identity-admin link --username matt --pubkey npub1…`
+5. Verify: the relay stored the kind-31102 event (`REQ` kind 31102 returns
+   it), the projector created the LDAP compat account
+   (`yunohost user list` / `slapcat | grep matt`), and
+   `resolve_pubkey(np1…)` returns the mapping.
+6. Revoke (`nostr-identity-admin revoke --pubkey …`) and confirm
+   `resolve_pubkey` no longer resolves, and the account remains in LDAP
+   (revocation is of the link, not the account).
+
+CI covers the projector/authoring logic as unit tests
+(`fork-identity` job); the VM validates real LDAP account creation.
+
 ## Notes
 
 - Prefer snapshots over reinstalls; reinstalling is slow and loses the

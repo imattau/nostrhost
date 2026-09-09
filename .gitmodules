@@ -1,6 +1,7 @@
 [submodule "forks/yunohost"]
 	path = forks/yunohost
 	url = https://github.com/imattau/nostrhost-yunohost.git
+	branch = nostrhost
 [submodule "forks/portal"]
 	path = forks/portal
 	url = https://github.com/imattau/nostrhost-portal.git

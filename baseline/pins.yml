@@ -15,14 +15,19 @@
 version: 1
 
 # Components forked under imattau and held as submodules under forks/.
+# `derivative: true` marks a fork that has diverged from upstream onto its
+# own branch (roadmap Phase 3 onwards): verify-clean reports expected
+# divergence instead of failing source-identity.
 forks:
   - component: yunohost        # core server-management engine (python)
     upstream_repo: YunoHost/yunohost
     fork_repo: imattau/nostrhost-yunohost
     path: forks/yunohost
     upstream_branch: dev
-    pin: debian/12.1.41.2
-    pin_commit: c206fff7466ee36b6ed1774a2607d5f52e9be342
+    branch: nostrhost          # derivative branch (first fork modification, Phase 3)
+    derivative: true
+    pin: debian/12.1.41.2      # upstream baseline the branch was cut from
+    pin_commit: ddca8192882849126dcfdca5492e766007e2959d
     live_server: 12.1.41.2
 
   - component: portal          # Nuxt/Vue/TypeScript user portal

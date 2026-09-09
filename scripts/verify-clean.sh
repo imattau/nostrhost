@@ -44,6 +44,17 @@ fetch_upstream_tag() {
     "+refs/tags/$tag:refs/nostrhost/upstream-$comp-$tag" 2>/dev/null || return 1
 }
 
+# is_derivative <component> -> prints "true" when pins.yml marks the fork
+# as diverged onto its own derivative branch.
+is_derivative() {
+  local component="$1"
+  awk -v c="$component" '
+    $0 ~ "component: " c { found=1 }
+    found && $0 ~ "derivative:" { print $2; exit }
+    found && $0 ~ "^  - " && $0 !~ "component: " c { exit }
+  ' "$PINS"
+}
+
 fail=0
 for pair in "yunohost debian/12.1.41.2 YunoHost/yunohost" \
             "portal debian/12.1.2 YunoHost/yunohost-portal" \
@@ -53,8 +64,9 @@ for pair in "yunohost debian/12.1.41.2 YunoHost/yunohost" \
   comp="$1"; tag="$2"; upstream_repo="$3"
   dir="$ROOT/forks/$comp"
   comp_fail=0
+  deriv="$(is_derivative "$comp")"
 
-  echo "== $comp (pin $tag) =="
+  echo "== $comp (pin $tag${deriv:+, derivative branch}) =="
   if ! git -C "$dir" rev-parse --git-dir >/dev/null 2>&1; then
     echo "  FAIL: missing submodule checkout at forks/$comp (run: git submodule update --init)"
     fail=1; continue
@@ -77,33 +89,38 @@ for pair in "yunohost debian/12.1.41.2 YunoHost/yunohost" \
     comp_fail=1
   fi
 
-  # 3. committed local changes vs the pinned upstream tag?
-  #    Prefer the local tag; fall back to fetching the upstream tag; skip
-  #    only if neither is resolvable (the HEAD==pin check still holds).
-  taghead=""
-  if git -C "$dir" rev-parse --verify -q "refs/tags/$tag^{commit}" >/dev/null; then
-    taghead="$(git -C "$dir" rev-parse "refs/tags/$tag^{commit}")"
-  elif fetch_upstream_tag "$comp" "$tag" "$upstream_repo"; then
-    taghead="$(git -C "$dir" rev-parse "refs/nostrhost/upstream-$comp-$tag^{commit}")"
-  fi
-
-  if [[ -n "$taghead" ]]; then
-    if [[ "$taghead" != "$pin" ]]; then
-      echo "  WARN: recorded pin $pin differs from current $tag ($taghead)"
-      [[ "$STRICT" -eq 1 ]] && comp_fail=1
-    elif [[ "$head" != "$taghead" ]]; then
-      echo "  FAIL: committed changes beyond the $tag upstream tag"
-      comp_fail=1
+  # 3/4. Source-identity checks vs the upstream pin apply only to
+  #      source-identical forks; a derivative fork is expected to have
+  #      diverged (its pin_commit is its own branch tip).
+  if [[ "$deriv" != "true" ]]; then
+    taghead=""
+    if git -C "$dir" rev-parse --verify -q "refs/tags/$tag^{commit}" >/dev/null; then
+      taghead="$(git -C "$dir" rev-parse "refs/tags/$tag^{commit}")"
+    elif fetch_upstream_tag "$comp" "$tag" "$upstream_repo"; then
+      taghead="$(git -C "$dir" rev-parse "refs/nostrhost/upstream-$comp-$tag^{commit}")"
     fi
-  else
-    echo "  note: $tag not resolvable here; relying on HEAD==pin check"
-  fi
 
-  # cleanup temp ref
-  git -C "$dir" update-ref -d "refs/nostrhost/upstream-$comp-$tag" 2>/dev/null || true
+    if [[ -n "$taghead" ]]; then
+      if [[ "$taghead" != "$pin" ]]; then
+        echo "  WARN: recorded pin $pin differs from current $tag ($taghead)"
+        [[ "$STRICT" -eq 1 ]] && comp_fail=1
+      elif [[ "$head" != "$taghead" ]]; then
+        echo "  FAIL: committed changes beyond the $tag upstream tag"
+        comp_fail=1
+      fi
+    else
+      echo "  note: $tag not resolvable here; relying on HEAD==pin check"
+    fi
+
+    git -C "$dir" update-ref -d "refs/nostrhost/upstream-$comp-$tag" 2>/dev/null || true
+  fi
 
   if [[ $comp_fail -eq 0 ]]; then
-    echo "  ok: source-identical at $head"
+    if [[ "$deriv" == "true" ]]; then
+      echo "  ok: on derivative branch at $head (expected divergence)"
+    else
+      echo "  ok: source-identical at $head"
+    fi
   else
     fail=1
   fi
@@ -111,7 +128,7 @@ done
 
 echo
 if [[ $fail -eq 0 ]]; then
-  echo "verify-clean: PASS — all forks source-identical to pins"
+  echo "verify-clean: PASS — all forks verified (derivative branches at their pins; source-identical forks match upstream)"
 else
   echo "verify-clean: FAIL — see above"
   exit 1

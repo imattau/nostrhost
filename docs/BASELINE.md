@@ -42,12 +42,19 @@ needs to change it.
 
 ## Dev rules
 
-- Do not commit changes inside a fork until the derivative deliberately
-  changes behaviour (later stages). Forks stay source-identical here.
+- **Derivative forks:** when the derivative deliberately changes a fork's
+  behaviour (roadmap Phase 3 onwards), that fork moves onto its own branch
+  (e.g. `nostrhost`), is marked `derivative: true` in `baseline/pins.yml`,
+  and `verify-clean.sh` then reports "expected divergence" for it instead of
+  requiring source-identity. The other forks stay source-identical.
 - Bump a pin deliberately: update `baseline/pins.yml`, re-pin the submodule
   with `scripts/pin-forks.sh`, and re-run `scripts/verify-clean.sh`.
-- `verify-clean.sh --strict` also detects a fork whose tag has drifted stale
-  relative to upstream (e.g. a republished tag).
+- `verify-clean.sh --strict` also detects a source-identical fork whose tag
+  has drifted stale relative to upstream (e.g. a republished tag).
+
+Status: `yunohost` is now a **derivative fork** on its `nostrhost` branch
+(identity layer, Phase 3); `portal`, `admin` and `ssowat` remain
+source-identical.
 
 ## How the baseline becomes the derivative
 
