@@ -2,16 +2,20 @@
 # verify-clean.sh — assert every nostrhost fork is source-identical to the
 # upstream pin recorded in baseline/pins.yml.
 #
+# The primary invariant: each fork's HEAD equals the recorded pin_commit
+# (the upstream "debian/<version>" tag commit at pin time). Tag comparisons
+# are consistency checks and are skipped gracefully when tags are not
+# available (e.g. a tagless CI checkout).
+#
 # Exits non-zero if any fork:
 #   - is missing
 #   - is dirty (uncommitted changes vs its HEAD)
 #   - is NOT at the pinned commit recorded in pins.yml / the superproject
-#   - has diverged from the pinned upstream tag (committed local changes)
+#   - has committed local changes relative to the pinned upstream tag
 #
 # Usage: scripts/verify-clean.sh [--strict]
-#   --strict  additionally fail if a fork's pinned tag differs from the
-#             current upstream tag of the same name (i.e. the fork is stale
-#             relative to upstream, even if the submodule pointer is intact).
+#   --strict  additionally fail if the pinned tag has moved upstream away
+#             from the recorded pin_commit (i.e. the recorded pin is stale).
 
 set -euo pipefail
 
@@ -20,9 +24,7 @@ PINS="$ROOT/baseline/pins.yml"
 STRICT=0
 [[ "${1:-}" == "--strict" ]] && STRICT=1
 
-have_yq() { command -v yq >/dev/null 2>&1; }
-
-# yq may not be installed; fall back to a tiny awk extraction of pin_commit.
+# Fallback awk extraction of pin_commit when yq is unavailable.
 get_pin() {
   local component="$1"
   awk -v c="$component" '
@@ -30,6 +32,16 @@ get_pin() {
     found && $0 ~ "pin_commit:" { print $2; exit }
     found && $0 ~ "^  - " && $0 !~ "component: " c { exit }
   ' "$PINS"
+}
+
+# tagref <comp> <tag> <upstream_repo> -> resolves the CURRENT upstream tag
+# commit into refs/nostrhost/upstream-<comp>-<tag>; prints nothing. Best
+# effort: fails silently if upstream is unreachable.
+fetch_upstream_tag() {
+  local comp="$1" tag="$2" upstream_repo="$3"
+  git -C "$ROOT/forks/$comp" fetch -q --force \
+    "https://github.com/$upstream_repo.git" \
+    "+refs/tags/$tag:refs/nostrhost/upstream-$comp-$tag" 2>/dev/null || return 1
 }
 
 fail=0
@@ -40,8 +52,9 @@ for pair in "yunohost debian/12.1.41.2 YunoHost/yunohost" \
   set -- $pair
   comp="$1"; tag="$2"; upstream_repo="$3"
   dir="$ROOT/forks/$comp"
+  comp_fail=0
 
-  echo "== $comp ($tag) =="
+  echo "== $comp (pin $tag) =="
   if ! git -C "$dir" rev-parse --git-dir >/dev/null 2>&1; then
     echo "  FAIL: missing submodule checkout at forks/$comp (run: git submodule update --init)"
     fail=1; continue
@@ -50,46 +63,50 @@ for pair in "yunohost debian/12.1.41.2 YunoHost/yunohost" \
   # 1. dirty?
   if ! git -C "$dir" diff --quiet -- ; then
     echo "  FAIL: working tree has uncommitted changes"
-    fail=1
+    comp_fail=1
   fi
 
-  # 2. at the pinned commit?
+  # 2. at the recorded pin_commit?
   pin="$(get_pin "$comp")"
   head="$(git -C "$dir" rev-parse HEAD)"
-  if [[ -n "$pin" && "$head" != "$pin" ]]; then
+  if [[ -z "$pin" ]]; then
+    echo "  FAIL: no pin_commit recorded in baseline/pins.yml for $comp"
+    comp_fail=1
+  elif [[ "$head" != "$pin" ]]; then
     echo "  FAIL: HEAD $head != pinned $pin"
-    fail=1
+    comp_fail=1
   fi
 
-  # 3. committed local changes vs the upstream tag (source-identical check)?
-  #    The fork should be exactly the upstream tag tree. Compare against the
-  #    upstream repo object by refspec; fall back to a local tag comparison.
-  if ! git -C "$dir" rev-parse --verify -q "refs/tags/$tag" >/dev/null; then
-    echo "  FAIL: tag $tag not present locally"
-    fail=1
-  else
+  # 3. committed local changes vs the pinned upstream tag?
+  #    Prefer the local tag; fall back to fetching the upstream tag; skip
+  #    only if neither is resolvable (the HEAD==pin check still holds).
+  taghead=""
+  if git -C "$dir" rev-parse --verify -q "refs/tags/$tag^{commit}" >/dev/null; then
     taghead="$(git -C "$dir" rev-parse "refs/tags/$tag^{commit}")"
-    if [[ "$head" != "$taghead" ]]; then
+  elif fetch_upstream_tag "$comp" "$tag" "$upstream_repo"; then
+    taghead="$(git -C "$dir" rev-parse "refs/nostrhost/upstream-$comp-$tag^{commit}")"
+  fi
+
+  if [[ -n "$taghead" ]]; then
+    if [[ "$taghead" != "$pin" ]]; then
+      echo "  WARN: recorded pin $pin differs from current $tag ($taghead)"
+      [[ "$STRICT" -eq 1 ]] && comp_fail=1
+    elif [[ "$head" != "$taghead" ]]; then
       echo "  FAIL: committed changes beyond the $tag upstream tag"
-      fail=1
+      comp_fail=1
     fi
+  else
+    echo "  note: $tag not resolvable here; relying on HEAD==pin check"
   fi
 
-  # 4. strict: is the fork's tag stale vs upstream?
-  if [[ "$STRICT" -eq 1 ]]; then
-    # fetch the upstream tag (not the fork's origin) into a temp ref and compare
-    if git -C "$dir" fetch -q --force "https://github.com/$upstream_repo.git" \
-          "+refs/tags/$tag:refs/nostrhost/upstream-$tag" 2>/dev/null; then
-      uph="$(git -C "$dir" rev-parse "refs/nostrhost/upstream-$tag^{commit}" 2>/dev/null || true)"
-      if [[ -n "$uph" && "$uph" != "$taghead" ]]; then
-        echo "  WARN: fork tag $tag is stale vs upstream ($taghead -> $uph)"
-        [[ "$STRICT" -eq 1 ]] && fail=1
-      fi
-      git -C "$dir" update-ref -d "refs/nostrhost/upstream-$tag" 2>/dev/null || true
-    fi
-  fi
+  # cleanup temp ref
+  git -C "$dir" update-ref -d "refs/nostrhost/upstream-$comp-$tag" 2>/dev/null || true
 
-  [[ $fail -eq 0 ]] && echo "  ok: source-identical at $head"
+  if [[ $comp_fail -eq 0 ]]; then
+    echo "  ok: source-identical at $head"
+  else
+    fail=1
+  fi
 done
 
 echo
