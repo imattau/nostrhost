@@ -719,11 +719,12 @@ from history to restoration:
                                                full Nostr policy/approval flow
                                                is follow-up)
 ◑ controlled execution + re-validation        (automatic steps run through the
-                                               operation registry; restore steps
-                                               via Restic; manual/impossible
-                                               reported, never auto-executed;
-                                               operator-driven re-validation on
-                                               the testbed pending)
+                                               operation registry — service.control,
+                                               app.remove, restic restore; app
+                                               reinstall/upgrade reverse steps
+                                               stay manual pending install-arg
+                                               provenance; operator-driven
+                                               re-validation on the testbed pending)
 ```
 
 `src/nostr_restic.py` wraps the `restic` CLI (config `/etc/nostrhost/
@@ -1042,8 +1043,8 @@ and NIP-46 privileged approvals.
 ✓ Restic snapshot linkage                     (Stage A manifest + Stage B client/hook)
 ✓ semantic diff                               (Stage A)
 ✓ assisted rollback plan generation            (Stage B: change-class aware)
-◑ controlled execution + re-validation        (Stage B: registry-bounded, `--approve`
-                                               gate; operator-driven on the testbed)
+◑ controlled execution + re-validation        (Stage B: registry-bounded — service.control,
+                                               app.remove, restic restore; testbed re-validation pending)
 ```
 
 The first release of this layer stops short of fully automatic reconciliation.
