@@ -623,22 +623,31 @@ process.
 
 ---
 
-# 8. Portal Nostr Authentication + Native Session — ⏳
+# 8. Portal Nostr Authentication + Native Session — ◑ (server proven, client pending deploy)
 
 Retain the existing Nuxt/Vue/TypeScript portal stack.
 
 Move the existing Nostr-authentication user experience into the portal fork:
 
 ```text
-/nostr-login
-/nostr-account
-NIP-07
-NIP-46
-passkey UI
-saved signer management
-identity linking
-identity revocation
+/nostr-login        ✓ (NIP-07 sign-in page)
+/nostr-account      ⏳
+NIP-07              ✓
+NIP-46              ⏳
+passkey UI          ⏳
+saved signer management   ⏳
+identity linking    ◑ (kind 31102; portal self-link is Phase 4)
+identity revocation ◑ (admin `nostr-identity-admin revoke`)
 ```
+
+The server side is implemented and proven live on the testbed:
+`GET /yunohost/portalapi/nostr/challenge` + `POST /yunohost/portalapi/nostr/login`
+(mint a passwordless `yunohost.portal` cookie after a verified kind-22242
+challenge signature), with the login notice (kind 2206) signed by a dedicated
+low-privilege portal notice key rather than the root operator keys. The
+browser page exists in the portal fork; its build/deploy to the testbed needs
+the portal's node/yarn pipeline (follow-up). NIP-46 and passkey signers are
+the remaining client work.
 
 Recommended browser-side Nostr stack: `@nostr/tools`; NDK where relay
 functionality is required.
@@ -949,8 +958,8 @@ on identity, policy and execution semantics, which now exist.
 3.  Identity events + projection                            ✅
 4.  Capability / delegation events                          ◑
 5.  Approval + execution events (structured ops + state machine) ✅
-6.  nostrhost-state Stage A            (ngit / NIP-34)      ◑  (Stage A proven; next: portal, then Stage B)
-7.  Portal Nostr authentication (+ native session creation) ⏳
+6.  nostrhost-state Stage A            (ngit / NIP-34)      ◑  (Stage A proven; next: portal deploy, then Stage B)
+7.  Portal Nostr authentication (+ native session creation) ◑  (server proven; client page pending deploy/build)
 8.  Restic linkage + known-good + assisted rollback (Stage B) ⏳
 9.  Admin interface                                         ⏳
 10. Native catalogue (sync + trust events)                  ⏳
