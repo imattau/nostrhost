@@ -1,0 +1,42 @@
+name: libraries
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  python-libs:
+    name: Python libs (auth, policy)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+
+      - name: nostrhost-auth tests
+        working-directory: libs/nostrhost-auth
+        run: uv sync --all-groups && uv run pytest -q
+
+      - name: nostrhost-policy tests
+        working-directory: libs/nostrhost-policy
+        run: uv sync --all-groups && uv run pytest -q
+
+  catalog-lib:
+    name: Go catalog lib
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: libs/nostrhost-catalog/go.mod
+
+      - name: go test
+        working-directory: libs/nostrhost-catalog
+        run: go test ./...

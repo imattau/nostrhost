@@ -60,3 +60,28 @@ dependencies:
     upstream_branch: dev
     pin: debian/12.1.4
     live_server: 12.1.4
+
+# Reusable component libraries (Stage 2: extracted from the reference
+# implementations, which remain operational on stock YunoHost during the
+# migration). Held as submodules under libs/; pinned to their main HEAD
+# while under active development, and re-pinned to release tags later.
+libraries:
+  - component: auth            # identity/challenge/verify/npub/mappings/relays/NIP-05/web
+    repo: imattau/nostrhost-auth
+    path: libs/nostrhost-auth
+    branch: main
+    pin_commit: fe3dea2693cc615d34ee3da836e5940e1f6d0d36
+    extracted_from: imattau/yunohost-nostr-auth
+
+  - component: policy          # roles/scopes/NIP-98/delegation/approvals/owner/audit
+    repo: imattau/nostrhost-policy
+    path: libs/nostrhost-policy
+    branch: main
+    pin_commit: faa1f9991845f44832a8643b4c5cebb388b3ea8d
+    extracted_from: imattau/yunohost-mcp
+
+  - component: catalog         # catalogue event schema/relay/publisher/attestation/trust/repository
+    repo: imattau/nostrhost-catalog
+    path: libs/nostrhost-catalog
+    branch: main
+    pin_commit: 7f60191bc3d8d35679c7499ee3500b6e95c5feed
