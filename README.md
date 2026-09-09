@@ -7,6 +7,13 @@ primary control-plane technology for identity, authentication, delegated
 authority, agent access, approvals, catalogue discovery, publisher trust,
 software attestations, and remote administration.
 
+The core architectural idea is a **local Nostr relay as the control-plane
+bus**: identity, policy, approval, execution, catalogue and audit state flow
+as signed events, projected into YunoHost by small resolvers. The design is
+primitive-first — standard Nostr (NIP-42/44/51/65/66/77/78/86/89/98) is used
+wherever possible and custom kinds are reserved for genuine NostrHost
+semantics. See `docs/CONTROL-PLANE.md` and `docs/NIP-MAPPING.md`.
+
 See `docs/BASELINE.md` for the current stage and `docs/ROADMAP.md` provenance.
 
 ## Layout
@@ -27,7 +34,8 @@ nostrhost/
 ├── scripts/
 │   ├── pin-forks.sh  # sync forks to a pin recorded in pins.yml
 │   └── verify-clean.sh # assert forks == upstream pins (source-identical)
-├── docs/             # baseline, extraction, VM testbed, roadmap notes
+├── docs/             # baseline, control plane, NIP mapping, extraction,
+│                     # VM testbed, roadmap
 └── .github/workflows/baseline.yml, libraries.yml
 ```
 

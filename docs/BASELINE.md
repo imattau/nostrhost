@@ -53,9 +53,10 @@ needs to change it.
 
 Later stages introduce, in order: extraction of reusable libraries (identity/
 policy/catalogue) from `yunohost-nostr-auth`, `yunohost-mcp` and
-`nostr-yunohost`; a native identity API; portal Nostr login; native session
-creation; a unified policy engine; admin integration; native catalogue; SSO
-replacement; native MCP; OIDC; and finally distribution/release tooling
-(Debian repo, installer image, upgrade repo, signing, release manifest). See
-`ROADMAP.md` for the full plan. The fork baseline here is the floor every
-stage builds on.
+`nostr-yunohost`; the internal relay + event model (the control plane, roadmap
+§3, `CONTROL-PLANE.md`); identity events + projection; portal Nostr login and
+native session creation; capability/delegation events; approval + execution
+events; admin integration; catalogue sync + trust events; SSO simplification;
+MCP adapter; OIDC; and finally distribution/release tooling (Debian repo,
+installer image, upgrade repo, signing, release manifest). See `ROADMAP.md`
+for the full plan. The fork baseline here is the floor every stage builds on.

@@ -49,3 +49,23 @@ transition so nothing breaks:
 The roadmap proposed `nostr-yunohost-auth` / `-policy` / `-catalog`. These
 were renamed to `nostrhost-*` to match the umbrella brand and avoid
 collision with the existing `imattau/nostr-yunohost` catalogue repo.
+
+## Role in the control-plane architecture
+
+Under the relay-centric control plane (roadmap §3, `CONTROL-PLANE.md`), the
+extracted libraries supply the projector/evaluator/resolver logic the new
+architecture consumes rather than owning their own stores:
+
+- `nostrhost-auth` → the identity **projector** (identity events → LDAP
+  compatibility + native resolution)
+- `nostrhost-policy` → the policy **evaluator** (computation stays; identity/
+  delegation storage moves to relay events)
+- `nostrhost-catalog` → the catalogue **resolver** (trust, compatibility,
+  repository resolution; the relay becomes the local cache)
+
+Precedent: `yunohost-mcp`'s Armada/concord layer already folds
+authority-neutral state over Nostr events, and its `broker/` protocol is a
+local auditable privilege-boundary transport — the event model and the
+session boundary build directly on that experience. The design is
+primitive-first: standard NIPs are preferred over custom kinds wherever
+possible (`NIP-MAPPING.md`).

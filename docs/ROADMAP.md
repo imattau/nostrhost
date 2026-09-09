@@ -34,10 +34,10 @@ while making Nostr the primary control-plane technology for:
 
 # 1. Fork Baseline
 
-Create an umbrella repository, for example:
+Create an umbrella repository (implemented as `imattau/nostrhost`):
 
 ```text
-nostr-yunohost/
+nostrhost/
 ```
 
 This repository owns:
@@ -49,23 +49,27 @@ This repository owns:
 - packaging metadata
 - derivative documentation
 
-Fork the main upstream components:
+Fork the main upstream components (implemented as the source-identical
+`imattau/nostrhost-*` forks):
 
 ```text
 YunoHost/yunohost
-    -> imattau/yunohost-nostr
+    -> imattau/nostrhost-yunohost
 
 YunoHost/yunohost-portal
-    -> imattau/yunohost-portal-nostr
+    -> imattau/nostrhost-portal
 
 YunoHost/yunohost-admin
-    -> imattau/yunohost-admin-nostr
+    -> imattau/nostrhost-admin
 
 YunoHost/SSOwat
-    -> imattau/ssowat-nostr
+    -> imattau/nostrhost-ssowat
 ```
 
 Do not change behaviour immediately.
+
+The fifth foundational component — `nostrhost-control` (the internal relay
+control plane) — is added in roadmap §3 without touching these forks.
 
 ## Baseline milestone
 
@@ -98,10 +102,11 @@ revocation
 NIP-05
 ```
 
-Create a reusable authentication/identity library, conceptually:
+Create a reusable authentication/identity library (implemented as
+`imattau/nostrhost-auth`):
 
 ```text
-nostr-yunohost-auth/
+nostrhost-auth/
     python/
     web/
 ```
@@ -123,10 +128,10 @@ NIP-46 owner approval
 audit model
 ```
 
-Create:
+Create (implemented as `imattau/nostrhost-policy`):
 
 ```text
-nostr-yunohost-policy/
+nostrhost-policy/
 ```
 
 Initially preserve the current policy implementation. Do not introduce a new policy engine while restructuring the whole system.
@@ -144,17 +149,63 @@ trust filtering
 repository resolution
 ```
 
-Create:
+Create (implemented as `imattau/nostrhost-catalog`):
 
 ```text
-nostr-yunohost-catalog/
+nostrhost-catalog/
 ```
 
 The existing `_ynh` packages remain operational during this stage.
 
 ---
 
-# 3. Make Nostr Identity Native
+# 3. Control Plane: Internal Relay + Event Model
+
+This is the architecture-defining phase, completed *before* significant fork
+modifications begin. It adds a fifth foundational component — `nostrhost-control`,
+wrapping an existing relay implementation — and defines the NostrHost event
+protocol. No fork behaviour changes in this phase; the four forks remain
+pinned and source-identical.
+
+The local Nostr relay becomes the control-plane bus: identity, policy,
+approvals, execution, catalogue and audit state all flow as signed events.
+Projectors materialise read models (LDAP compatibility, policy state,
+catalogue cache) and a control executor is the single writer to the YunoHost
+engine. Interfaces (Portal, Admin, MCP, CLI) are relay clients, not owners of
+bespoke point-to-point APIs.
+
+See `CONTROL-PLANE.md` for the full specification — architecture, event
+protocol (primitive-first, kind ranges, validation), relay selection
+criteria, retention/access/bridging policy, the redundancy analysis, and the
+boundary of what stays local (HTTP sessions, CSRF, challenges, the `broker/`
+privilege transport, LDAP writes, YunoHost machine state).
+
+The design is **primitive-first**: standard Nostr primitives are used wherever
+possible (NIP-86 relay management, NIP-42 relay auth, NIP-78 app data, NIP-51
+lists, NIP-44 encrypted payloads, NIP-77 sync, NIP-98 HTTP auth, NIP-89/32267
+software discovery), and custom kinds are reserved for genuine NostrHost
+semantics. `NIP-MAPPING.md` is the component → NIP mapping that precedes any
+custom-kind allocation.
+
+Phase 2 deliverables:
+
+```text
+component → NIP mapping (NIP-MAPPING.md)      ← design gate, done first
+event-model specification
+kind registry (validated against the live NIPs and the existing
+  catalogue kinds 1100 / 30078-30080)
+relay backend selection (goss / strfry candidates)
+nostrhost-control component: local-only relay config, NIP-86/42 access,
+  event validation, per-kind retention, NIP-77 sync, external bridging rules
+```
+
+This phase removes (or shrinks to projectors/resolvers) the bespoke approval
+service, catalogue database/API, audit database, MCP identity storage and
+polling/notification infrastructure that the earlier architecture implied.
+
+---
+
+# 4. Make Nostr Identity Native
 
 This is the first significant modification to the YunoHost fork.
 
@@ -195,9 +246,15 @@ Initially, these functions may wrap the mappings and database behaviour already 
 
 The important architectural change is that other components stop needing to know where identity originated.
 
+Under the control-plane architecture (roadmap §3), identity is authored as
+signed identity/delegation **events** on the local relay and *projected* into
+this native API and, for compatibility, into LDAP. The native functions above
+become the identity projector's surface rather than owning their own store:
+identity is a projection, not a database.
+
 ---
 
-# 4. Integrate Nostr Login into the Portal
+# 5. Integrate Nostr Login into the Portal
 
 Retain the existing Nuxt/Vue/TypeScript portal stack.
 
@@ -254,7 +311,7 @@ After the identity link, a password should not be required for normal sign-in.
 
 ---
 
-# 5. Replace the Session-Minting Workaround
+# 6. Replace the Session-Minting Workaround
 
 The standalone authentication service currently needs special session-minting plumbing because standard YunoHost does not provide a clean passwordless portal-session API.
 
@@ -276,9 +333,14 @@ duplicated portal-cookie implementation
 
 This is one of the major benefits of controlling the fork.
 
+Live browser sessions are deliberately **not** carried as Nostr events: short-
+lived session tokens, CSRF and challenge state, and the `broker/` Unix-socket
+privilege transport stay in the local HTTP subsystem (roadmap §3 /
+`CONTROL-PLANE.md` §2.3). The relay records login/link/revoke *notices* only.
+
 ---
 
-# 6. Consolidate Authorisation
+# 7. Consolidate Authorisation
 
 Bring the MCP authorisation model into the common architecture.
 
@@ -336,9 +398,17 @@ background jobs
 
 The goal is one authorisation system, not separate permission logic for each interface.
 
+Under the control-plane architecture, roles, scopes, delegations and policy
+declarations are authored as signed **capability/delegation events** on the
+local relay (roadmap §3). What remains is the policy **evaluator** — the
+computation of "may npub X perform Y on Z" — which keeps its current logic
+(Casbin or the extracted `nostrhost-policy` engine) but no longer maintains
+its own identity/delegation database: that state is projected from relay
+events.
+
 ---
 
-# 7. Fork and Extend the Admin Interface
+# 8. Fork and Extend the Admin Interface
 
 Retain the current Vue/Vite/TypeScript admin stack.
 
@@ -385,7 +455,7 @@ Functionality currently handled through configuration files or MCP CLI commands 
 
 ---
 
-# 8. Replace or Reduce SSOwat Authentication Logic
+# 9. Replace or Reduce SSOwat Authentication Logic
 
 Do not attempt this early.
 
@@ -416,7 +486,7 @@ Existing YunoHost applications should continue receiving the headers they expect
 
 ## Long-term goal
 
-Reduce `ssowat-nostr` to primarily:
+Reduce `nostrhost-ssowat` to primarily:
 
 ```text
 NGINX configuration
@@ -429,7 +499,7 @@ rather than maintaining a substantial Lua-based authentication implementation.
 
 ---
 
-# 9. Make Nostr Catalog Native
+# 10. Make Nostr Catalog Native
 
 Introduce a catalogue-provider interface in the YunoHost fork.
 
@@ -473,9 +543,27 @@ existing YunoHost app installer
 
 Do not rewrite the application installation engine.
 
+Under the control-plane architecture, the local relay **is the local
+catalogue cache**: a catalogue synchroniser bridges external relays into the
+NostrHost relay, and replaceable package/release/attestation events are
+subscribed to directly by Admin, the installer, and MCP. The catalogue's
+bespoke local database/API server is not needed — only its logic remains:
+trust calculation, compatibility checking, repository resolution and
+attestation verification (the extracted `nostrhost-catalog` packages).
+
+```text
+external relays
+     ↓
+catalogue synchroniser
+     ↓
+NostrHost relay          ← the local catalogue cache
+     ↓
+Admin / installer / MCP
+```
+
 ---
 
-# 10. Integrate Catalogue Trust with Policy
+# 11. Integrate Catalogue Trust with Policy
 
 This is where identity, catalogue and authorisation begin to reinforce one another.
 
@@ -519,7 +607,7 @@ This turns Nostr into part of the software trust and authorisation model rather 
 
 ---
 
-# 11. Make MCP a Native Interface
+# 12. Make MCP a Native Interface
 
 The current model:
 
@@ -557,9 +645,17 @@ diagnostics
 
 Remove duplicated YunoHost integration code as equivalent native APIs are introduced.
 
+Under the control-plane architecture, MCP becomes an **adapter**: it keeps
+the MCP protocol, tool definitions, package-development tools, diagnostics
+presentation, and NIP-98 client authentication, but behind the tools it
+publishes signed operation-request events to the local relay and subscribes
+to approval/execution/result events (roadmap §3). Its bespoke identity
+database, approval workflow, delegation state, audit history and command
+queue move out to the relay event stream.
+
 ---
 
-# 12. Add OIDC Compatibility
+# 13. Add OIDC Compatibility
 
 Once Nostr identity is stable, add a conventional application-authentication bridge.
 
@@ -595,7 +691,7 @@ This may progressively reduce the number of applications requiring YunoHost-spec
 
 ---
 
-# 13. Retire Transitional `_ynh` Packages
+# 14. Retire Transitional `_ynh` Packages
 
 Only retire packages once their functionality exists natively.
 
@@ -632,7 +728,7 @@ The current work therefore remains useful even after the derivative exists.
 
 ---
 
-# 14. Distribution and Release Tooling
+# 15. Distribution and Release Tooling
 
 Once the architecture is stable, turn it into a real distribution.
 
@@ -671,37 +767,42 @@ Password login should remain available initially as a recovery path.
 
 # Recommended Implementation Order
 
-The order matters.
+The order matters. The internal relay + event model (phase 2) is the
+architecture-defining phase and must precede any significant fork
+modification; it is purely additive and leaves the forks pinned.
 
 ```text
-Fork baseline
-   ↓
-Extract existing libraries
-   ↓
-Native identity API
-   ↓
-Portal Nostr login
-   ↓
-Native session creation
-   ↓
-Unified policy engine
-   ↓
-Admin integration
-   ↓
-Native catalogue
-   ↓
-SSO replacement
-   ↓
-Native MCP
-   ↓
-OIDC
-   ↓
-Distribution release
+0. Source-identical fork baseline
+        ↓
+1. Extract proven existing Nostr code
+        ↓
+2. INTERNAL RELAY + EVENT MODEL          ← control plane (nostrhost-control)
+        ↓
+3. Identity events + projection
+        ↓
+4. Portal Nostr authentication (+ native session creation)
+        ↓
+5. Capability / delegation events
+        ↓
+6. Approval + execution events
+        ↓
+7. Admin interface
+        ↓
+8. MCP adapter
+        ↓
+9. Catalogue sync + trust events
+        ↓
+10. SSO simplification
+        ↓
+11. OIDC
+        ↓
+12. Distribution release
 ```
 
 Do not begin by rewriting SSOwat or rebuilding the admin interface.
 
-Get native identity and login working first.
+Stand up the control plane and get identity events + projection working
+first; portal authentication follows on top of it.
 
 ---
 
@@ -711,11 +812,12 @@ Get native identity and login working first.
 
 ```text
 ✓ forked Portal
+✓ control plane standing (local relay + event model)
+✓ identity events + projection (npub ↔ YunoHost mapping via relay)
 ✓ native Nostr login
 ✓ NIP-07
 ✓ NIP-46
 ✓ passkeys
-✓ npub ↔ YunoHost user mapping
 ✓ native session creation
 ✓ existing YunoHost apps work
 ✓ password recovery remains available
@@ -726,18 +828,18 @@ This is the first useful derivative release.
 ## 0.2 - Policy and Agents
 
 ```text
-✓ unified roles/scopes
+✓ capability / delegation events
 ✓ agents
-✓ delegations
+✓ relay-mediated approval + execution events
 ✓ NIP-46 privileged approvals
-✓ MCP integrated with common policy
-✓ unified audit model
+✓ MCP adapter integrated with the control plane
+✓ audit = signed event chain (with derived index/read model)
 ```
 
 ## 0.3 - Native Nostr Catalogue
 
 ```text
-✓ Nostr Catalog built in
+✓ catalogue sync + trust events (relay is the local cache)
 ✓ publisher trust
 ✓ CI attestations
 ✓ catalogue policy
@@ -749,7 +851,7 @@ This is the first useful derivative release.
 
 ```text
 ✓ NGINX auth_request
-✓ reduced/replaced SSOwat
+✓ reduced/simplified SSOwat
 ✓ compatibility headers
 ✓ OIDC provider
 ```
@@ -760,7 +862,7 @@ This is the first useful derivative release.
 ✓ identity native
 ✓ policy native
 ✓ catalogue native
-✓ MCP native
+✓ MCP native (adapter)
 ✓ Nostr approvals native
 ✓ OIDC compatibility
 ✓ `_ynh` bridge packages no longer required
@@ -772,60 +874,70 @@ This is the first useful derivative release.
 
 # Proposed Shared Architecture
 
+The current shared architecture is the **relay-centric control plane**
+(roadmap §3). The full specification — architecture diagrams, event protocol
+with kind ranges, relay selection, retention/access/bridging policy, and the
+redundancy analysis — lives in `CONTROL-PLANE.md`.
+
+Summary:
+
 ```text
-                     Nostr
-                       │
-          ┌────────────┴────────────┐
-          │                         │
-    @nostr/tools / NDK         nostr-sdk
-       browser                  backend
-          │                         │
-          └────────────┬────────────┘
-                       ▼
-                  identityd
-                       │
-           ┌───────────┼────────────┐
-           │           │            │
-        sessions     policy        OIDC
-           │           │            │
-           └───────────┼────────────┘
-                       ▼
+                    External Nostr
+                         │
+                selective sync / bridge
+                         │
+                         ▼
+                  NostrHost Relay        ← LOCAL control plane
+                         │                (event store + bus)
+         ┌───────────────┼───────────────┐
+      Identity        Policy          Catalogue
+      projector      evaluator        resolver
+         └───────────────┼───────────────┘
+                         │
+                   Control executor
+                         │
+                         ▼
                 YunoHost service layer
                  ↑       ↑       ↑
                  │       │       │
-              Portal   Admin    MCP
+              Portal   Admin    MCP   CLI    ← relay clients
 ```
 
-NGINX becomes primarily an enforcement point:
-
-```text
-request
-   ↓
-NGINX
-   ↓ auth_request
-identityd
-   ↓
-policy engine
-   ↓
-ALLOW / DENY
-   ↓
-application
-```
+NGINX becomes primarily an enforcement point (see `CONTROL-PLANE.md` §5):
+session + identity state is *projected from relay events* before policy
+evaluation allows or denies the application request.
 
 ---
 
 # Key Architectural Principles
 
 1. **Keep YunoHost's proven server-management engine.**
-2. **Make Nostr the canonical external identity layer.**
-3. **Keep LDAP initially as an internal compatibility mechanism.**
-4. **Use one policy engine across Admin, MCP, Portal and SSO.**
-5. **Treat humans, agents and services as cryptographic identities.**
-6. **Use NIP-46 approvals for privileged or high-risk actions.**
-7. **Make Nostr Catalog a native catalogue and trust provider, not a replacement app installer.**
-8. **Keep existing `_ynh` implementations usable on stock YunoHost.**
-9. **Replace integration workarounds only after equivalent native interfaces exist.**
-10. **Maintain a bootable, usable derivative at every stage.**
+2. **Make the local Nostr relay the control-plane bus.** The event schema is
+   the internal control-plane API: identity, delegation, approval, execution,
+   catalogue and audit state flow as signed events; interfaces are relay
+   clients, not owners of bespoke point-to-point APIs.
+3. **Make Nostr the canonical external identity layer.**
+4. **Keep LDAP initially as an internal compatibility mechanism, projected
+   from identity events.**
+5. **Use one policy engine across Admin, MCP, Portal and SSO** — computation
+   stays in the evaluator; roles/scopes/delegation *storage* moves to relay
+   events.
+6. **Treat humans, agents and services as cryptographic identities.**
+7. **Use NIP-46 approvals for privileged or high-risk actions**, mediated by
+   the relay (request event → signed approval event → executor).
+8. **Keep sessions, CSRF and challenge state in the local HTTP subsystem, not
+   in the event stream.**
+9. **Use standard Nostr primitives wherever possible; treat the relay as a
+   commodity component.** NIP-42/44/51/65/66/77/78/86/89/98 before custom
+   kinds; use an existing relay implementation; NostrHost owns the event
+   model and the validation, retention, access and bridging policy.
+10. **Make Nostr Catalog a native catalogue and trust provider, not a
+   replacement app installer** — the relay is the local cache; catalogue
+   logic remains.
+11. **Keep existing `_ynh` implementations usable on stock YunoHost.**
+12. **Replace integration workarounds only after equivalent native interfaces
+   exist.**
+13. **Maintain a bootable, usable derivative at every stage.**
 
 ---
 
