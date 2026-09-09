@@ -75,7 +75,7 @@ jobs:
 
       - name: Install deps
         run: |
-          pip install -q pytest coincurve nostr-sdk websockets
+          pip install -q pytest coincurve nostr-sdk websockets bottle PyJWT
           pip install -q -e libs/nostrhost-auth
 
       - name: Run nostr identity tests (fork, nostrhost branch)
