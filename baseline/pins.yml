@@ -35,8 +35,10 @@ forks:
     fork_repo: imattau/nostrhost-portal
     path: forks/portal
     upstream_branch: dev
+    branch: dev               # Nostr (NIP-07) login page + Tailwind/shadcn-vue redesign (PR #1)
+    derivative: true
     pin: debian/12.1.2
-    pin_commit: fbe0764dec23a455504430fb785a450cefb0b563
+    pin_commit: 95b4905f0d8ffd5ba1924bac6dddb62d2f4fd29c
     live_server: 12.1.2
 
   - component: admin           # Vue/Vite/TypeScript admin interface
@@ -44,8 +46,10 @@ forks:
     fork_repo: imattau/nostrhost-admin
     path: forks/admin
     upstream_branch: dev
+    branch: dev               # Tailwind/shadcn-vue redesign (app shell, PR #1)
+    derivative: true
     pin: debian/12.1.15
-    pin_commit: 707318b8d171a7a4c100dbb79c3d34d51dee4303
+    pin_commit: b9935c282d06ad71451f093928ad9837073e2cca
     live_server: 12.1.15
 
   - component: ssowat          # NGINX single-sign-on layer
