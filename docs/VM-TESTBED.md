@@ -113,3 +113,73 @@ now 50 tests); the VM validates real YunoHost tool execution.
   exposure.
 - When the derivative build pipeline lands, this VM becomes the place its
   installer image is first tested (fresh install + upgrade path).
+## VM proof results (2026-09-09, real VM)
+
+Both Phase-3 vertical slices were exercised end-to-end on a fresh VM:
+Debian 12 bookworm (KVM/libvirt) + stock YunoHost 12.1.41.2 postinstall
+(main domain `nostrhost.test`, admin `ynhadmin`), with the derivative fork
+overlaid on `/usr/lib/python3/dist-packages/yunohost` and
+`nostrhost-control` (loopback:4848, allowlist mode, `require_auth_kinds = []`)
+running as systemd services, operator key + `/etc/nostrhost/operator.toml`.
+
+### Identity slice
+
+- `nostr-identity-admin link --username matt --pubkey npub1jxv… --signer-type nip07`
+  published a kind-31102 event; `nostr-identityd` projected it: LDAP account
+  `uid=matt,ou=users,dc=yunohost,dc=org` + YunoHost user `matt@nostrhost.test`
+  created; `resolve_pubkey(np…)` returned the enabled mapping.
+- `nostr-identity-admin revoke --pubkey …` → `resolve_pubkey` → `None`, LDAP
+  account retained (revocation is of the link, not the account); re-link
+  re-enabled.
+
+### Operation slice
+
+Agent key grant (`nostr-opctl grant … --scopes server.read,apps.read,services.read`
+→ kind 31100), agent allowlisted via NIP-86 `allowpubkey`, then for each tool
+`nostr-opctl request` → `nostr-opctl approve` → chain observed
+`REQUESTED → APPROVED → EXECUTING → DONE` with **real host data** in the
+signed 2204:
+
+- `system.version` → `{"ok": true, "result": {"yunohost": {"version": "12.1.41.2", "repo": "stable"}}}`
+- `service.status` → `{"ok": true, "result": {"dnsmasq": {"status": "running", …}, …}}`
+- `app.list` → `{"ok": true, "result": {"apps": []}}`
+
+### Bugs surfaced by the real host (all fixed, tests added)
+
+1. `_store()` required `db_path` but `run()` called it bare → daemon crashed at
+   startup (TypeError). Added default.
+2. Calling YunoHost user machinery from a daemon needs moulinette + m18n +
+   `init_logging` initialised (`_init_headless_yunohost()`); otherwise the
+   operation logger crashes with `'NoneType' object has no attribute 'type'`
+   when `user_create` runs (only `.type` is ever read off the interface — a
+   tiny headless shim suffices).
+3. `service.status` results carry `datetime` objects; the 2204 content build
+   (`json.dumps`) raised `TypeError` and left the chain stuck in EXECUTING.
+   Event authoring now serialises via `_json_default` (datetime → isoformat).
+4. The relay rejected revocation events: `validateIdentityDefinition` required
+   a non-empty username even for `enabled:false`. Now only required when
+   `enabled != false`.
+5. Relay fresh-connect replay order is not guaranteed for same-second events;
+   on a daemon restart an in-flight request could be re-evaluated before its
+   grant was projected → wrongly rejected as `unauthorized`. Both daemons now
+   buffer the replay until EOSE and feed a stable sort (grants before
+   requests before approvals).
+
+### VM access notes (for future runs)
+
+- Debian genericcloud images only apply NoCloud cloud-init from a **virtio
+  (scsi)** cdrom, not AHCI; `virt-install --cloud-init` deletes its seed ISO
+  after defining the domain.
+- YunoHost's postinstall creates its own LDAP `admin`; the cloud-init local
+  `admin` user collides with it and breaks login — use a distinct local
+  username (`opsuser`).
+- YunoHost's sshd `AllowGroups` (ssh.main sftp.main ssh.app sftp.app admins
+  root) locks out non-LDAP local users; keep root SSH keyed via
+  `/root/.ssh/authorized_keys` for management access.
+- YunoHost nftables (fail2ban `f2b-table`/`addr-set-sshd`) rejects the host IP
+  after repeated failed SSH; unban with
+  `nft delete element inet f2b-table addr-set-sshd { <host-ip> }` from the
+  console.
+- `yunohost tools postinstall` prompts interactively even with `--ignore-dyndns`
+  (ToS + admin full name): pass `--i-have-read-terms-of-services --fullname …`
+  and drive any residual prompt via `expect` over a pty.
