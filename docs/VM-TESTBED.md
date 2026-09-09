@@ -303,3 +303,61 @@ assisted rollback are Stage B. Fork tests now 69 (state layer adds 10).
 Client side (`pages/nostr-login.vue`, NIP-07 sign-in) is implemented in the
 portal fork; its build/deploy needs the portal's node/yarn pipeline (no node
 on the VM) - follow-up deploy step.
+
+## Portal client deployed + §8 re-proven (2026-09-10)
+
+The merged derivative portal (pin `95b4905`: NIP-07 `/nostr-login` page +
+Tailwind/shadcn-vue redesign + Host-header match fix) is built and deployed:
+
+- The VM's bookworm Node 18 is too old for the redesign's deps
+  (`string-width` ESM under `@vercel/nft` → `require() of ES Module`
+  failure), so a standalone Node 22 is installed at `/opt/node22`; the debian
+  build command (`yarnpkg install && yarnpkg generate`, Yarn Classic 1.22)
+  runs against it. Static output is `.output/public`, deployed to
+  `/usr/share/yunohost/portal` (previous build preserved at
+  `/usr/share/yunohost/portal.pre-derivative`).
+- Serving nuance: the portal is aliased at **`/yunohost/sso/`**, not
+  `/yunohost/portal` (`/etc/nginx/conf.d/yunohost_sso.conf.inc` →
+  `alias /usr/share/yunohost/portal/`). A probe of `/yunohost/portal` 404s and
+  was a wrong-path probe, not a UI fault.
+- Verified live: `GET /yunohost/sso/nostr-login/` → 200 (SPA shell); the JS
+  bundle references the `nostr-login` route, calls
+  `portalapi/nostr/challenge`, and uses `window.nostr` (NIP-07). The §8 flow
+  is re-proven against the deployed stack: challenge → signed kind-22242 →
+  `POST /nostr/login` → `200 {"ok": true, "user": "dave", ...}` passwordless
+  cookie.
+- Open follow-up: a real browser NIP-07 session (needs an extension-capable
+  browser) and visual check of the redesigned portal/app grid post-login.
+
+## Stage B: Restic client + assisted rollback E2E (2026-09-10)
+
+The Stage B slice (fork `0c75873`) is deployed and proven live:
+
+- `restic` 0.14 installed; local repo initialised at
+  `/var/lib/nostrhost/restic-repo`; config `/etc/nostrhost/restic.toml`
+  (0600; `repo`/`password`/`paths`=`[/opt/yunohost, /home]`). The password is
+  passed to restic via `RESTIC_PASSWORD`, never on argv.
+- `nostrhost-restic snapshot` → `c4baeff6e5d0ab1a…`; `snapshots` lists it;
+  `check` → repository OK. `nostrhost-restic snapshot` with no args defaults
+  to the configured paths.
+- **Assisted rollback loop** (real machine state):
+  1. re-commit the current state as known-good with the Restic snapshot id in
+     the manifest (`[backup] restic_snapshot = c4baeff6…`);
+  2. `systemctl stop dnsmasq` → commit `post`/`health=failed`;
+  3. `nostrhost-state rollback plan` → 1 step:
+     `services/dnsmasq.toml  modify [runtime-setting/automatic]
+     reverse=control tool=service.control`, restic snapshot linked;
+  4. `nostrhost-state rollback apply --approve` → executed
+     `service.control {"action": "restart", "name": "dnsmasq"}` through the
+     operation registry → dnsmasq back `active`; the CLI records a
+     post-rollback snapshot (not auto known-good);
+  5. operator validates health then `nostrhost-state commit --known-good` →
+     new known-good `febc9af583911266`.
+- Fixes found live: `rollback apply` needed `_init_headless_yunohost()`
+  before running tool handlers; restore-required steps restore the linked
+  snapshot in full (state-file paths are not data paths); the plan/apply
+  renderers printed the section twice.
+- Open follow-up: real restic *restore* of a restore-required step is
+  covered by unit tests (fake restic) but not run live (would overwrite
+  /opt/yunohost on the testbed); app reinstall/upgrade reverse steps remain
+  manual until install-arg provenance lands.
