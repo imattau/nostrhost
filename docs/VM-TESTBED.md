@@ -245,3 +245,32 @@ server-key-signed result) both work end-to-end. Fork tests now 60.
 Also during this run: the rebuilt VM disk had lost its 30G size (3G root was
 100% full) — `qemu-img resize disk.qcow2 24G` + `growpart`/`resize2fs` fixed
 it.
+
+## nostrhost-state Stage A proven (2026-09-10)
+
+The durable semantic configuration-state layer (`src/nostr_state.py`) is wired
+into the executor and proven on the VM:
+
+- **Semantic export** (`nostrhost-state export`): domains (nostrhost.test),
+  12 services, 5 identities (+ their groups), package versions, capabilities;
+  every section is best-effort and per-section failures degrade gracefully.
+- **ngit-backed state repository** (`StateRepo`): a plain Git repo at
+  `/var/lib/nostrhost/state` whose git identity is the server pubkey.
+- **Automatic pre/post snapshots**: each executed operation commits a
+  `phase=pre health=pending` snapshot before and a `phase=post health=passed
+  known-good` snapshot after, both linked to the operation event id
+  (`op=<request-id>` in the commit message). Proven live: every
+  `service.restart` chain left exactly one pre + one post commit.
+- **Known-good markers**: a `known-good` tag tracks the latest health-validated
+  state (`nostrhost-state status` shows it); `git tag -f` moves on success.
+- **Semantic diff**: `nostrhost-state diff <from> <to>` renders the manifest +
+  section changes between revisions.
+- **NIP-34 announcement**: `nostrhost-state announce` publishes a signed
+  kind-30617 repository announcement (server key) discoverable as
+  `nostr://<server-pubkey>/nostrhost-state`, stored on the control relay.
+  Required extending the relay's `allowed_kinds` (now also `30617`) via
+  `bin/nostrhost-bootstrap`'s `RELAY_KINDS`.
+
+Restic snapshot *linkage* machinery is in place (state manifest `[backup]`
+section, `DATA_AFFECTING_TOOLS`, `restic_hook`); the actual Restic client and
+assisted rollback are Stage B. Fork tests now 69 (state layer adds 10).
