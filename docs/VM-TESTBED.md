@@ -183,3 +183,25 @@ signed 2204:
 - `yunohost tools postinstall` prompts interactively even with `--ignore-dyndns`
   (ToS + admin full name): pass `--i-have-read-terms-of-services --fullname …`
   and drive any residual prompt via `expect` over a pty.
+
+## Identity bootstrap hardening (2026-09-10)
+
+The VM proof used a single operator key for everything. The hardened model
+splits three roles and adds an explicit bootstrap action:
+
+- `server_sk` (machine key, signs `2203`/`2204`), `operator_sk` (primary
+  admin, signs approvals/grants/identity), `admins` (accepted event authors).
+- `nostrhost-bootstrap` (root) generates/imports the keys and writes
+  `/etc/nostrhost/operator.toml` (0600), and can write a relay config with
+  `operator_pubkey` + `server_pubkey` (the server is allowlisted as a
+  *writer only*, not a relay admin).
+- `is_bootstrapped()` / `_require_bootstrapped()`: pre-bootstrap the daemons
+  refuse to start and the mutating CLI tools fail with a pointer to
+  `nostrhost-bootstrap`; post-bootstrap authority flows through the
+  configured admins.
+- Legacy single-key configs still work (server key falls back to the
+  operator key); `nostrhost-bootstrap --force` upgrades them.
+
+Re-prove on the VM after hardening: regenerate the operator config with a
+distinct server key, add `server_pubkey` to the relay config, restart the
+daemons, and re-run the identity + operation slices.
