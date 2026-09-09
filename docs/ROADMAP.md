@@ -704,20 +704,34 @@ After the identity link, a password should not be required for normal sign-in.
 
 ---
 
-# 9. Restic Linkage + Known-Good + Assisted Rollback (Stage B) — ⏳
+# 9. Restic Linkage + Known-Good + Assisted Rollback (Stage B) — ◑
 
 Complete the 0.3 "State History and Recovery Foundation" milestone by moving
 from history to restoration:
 
 ```text
-✓ semantic diff across state history
-✓ known-good state markers (health-validated)
-✓ Restic snapshot linkage in the state manifest
-✓ assisted rollback plan generation (change-class aware)
-✓ policy / approval gate on restoration
-✓ controlled execution + re-validation
+✓ semantic diff across state history          (Stage A)
+✓ known-good state markers (health-validated) (Stage A)
+✓ Restic snapshot linkage in the state manifest (Stage A)
+✓ Restic client (backup/snapshots/restore/check, env-only secrets)  (Stage B)
+✓ assisted rollback plan generation (change-class aware)            (Stage B)
+✓ policy / approval gate on restoration       (Stage B: bounded `--approve`;
+                                               full Nostr policy/approval flow
+                                               is follow-up)
+◑ controlled execution + re-validation        (automatic steps run through the
+                                               operation registry; restore steps
+                                               via Restic; manual/impossible
+                                               reported, never auto-executed;
+                                               operator-driven re-validation on
+                                               the testbed pending)
 ```
 
+`src/nostr_restic.py` wraps the `restic` CLI (config `/etc/nostrhost/
+restic.toml`; secrets via `RESTIC_PASSWORD`, never argv) and drives the
+recorder's pre-op data snapshot; `src/nostr_rollback.py` classifies each
+semantic change per the STATELAYER §8.5 table, emits a plan with reversibility
+and Restic linkage, and executes only through the operation registry
+(`service.control` was added as the bounded runtime-setting reverse-action).
 This stage remains short of fully automatic reconciliation (Stage D, §17).
 
 ---
@@ -960,7 +974,7 @@ on identity, policy and execution semantics, which now exist.
 5.  Approval + execution events (structured ops + state machine) ✅
 6.  nostrhost-state Stage A            (ngit / NIP-34)      ◑  (Stage A proven; next: portal deploy, then Stage B)
 7.  Portal Nostr authentication (+ native session creation) ◑  (server proven; client page pending deploy/build)
-8.  Restic linkage + known-good + assisted rollback (Stage B) ⏳
+8.  Restic linkage + known-good + assisted rollback (Stage B) ◑  (client + plan generation + gate done; registry-bounded execution; testbed re-validation pending)
 9.  Admin interface                                         ⏳
 10. Native catalogue (sync + trust events)                  ⏳
 11. SSO simplification                                      ⏳
@@ -1025,9 +1039,11 @@ and NIP-46 privileged approvals.
 ✓ automatic pre/post state snapshots          (Stage A)
 ✓ Nostr operation provenance (commits linked to operation events)   (Stage A)
 ✓ known-good state markers                    (Stage A)
-◑ Restic snapshot linkage                     (manifest machinery done; Restic client is Stage B)
+✓ Restic snapshot linkage                     (Stage A manifest + Stage B client/hook)
 ✓ semantic diff                               (Stage A)
-⏳ assisted rollback plan generation           (Stage B)
+✓ assisted rollback plan generation            (Stage B: change-class aware)
+◑ controlled execution + re-validation        (Stage B: registry-bounded, `--approve`
+                                               gate; operator-driven on the testbed)
 ```
 
 The first release of this layer stops short of fully automatic reconciliation.
