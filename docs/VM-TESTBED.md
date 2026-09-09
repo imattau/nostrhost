@@ -205,3 +205,20 @@ splits three roles and adds an explicit bootstrap action:
 Re-prove on the VM after hardening: regenerate the operator config with a
 distinct server key, add `server_pubkey` to the relay config, restart the
 daemons, and re-run the identity + operation slices.
+
+## Minimal control executor: write operation E2E (2026-09-10)
+
+The tool registry gained one write-capable operation, `service.restart`
+(scoped `services.write`, approval-gated, bounded to a single known service
+name). The executor remains the only path to machine state.
+
+Proven on the VM through the full signed chain:
+
+- an agent WITHOUT `services.write` is denied at the scope gate (unit-tested),
+  and a non-allowlisted pubkey is rejected at the relay
+- grant `services.write` → request `service.restart {"name":"dnsmasq"}` →
+  admin approval → the chain ran REQUESTED(agent) → APPROVED(operator) →
+  EXECUTING/DONE signed by the **server** key, result
+  `{"ok": true, "result": {"service": "dnsmasq", "status": "running"}}`
+- `dnsmasq` was genuinely restarted (systemd `ActiveEnterTimestamp`
+  14:15:54 → 21:01:38), so the write reached real machine state.
