@@ -50,8 +50,9 @@ use this same registry; timers, health checks, typed settings, and backup
 declarations are also native providers. They are intentionally not silently
 implemented through legacy helper commands. Runtime resources now verify the
 selected native executable and version with bounded argv-based execution;
-installation remains host-policy-owned because each runtime needs a
-package-manager-specific strategy.
+PHP-FPM resources render an owned pool configuration and reload only the
+matching FPM service. Installation remains host-policy-owned because each
+runtime needs a package-manager-specific strategy.
 
 Caddy route removal requires an explicit native configuration builder and is
 submitted through the same validated `/load` endpoint as route creation.
