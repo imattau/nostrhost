@@ -307,7 +307,7 @@ results), `operator_sk` (primary admin, signs approvals/capabilities), and an
 
 ---
 
-# 5. Consolidate Authorisation: Capability / Delegation Events — ◑
+# 5. Consolidate Authorisation: Capability / Delegation Events — ✅
 
 Bring the MCP authorisation model into the common architecture.
 
@@ -364,9 +364,12 @@ one authorisation system, not separate permission logic for each interface.
 Implemented: kind-31100 capability grants (scopes such as `server.read`,
 `apps.read`, `services.read`, `services.write`) are authored as signed events,
 projected by the operations engine, and gate requester authorisation; relay
-allowlisting is granted via NIP-86 `allowpubkey` (NIP-98-signed). **Partial:**
-formal delegation events (NIP-26-style or custom) are not yet a first-class
-mechanism; evaluate Casbin migration when this phase completes.
+allowlisting is granted via NIP-86 `allowpubkey` (NIP-98-signed). Server-scoped,
+expiring kind-27236 delegations are now first-class operation authorisation
+events: a delegator can grant only scopes it currently holds, and the
+delegator or an administrator can revoke via kind 27237. Delegations are
+signature-verified, retained for replay, and dynamically clipped when the
+delegator loses its own capability.
 
 ---
 
@@ -976,7 +979,7 @@ on identity, policy and execution semantics, which now exist.
 1.  Extract proven existing Nostr code                      ✅
 2.  INTERNAL RELAY + EVENT MODEL        (nostrhost-control) ✅
 3.  Identity events + projection                            ✅
-4.  Capability / delegation events                          ◑
+4.  Capability / delegation events                          ✅
 5.  Approval + execution events (structured ops + state machine) ✅
 6.  nostrhost-state Stage A            (ngit / NIP-34)      ✅   (Stage A + B complete)
 7.  Portal Nostr authentication (+ native session creation) ◑  (server + client deployed; NIP-46/passkey pending)
