@@ -71,6 +71,12 @@ installer must pass that declaration to `package.plan`; a URL or legacy app id
 alone is insufficient. The plan result, selected architecture variant, and
 manifest digest become part of the operation request.
 
+The current `package.plan` response is the first version of this seam: a
+schema-versioned envelope containing package id/version, `manifest_sha256`,
+the typed operation list, and `plan_sha256`. `package.reconcile` verifies the
+plan digest before provider execution. Raw operation lists remain accepted
+only as a marked legacy compatibility path.
+
 ### Identity and policy to execution
 
 `package.plan` is read-only. Applying a plan must be an approval-gated
