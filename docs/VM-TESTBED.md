@@ -361,3 +361,10 @@ The Stage B slice (fork `0c75873`) is deployed and proven live:
   covered by unit tests (fake restic) but not run live (would overwrite
   /opt/yunohost on the testbed); app reinstall/upgrade reverse steps remain
   manual until install-arg provenance lands.
+- Chain-gated restoration (`rollback.apply`): the gate now also flows through
+  the signed operation chain — a kind-2200 request with the plan embedded
+  (`nostr-opctl request --tool rollback.apply --plan-file plan.json`) → 2201
+  admin approval → the daemon executes the plan steps via the registry and
+  emits 2203/2204. Scoped `state.write`, unit-tested (121 fork tests); a live
+  daemon-driven rollback on the testbed is a follow-up (the proven VM loop
+  above used the operator CLI `--approve` path).

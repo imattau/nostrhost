@@ -739,9 +739,11 @@ Structured executor + operation state machine
 nostrhost-state Stage A
 semantic pre/post snapshots via ngit / NIP-34
    ↓
-Restic snapshot linkage + known-good state  (Stage B: client + hook done)
+Restic snapshot linkage + known-good state  (Stage B done)
    ↓
-Assisted rollback                            (Stage B: plan + gate done)
+Assisted rollback                            (Stage B done: `rollback.apply` runs as a
+                                              chain operation — state.write scope + admin
+                                              approval; restore via the linked Restic snapshot)
    ↓
 Admin integration
    ↓

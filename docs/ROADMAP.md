@@ -623,7 +623,7 @@ process.
 
 ---
 
-# 8. Portal Nostr Authentication + Native Session — ◑ (server proven, client pending deploy)
+# 8. Portal Nostr Authentication + Native Session — ◑ (server proven, client deployed)
 
 Retain the existing Nuxt/Vue/TypeScript portal stack.
 
@@ -645,9 +645,11 @@ The server side is implemented and proven live on the testbed:
 (mint a passwordless `yunohost.portal` cookie after a verified kind-22242
 challenge signature), with the login notice (kind 2206) signed by a dedicated
 low-privilege portal notice key rather than the root operator keys. The
-browser page exists in the portal fork; its build/deploy to the testbed needs
-the portal's node/yarn pipeline (follow-up). NIP-46 and passkey signers are
-the remaining client work.
+redesigned client (NIP-07 `/nostr-login` page + Tailwind/shadcn-vue) is
+built from the merged derivative pin and deployed on the testbed at
+`/yunohost/sso/`; the §8 flow is re-proven end-to-end against the deployed
+stack (challenge → signed 22242 → passwordless cookie → dave). NIP-46 and
+passkey signers are the remaining client work.
 
 Recommended browser-side Nostr stack: `@nostr/tools`; NDK where relay
 functionality is required.
@@ -704,7 +706,7 @@ After the identity link, a password should not be required for normal sign-in.
 
 ---
 
-# 9. Restic Linkage + Known-Good + Assisted Rollback (Stage B) — ◑
+# 9. Restic Linkage + Known-Good + Assisted Rollback (Stage B) — ✅
 
 Complete the 0.3 "State History and Recovery Foundation" milestone by moving
 from history to restoration:
@@ -715,16 +717,16 @@ from history to restoration:
 ✓ Restic snapshot linkage in the state manifest (Stage A)
 ✓ Restic client (backup/snapshots/restore/check, env-only secrets)  (Stage B)
 ✓ assisted rollback plan generation (change-class aware)            (Stage B)
-✓ policy / approval gate on restoration       (Stage B: bounded `--approve`;
-                                               full Nostr policy/approval flow
-                                               is follow-up)
-◑ controlled execution + re-validation        (automatic steps run through the
-                                               operation registry — service.control,
-                                               app.remove, restic restore; app
-                                               reinstall/upgrade reverse steps
-                                               stay manual pending install-arg
-                                               provenance; operator-driven
-                                               re-validation on the testbed pending)
+✓ policy / approval gate on restoration       (Stage B: `rollback.apply` runs as a
+                                               first-class operation-chain tool — signed
+                                               2200 request → 2201 admin approval → 2203 →
+                                               2204 result, scoped `state.write`; the
+                                               local `--approve` remains the operator CLI path)
+✓ controlled execution + re-validation        (registry-bounded — service.control,
+                                               app.remove, restic restore — validated on the
+                                               testbed end-to-end; app reinstall/upgrade
+                                               reverse steps stay manual pending install-arg
+                                               provenance)
 ```
 
 `src/nostr_restic.py` wraps the `restic` CLI (config `/etc/nostrhost/
@@ -733,7 +735,10 @@ recorder's pre-op data snapshot; `src/nostr_rollback.py` classifies each
 semantic change per the STATELAYER §8.5 table, emits a plan with reversibility
 and Restic linkage, and executes only through the operation registry
 (`service.control` was added as the bounded runtime-setting reverse-action).
-This stage remains short of fully automatic reconciliation (Stage D, §17).
+Restoration itself is a first-class chain operation (`rollback.apply`, scope
+`state.write`, admin-approval-gated) so a repository change can never apply
+state outside the signed control plane. This stage remains short of fully
+automatic reconciliation (Stage D, §17).
 
 ---
 
@@ -973,9 +978,9 @@ on identity, policy and execution semantics, which now exist.
 3.  Identity events + projection                            ✅
 4.  Capability / delegation events                          ◑
 5.  Approval + execution events (structured ops + state machine) ✅
-6.  nostrhost-state Stage A            (ngit / NIP-34)      ◑  (Stage A proven; next: portal deploy, then Stage B)
-7.  Portal Nostr authentication (+ native session creation) ◑  (server proven; client page pending deploy/build)
-8.  Restic linkage + known-good + assisted rollback (Stage B) ◑  (client + plan generation + gate done; registry-bounded execution; testbed re-validation pending)
+6.  nostrhost-state Stage A            (ngit / NIP-34)      ✅   (Stage A + B complete)
+7.  Portal Nostr authentication (+ native session creation) ◑  (server + client deployed; NIP-46/passkey pending)
+8.  Restic linkage + known-good + assisted rollback (Stage B) ✅  (registry-bounded execution, chain-gated, testbed-validated)
 9.  Admin interface                                         ⏳
 10. Native catalogue (sync + trust events)                  ⏳
 11. SSO simplification                                      ⏳
@@ -1043,8 +1048,11 @@ and NIP-46 privileged approvals.
 ✓ Restic snapshot linkage                     (Stage A manifest + Stage B client/hook)
 ✓ semantic diff                               (Stage A)
 ✓ assisted rollback plan generation            (Stage B: change-class aware)
-◑ controlled execution + re-validation        (Stage B: registry-bounded — service.control,
-                                               app.remove, restic restore; testbed re-validation pending)
+✓ controlled execution + re-validation        (Stage B: registry-bounded — service.control,
+                                               app.remove, restic restore — validated on the
+                                               testbed; the restoration gate flows through the
+                                               full Nostr policy/approval chain as
+                                               `rollback.apply`, milestone 0.3 complete)
 ```
 
 The first release of this layer stops short of fully automatic reconciliation.
