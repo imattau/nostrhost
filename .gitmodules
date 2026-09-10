@@ -8,9 +8,6 @@
 [submodule "forks/admin"]
 	path = forks/admin
 	url = https://github.com/imattau/nostrhost-admin.git
-[submodule "forks/ssowat"]
-	path = forks/ssowat
-	url = https://github.com/imattau/nostrhost-ssowat.git
 [submodule "libs/nostrhost-auth"]
 	path = libs/nostrhost-auth
 	url = https://github.com/imattau/nostrhost-auth.git
