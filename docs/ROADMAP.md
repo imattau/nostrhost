@@ -1030,6 +1030,9 @@ Nostr relay (§0 / architectural principle 17).
 
 ## 18.2 Remove the built-in mail stack from the default platform
 
+See `docs/MAIL-RETIREMENT.md` for the working dependency inventory and phase
+plan required by §18.7 before any removal work lands in `forks/yunohost`.
+
 NostrHost should not operate a complete Internet mail server by default. The
 inherited YunoHost mail stack can be progressively removed from the default
 NostrHost installation, including components and configuration associated
