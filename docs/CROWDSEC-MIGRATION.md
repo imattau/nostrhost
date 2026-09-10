@@ -136,20 +136,43 @@ its phase gate" pattern.
   caddy unit, then confirming the authd 401/redirect from `forward_auth`
   surfaces as a Caddy access entry (portal login failures land here, not in
   an nginx log).
-- Port `yunohost.conf` and `yunohost-portal.conf` detection logic to CrowdSec
-  parsers (`nostrhost-yunohost-auth.yaml`, `nostrhost-portal-auth.yaml`),
-  rewritten for **Caddy's log format** (not nginx), same maxretry/detection
-  semantics, YAML parser DSL. `crowdsecurity/caddy-logs` (v1.1) already
-  parses Caddy's JSON format and maps 401+Basic to `auth_fail` (§8.3).
+- **Ported via scenario-level path filters, NOT custom parsers.** The
+  packaged CrowdSec 1.4.6 does **not** load parsers placed in
+  `/etc/crowdsec/parsers/` (verified: even a `filter: "true"` marker parser
+  never runs in the daemon or `cscli explain`, because they're absent from
+  the hub index `/var/lib/crowdsec/hub/.index.json`; there is no
+  `cscli parsers add` / local-path install in this version). Local **scenarios**
+  in `/etc/crowdsec/scenarios/` DO load. So the correct architecture is
+  scenario-level path filters on the metas `crowdsecurity/caddy-logs` (s01) +
+  `crowdsecurity/http-logs` (s02) already set — no custom parser needed.
+- Two leaky scenarios reproduce the retired nginx-format filters directly on
+  Caddy's JSON metas (fail2ban regex `^<HOST> -.*"POST …" 401` ⇔
+  `evt.Meta.http_verb == 'POST' && evt.Meta.http_path == '<path>' && evt.Meta.http_status == '401'`):
+  - `nostrhost-yunohost-auth-bf` → `POST /yunohost/api/login 401`, capacity
+    10 / leakspeed 60s (= `maxretry 10`, `findtime 10m`).
+  - `nostrhost-yunohost-portal-auth-bf` → `POST /yunohost/portalapi/login 401`,
+    capacity 20 / leakspeed 30s (= `maxretry 20`, `findtime 10m`).
+  Keying on the exact path keeps each scenario narrow (fail2ban parity) and
+  avoids the broad `LePresidente/http-generic-401-bf` (any POST 401).
+  `groupby: evt.Meta.source_ip` keeps the bucket per attacker. **Do not add a
+  `distinct:` on the same field as `groupby`** — it pins the bucket's distinct
+  count at 1/IP and the leaky bucket never fills (found and fixed during
+  validation).
+- **Installed `crowdsecurity/caddy-logs` is v0.4**, not the plan's v1.1. It
+  still sets `log_type=http_access-log`, `http_status`, `http_path` (from
+  `request.uri`), `http_verb` (from `request.method`), `source_ip`; it sets
+  `sub_type='auth_fail'` only on 401+Basic (YunoHost's JSON login sends no
+  Basic, so we key on path/verb/status, which is moot with no custom parser).
 - Port `postfix-sasl.conf`; **confirmed in P0 (§8.2):** the `crowdsecurity/
   postfix` collection already covers SASL auth failures (`postfix-spam` on
   `log_type_enh: spam-attempt`) — align its threshold to fail2ban's `[sasl]`
   jail (maxretry 5) rather than re-deriving the parser.
-- Write scenarios mirroring current jail `maxretry`/`findtime`/`bantime`
-  values (`yunohost-portal` at `maxretry=20`, `recidive` behaviour, etc.).
+- Decision duration (fail2ban `bantime`) is set by the **bouncer (P4)**, not a
+  per-scenario field — consistent with every stock scenario.
 - Gate: `cscli explain` / replay against captured auth-failure log samples
   produces the expected detections (same or better precision than the old
-  nginx-format filters).
+  nginx-format filters). **Verified on a Debian 12 test host:** each scenario
+  fired a `ban` after capacity rapid 401 logins on its own path (see §8.6).
 
 ### P2 — acquis.yaml + regenconf
 - Write `hooks/conf_regen/52-crowdsec`: renders `acquis.yaml` (journald units
@@ -291,9 +314,9 @@ notice pipeline, so P5 proves the mail-stack removal end to end. There is
 | Artifact | Purpose |
 |---|---|
 | `forks/yunohost/conf/crowdsec/acquis.yaml.tpl` | Log/journald acquisition template (rendered by the regen hook) — Caddy-unit/file acquisition, not nginx |
-| `forks/yunohost/conf/crowdsec/parsers/nostrhost-yunohost-auth.yaml` | Port of `yunohost.conf` filter |
-| `forks/yunohost/conf/crowdsec/parsers/nostrhost-portal-auth.yaml` | Port of `yunohost-portal.conf` filter |
-| `forks/yunohost/conf/crowdsec/scenarios/*.yaml` | Port of jail `maxretry`/`findtime`/`bantime` semantics |
+| `forks/yunohost/conf/crowdsec/scenarios/nostrhost-yunohost-auth-bf.yaml` | Port of `yunohost.conf` filter as a leaky scenario (capacity 10 / leakspeed 60s) on Caddy metas |
+| `forks/yunohost/conf/crowdsec/scenarios/nostrhost-yunohost-portal-auth-bf.yaml` | Port of `yunohost-portal.conf` filter (capacity 20 / leakspeed 30s) |
+| `forks/yunohost/conf/crowdsec/scenarios/*.yaml` (further ports) | `postfix-sasl` threshold alignment (P1) and any jail-semantics ports |
 | `forks/yunohost/hooks/conf_regen/52-crowdsec` | CrowdSec regen category (replaces `52-fail2ban`) |
 | `forks/yunohost/tests_nostr/test_crowdsec_*.py` | Provider/parser/regen tests, mirroring the resource-engine test conventions |
 | `packages/nostrhost-native-example/package.toml` (extended) or a new example package | Reference `[[policy]] type = "crowdsec"` declaration exercising the new `PolicyProvider` path |
@@ -541,3 +564,29 @@ Two prerequisites gate P1/P2, not the go/no-go itself:
    vendored offline hub (`/usr/share/crowdsec/hub`) on first-boot, and
    (c) re-verify `cscli hub` against 1.4.6 — P0 already validated the
    detection pipeline on it (§8.2).
+
+### 8.6 P1 scenario validation (fail2ban → CrowdSec, Caddy format)
+
+Validated end-to-end on the Debian 12 test host (bookworm, CrowdSec 1.4.6).
+Replayed Caddy JSON access-log lines (`crowdsecurity/caddy-logs` format) via a
+file acquisition pointing at a scratch log, then watched the alert/decision
+store:
+
+| Scenario | Replay | Result |
+|---|---|---|
+| `nostrhost/yunohost-auth-bf` | 12× `POST /yunohost/api/login` 401 from one IP | fired after 11 events; **ban** decision |
+| `nostrhost/yunohost-portal-auth-bf` | 22× `POST /yunohost/portalapi/login` 401 from one IP | fired after 21 events; **ban** decision |
+
+`cscli explain` confirmed each line only matched its intended path-specific
+scenario (plus the broad `LePresidente/http-generic-401-bf`, which coexists
+unchanged). Two packaging facts established here:
+
+- **Local scenarios load; local parsers do not.** Scenarios under
+  `/etc/crowdsec/scenarios/` are picked up and run (both `nostrhost/*` fired),
+  whereas parsers under `/etc/crowdsec/parsers/s01-parse/` are ignored at
+  runtime because they are not in the hub index — the reason P1 uses
+  scenario-level path filters instead of a custom parser.
+- **`groupby` + `distinct` on the same field is a bug.** Adding
+  `distinct: evt.Meta.source_ip` alongside `groupby: evt.Meta.source_ip` pins
+  each bucket's distinct count at 1, so the leaky bucket never reaches
+  capacity. Removed `distinct`; scenarios then fired as expected.
