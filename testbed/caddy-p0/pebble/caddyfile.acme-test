@@ -58,6 +58,10 @@ nostrhost.test {
 	}
 
 	handle /nostrhost-test-catalog/* {
+		forward_auth 127.0.0.1:6788 {
+			uri /nostr/auth-request
+			copy_headers X-Remote-User X-Remote-Email X-Remote-Fullname X-Nostr-Pubkey X-Nostr-Npub
+		}
 		reverse_proxy https://127.0.0.1:443 {
 			header_up Host nostrhost.test
 			transport http {

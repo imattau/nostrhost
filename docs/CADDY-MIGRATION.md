@@ -133,17 +133,25 @@ Each phase has a gate. nginx keeps the public ports until Phase 6.
   exported Caddy-owned certificate. **Met on the VM.**
 
 ### P3 — Auth cutover
+- Status: **passed on the VM** — see [CADDY-P3-SPIKE.md](CADDY-P3-SPIKE.md).
 - Extend the existing auth-request endpoint
-  (`src/nostr_login.py:245-288`) into a full authorization decision:
-  URL→permission matching, allowed users/groups, tile/protected flags,
-  redirect-to-portal, cookie/session checks — ported from
-  `forks/ssowat/access.lua:137-152` and the permission block.
+  (`src/nostr_login.py`) into a full authorization decision:
+  URL→permission matching (longest match, `re:` regexes), public routes,
+  allowed users, redirect-to-portal (`?r=` login callback / `?msg=access_denied`),
+  cookie/session checks — ported from `forks/ssowat/access.lua`.
 - Wire Caddy `forward_auth` per protected route; copy identity headers
   (`X-Remote-User`, `X-Remote-Email`, `X-Remote-Fullname`, `X-Nostr-Pubkey`,
-  `X-Nostr-Npub`) and refuse client-supplied copies.
-- Retire `forks/ssowat`; drop the `nginx-extras`/Lua dependency.
+  `X-Nostr-Npub`) and refuse client-supplied copies (`copy_headers` overwrites
+  them; the authd always emits the full header set, empty when unknown).
+- **SSOwat retirement is re-sequenced**: `nostr_authd` (the extended
+  auth-request endpoint) now owns authorization on the Caddy front end, but
+  the nginx front end still runs SSOwat until nginx itself is retired (P6).
+  Deleting `forks/ssowat` and the `nginx-extras`/Lua dependency therefore
+  lands with P6, not P3 — never leave both front ends enforcing divergent
+  auth for the same route.
 - Gate: permission matrix and app-header proof pass; the `auth_request`
-  permission flag (`app.py:2089-2170`) is enforced end to end.
+  permission flag (`app.py:2089-2170`) is enforced end to end (Caddy
+  `forward_auth` → authd for `nostrhost-test`). **Met on the VM.**
 
 ### P4 — Native web routes
 - Add a real Caddy admin-API client and config builders; register
