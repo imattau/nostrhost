@@ -127,19 +127,24 @@ its phase gate" pattern.
   adoption is conditional.
 
 ### P1 — Parser parity
-- **Log-source spike first.** nginx is retired, so the `yunohost`/
-  `yunohost-portal` jails have no live fail2ban baseline. Confirm where auth
-  failures surface post-Caddy: the testbed Caddyfile has no `log` directive,
-  so access entries go to Caddy's stderr/journald by default — either add
-  `log { output file … }` and file-acquire it, or journald-acquire the caddy
-  unit. Confirm the authd 401/redirect from `forward_auth` is visible as a
-  Caddy access entry (portal login failures land here, not in an nginx log).
+- **Log-source spike first. Confirmed in P0 (§8.3):** nginx is retired, the
+  `yunohost`/`yunohost-portal` jails read dead nginx logs, and the testbed
+  Caddyfile has **no `log` directive**, so Caddy emits no `http.access`
+  entries at all — web-layer auth failures are currently invisible to any
+  detector. P1's first deliverable is a **Caddy packaging change** adding
+  `log { output file … }` (file-acquire it) or a journald acquisition of the
+  caddy unit, then confirming the authd 401/redirect from `forward_auth`
+  surfaces as a Caddy access entry (portal login failures land here, not in
+  an nginx log).
 - Port `yunohost.conf` and `yunohost-portal.conf` detection logic to CrowdSec
   parsers (`nostrhost-yunohost-auth.yaml`, `nostrhost-portal-auth.yaml`),
   rewritten for **Caddy's log format** (not nginx), same maxretry/detection
-  semantics, YAML parser DSL.
-- Port `postfix-sasl.conf`; confirm/extend the `crowdsecurity/postfix`
-  collection covers SASL auth failures the same way.
+  semantics, YAML parser DSL. `crowdsecurity/caddy-logs` (v1.1) already
+  parses Caddy's JSON format and maps 401+Basic to `auth_fail` (§8.3).
+- Port `postfix-sasl.conf`; **confirmed in P0 (§8.2):** the `crowdsecurity/
+  postfix` collection already covers SASL auth failures (`postfix-spam` on
+  `log_type_enh: spam-attempt`) — align its threshold to fail2ban's `[sasl]`
+  jail (maxretry 5) rather than re-deriving the parser.
 - Write scenarios mirroring current jail `maxretry`/`findtime`/`bantime`
   values (`yunohost-portal` at `maxretry=20`, `recidive` behaviour, etc.).
 - Gate: `cscli explain` / replay against captured auth-failure log samples
@@ -293,14 +298,157 @@ its phase gate" pattern.
 7. **Evaluation may return "no."** Per roadmap §18.4 this adoption is
    conditional; P0's gate can legitimately end the effort. Do not treat
    later phases as committed work before P0's report lands.
-8. **CrowdSec version/source skew.** Bookworm's `crowdsec` daemon is the old
-   0.1.x line; current CrowdSec is 1.x from the official apt repo. Mixing a
-   vendored hub (collections) with a system package from a different source
-   can silently fail on parser/scenario API drift — P0 should pin one source
-   and validate `cscli hub` against it before the §1 package-source decision
-   is treated as final.
+8. **CrowdSec version/source skew.** (Corrected by the P0 spike, §8.1:)
+   bookworm main actually ships `crowdsec` **1.4.6** (a current 1.x line,
+   not the old 0.1.x as this risk originally claimed), while the official
+   apt repo carries **1.8.1**; the `crowdsec-firewall-bouncer` (0.0.25) is
+   only in bookworm main, so daemon and bouncer come from different sources.
+   Mixing a vendored hub (collections) with a system package from a
+   different source can silently fail on parser/scenario API drift — P0 pins
+   the official repo for the daemon; resolve the daemon/bouncer skew before
+   the P4 cutover.
+9. **Caddy emits no HTTP access logs today** (§8.3). With no `log` /
+   `access_log` directive in the Caddyfile, per-request access entries are
+   absent, so neither fail2ban's nginx-reading jails nor CrowdSec's
+   `caddy-logs` parser can see web-layer auth failures. Adding
+   `log { output file … }` to the Caddy app is a prerequisite for any
+   web-layer detection — a packaging change, independent of the
+   fail2ban→CrowdSec decision.
 
 ## 8. Evaluation report (filled in during P0)
 
-*(Not yet started — this section is populated with the go/no-go decision and
-supporting measurements once the P0 spike runs.)*
+*Status: **P0 complete.** Go/No-Go: **GO** (with the two prerequisites in
+§8.5 below satisfied). Measurements below were taken on the `nostrhost-vm`
+testbed (Debian 12 bookworm, kernel 6.1.0-53-cloud-amd64) with CrowdSec
+1.8.1 running detect-only alongside fail2ban 1.0.2, CAPI/console disabled.
+
+### 8.1 Package source and version (corrects risk #8)
+
+- Official CrowdSec apt repo (`packagecloud.io/crowdsec/crowdsec`) carries
+  `crowdsec` 1.8.1 (current 1.x line).
+- **Risk #8's premise was wrong:** bookworm main does **not** ship the "old
+  0.1.x" line — it carries `crowdsec 1.4.6` (still a 1.x daemon). So both
+  candidate sources are viable 1.x; the official repo is simply newer.
+- The official repo does **not** carry `crowdsec-firewall-bouncer`. The
+  bouncer (`0.0.25-4~deb12u1`, depends `nftables | iptables, nftables |
+  ipset, libc6`) is only in bookworm main. Daemon (official repo, 1.8.1) and
+  bouncer (bookworm main, 0.0.25) therefore come from **different sources** —
+  a real version-skew risk to resolve in P4 (§8.5).
+- `crowdsec` installs standalone (simulate showed no extra deps; `Depends:
+  coreutils` only).
+
+### 8.2 Detection parity (the core test)
+
+Controlled bursts of auth failures were injected into the live log streams
+that fail2ban's sshd/sasl jails and CrowdSec's sshd/postfix collections both
+read, and each engine's decision was recorded. CrowdSec's default private-IP
+whitelist (`192.168.0.0/16`, `10.0.0.0/8`, `172.16.0.0/12`) was relaxed to
+loopback-only for the test so LAN test sources would be evaluated; that
+whitelist behaviour is itself a finding (§8.4).
+
+| Source | fail2ban decision | CrowdSec decision | Notes |
+|---|---|---|---|
+| sshd auth.log, 11 fails from `198.51.100.77` | `[sshd]` ban (maxretry 10 / findtime 600) | `ssh-bf` + `ssh-slow-bf` ban (capacity 5 / leakspeed 10s) | both engines ban the same IP |
+| mail.log SASL, 6 fails from `198.51.100.9` | `[sasl]` ban (maxretry 5) | `postfix-spam` ban (6 events) | CrowdSec maps SASL `spam-attempt` → `postfix-spam` |
+
+**P1 question answered for the mail path:** the `crowdsecurity/postfix`
+collection **does** cover SASL auth failures — `postfix-logs.yaml` grok
+(`SASL ... authentication failed`) sets `log_type_enh: spam-attempt`, which
+`postfix-spam.yaml` acts on. No parser parity gap for SMTP/SASL.
+
+**Threshold semantics differ from fail2ban defaults:** CrowdSec's `ssh-bf`
+is capacity 5 (5 failures within ~50s) vs fail2ban `[sshd]` maxretry 10
+within 600s; default bantime ~4h vs fail2ban 600s. CrowdSec is more
+sensitive with a longer default ban. The plan's P1/P3 scenario work must pin
+these to the current jail values (§18.4) rather than accept CrowdSec
+defaults.
+
+**IPv6 parity:** confirmed — `2001:db8::77` parses through `sshd-logs` and
+evaluates in `ssh-bf` identically to IPv4 (CrowdSec scopes are
+family-agnostic). No IPv4/IPv6 divergence.
+
+### 8.3 Log-source spike (Caddy) — the decisive gap
+
+The plan's P1 spike premise is **confirmed and sharpened**:
+
+1. The active testbed Caddyfile (`/etc/caddy-p0/Caddyfile`, 113 lines) has
+   **no `log` / `access_log` directive**. `journalctl -u caddy-p0` shows
+   only `admin`, `admin.api`, `http.acme_client`, `http.auto_https`,
+   `tls.*` loggers — **zero `http.access` entries** over the whole retained
+   journal. Caddy is not emitting per-request access logs at all, so
+   HTTP-level auth failures are currently **invisible** to any detector.
+2. The `yunohost` / `yunohost-portal` / `nginx-http-auth` fail2ban jails read
+   `/var/log/nginx/*.log`, which Caddy never writes; those logs are stale
+   (last mtime 2026-09-10, pre-migration) and the jails are inert. This is
+   the gap §5 P0 already stated — now verified at the log level.
+3. `crowdsecurity/caddy-logs` (v1.1) **does parse** Caddy's JSON access
+   format once a line exists (`--type caddy` → `non-syslog` → `caddy-logs`
+   🟢), and maps `status 401` + `Www-Authenticate: Basic` to
+   `sub_type: auth_fail`. So the parser is fit for purpose — but it has
+   nothing to consume today.
+
+**Consequence (a required prerequisite, not a nice-to-have):** restoring
+web-layer auth-failure detection — under *either* engine — requires adding a
+`log { output file … }` directive to the Caddy app's Caddyfile template (a
+Caddy packaging change, part of risk #5/#8's follow-through). Without it,
+the SSO-wat / portal auth-failure surface stays dark for both fail2ban and
+CrowdSec. P2's acquis and the authd/`forward_auth` 401 path both depend on
+this first.
+
+### 8.4 Roadmap §18.4 criteria
+
+| Criterion | fail2ban 1.0.2 | CrowdSec 1.8.1 |
+|---|---|---|
+| Idle memory (RSS) | ~49 MB | ~194–249 MB (Go runtime) |
+| Package footprint (disk) | ~2.1 MB | ~315 MB (`Installed-Size: 322091 KB`) |
+| Dependencies | python3 | coreutils |
+| Local store | n/a (log+config) | SQLite `crowdsec.db` + hub (`/etc/crowdsec/hub`, 1.1 MB) |
+| Network at install | none | apt repo + hub + GeoLite2 mmdb (63+11 MB) fetched from `hub-data.crowdsec.net` |
+| Network at runtime | none (mail/auth logs only) | **persistent outbound TLS to CrowdSec cloud** even with CAPI off |
+| Hub/collection updates | n/a | `cscli hub update`; vendor into package for offline first-boot |
+
+CrowdSec is roughly **150x the disk** and **4–5x the idle RAM** of fail2ban.
+That is a real footprint cost, acceptable only if the §18.4 value (decision
+store, parser ecosystem, structured events for §18.5) justifies it.
+
+**Offline behaviour:** with CAPI/console fully disabled (no `capi.yaml`,
+no console enrollment), the daemon still opens and holds an outbound TLS
+connection to `52.51.22.15:443` (CrowdSec AWS eu-west-1) — the
+`online_client` (`/etc/crowdsec/online_api_credentials.yaml` is auto-created
+at install) plus geoip enrichment. So "detect-only, CAPI off" is **not**
+network-free: the host phones home by default. Offline first-boot requires
+pre-baking the hub collections **and** the GeoLite mmdb (or disabling
+`geoip-enrich`) into the package, and explicitly closing the `online_client`
+outbound — a config the package must ship, not rely on defaults.
+
+**Private-IP whitelist finding:** CrowdSec ships a whitelist that ignores
+`192.168.0.0/16`, `10.0.0.0/8`, `172.16.0.0/12`, `127.0.0.0/8`. fail2ban on
+this testbed was actively banning `192.168.122.1` (the KVM host) — CrowdSec
+would silently not. That is arguably a *good* property (no self-lockout of
+LAN admin/gateway), but it is a behavioural divergence to document and pin
+per-server, not assume.
+
+**nftables integration (P4):** the bouncer ships `nftables | iptables` and
+owns a dedicated set (e.g. `crowdsec-blacklists`) — additive to YunoHost's
+port-based `inet filter / input` chain, matching P4's plan. (Side-observation
+from the testbed: fail2ban's own `nftables-multiport` unban was throwing
+"Could not process rule: No such file or directory" — an existing fail2ban
+nftables quirk, moot once fail2ban is retired.)
+
+### 8.5 Go/No-Go and prerequisites
+
+**Go.** CrowdSec matches fail2ban detection on the live sshd and
+postfix/sasl jails (same source IPs, same decisions), covers SASL within the
+postfix collection, and adds a SQLite decision store + parser ecosystem that
+§18.5's structured-event pipeline needs. The footprint and network behaviour
+above are the real costs to budget, not blockers.
+
+Two prerequisites gate P1/P2, not the go/no-go itself:
+
+1. **Caddy `log { output file … }` directive must land** (a Caddy packaging
+   change) before any web-layer parser (CrowdSec `caddy-logs` or a
+   ported `yunohost-portal`) can be acquired — §8.3.
+2. **Pin one package source** per risk #8. Daemon comes from the official
+   repo (1.8.1); the bouncer is only in bookworm main (0.0.25) — resolve the
+   daemon/bouncer skew before P4 cutover, and vendor hub + GeoLite mmdb into
+   the package for offline first-boot (§8.4).
