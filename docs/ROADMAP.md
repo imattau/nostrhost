@@ -793,7 +793,7 @@ commands should progressively gain native UI.
 
 ---
 
-# 11. Make Nostr Catalog Native — ⏳
+# 11. Make Nostr Catalog Native — ✓
 
 Introduce a catalogue-provider interface in the YunoHost fork:
 
@@ -802,11 +802,13 @@ LegacyYunoHostCatalogue
 NostrCatalogue
 ```
 
-Initially support both; later `NostrCatalogue = default`. The Nostr provider
-handles relay queries, package events, publisher signatures, CI attestations,
-trust policy, architecture and YunoHost-version compatibility, and repository
-resolution. Once a package source is resolved, continue using the existing
-YunoHost application installer — do not rewrite the installation engine.
+Initially support both; the trusted Nostr projection is now the default when
+available, with legacy YunoHost catalogues retained as an explicit fallback.
+The Nostr provider handles relay queries, package events, publisher
+signatures, CI attestations, trust policy, architecture and YunoHost-version
+compatibility, and repository resolution. Once a package source is resolved,
+continue using the existing YunoHost application installer — do not rewrite
+the installation engine.
 
 Under the control-plane architecture, the local relay **is the local
 catalogue cache**: a catalogue synchroniser bridges external relays into the
@@ -1281,7 +1283,7 @@ on identity, policy and execution semantics, which now exist.
 7.  Portal Nostr authentication (+ native session creation) ◑  (server + client deployed; NIP-46/passkey pending)
 8.  Restic linkage + known-good + assisted rollback (Stage B) ✅  (registry-bounded execution, chain-gated, testbed-validated)
 9.  Admin interface                                         ⏳
-10. Native catalogue (sync + trust events)                  ◑ (persistent projection + CLI landed; relay sync remains)
+10. Native catalogue (sync + trust events)                  ✓ (trusted projection, relay sync, attestations, and YunoHost integration)
 11. SSO simplification                                      ⏳
 12. MCP adapter                                             ✅
 13. OIDC                                                    ⏳
