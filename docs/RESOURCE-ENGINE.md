@@ -30,7 +30,8 @@ summary. Native providers now apply directory, configuration, source, and servic
 without shell helper wrappers. Config resources support inline content or
 strict Jinja2 templates, with atomic writes and Python-managed ownership and
 mode. Source handling uses streaming HTTP, hash
-verification, and Python archive libraries; services render hardened systemd
+verification, and Python archive libraries with traversal, link, and
+special-file rejection; services render hardened systemd
 units. `NativeOperationExecutor` dispatches only registered providers, leaving
 privileged policy and approval at the existing NostrHost executor boundary.
 
