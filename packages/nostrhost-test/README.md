@@ -10,6 +10,6 @@ The permission declares `auth_request = true` and its NGINX template includes
 that permission field will reject the package; that is intentional for this
 development fixture.
 
-`catalog.toml` is publisher input, not a signed event. Before publishing a
-kind-32267 declaration, replace its placeholder commit and SHA-256 values with
-the exact package revision and content archive hashes.
+`catalog.toml` is publisher input, not a signed event. Its revision and hashes
+are pinned to the checked-in package for the VM integration test; the content
+hash covers the package payload while excluding this publisher-input file.

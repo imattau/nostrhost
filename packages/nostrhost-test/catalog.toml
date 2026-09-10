@@ -1,4 +1,4 @@
-# Publisher input for kind-32267. Replace commit and hashes at release time.
+# Publisher input for kind-32267 for the checked-in test package.
 app_id = "nostrhost-test"
 name = "NostrHost Test App"
 description = "Minimal harmless application for NostrHost integration tests"
@@ -9,6 +9,6 @@ platform = "yunohost"
 auth_request = true
 
 # Required by nostrhost-catalog publisher.Metadata.
-commit = "0000000000000000000000000000000000000000"
-manifest = "sha256:0000000000000000000000000000000000000000000000000000000000000000"
-content = "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+commit = "7579b5f9f046288c81cab3d4d316bf7ff115f1d3"
+manifest = "sha256:ad981663c52d18d044a9fd12312f45686ab7cb6bfa9c7800fe679a592d9421a5"
+content = "sha256:0b25fb60a29b8491450856c69294c4072617c95d37cade40f12624c1a49f2b1e"
