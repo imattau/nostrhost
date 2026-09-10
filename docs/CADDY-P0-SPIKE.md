@@ -66,4 +66,35 @@ Requests used `curl -k --resolve nostrhost.test:8443:127.0.0.1`.
 
 - Caddy binary reproducible: **yes** (`testbed/caddy-p0/build.sh`).
 - Spike notes committed: **yes** (this file).
-- P1 (portal e2e against Caddy) not yet run.
+- P1 (portal e2e against Caddy): **passing** (see below).
+
+## P1 addendum — portal e2e green on Caddy
+
+The full `testbed/e2e/portal-e2e.py` matrix passes against Caddy on **8443**
+(`NOSTR_TEST_PORT=8443`) and still passes on the default nginx path (443).
+
+| Mode | Result on Caddy |
+|---|---|
+| `nip07` | login POST 200, `yunohost.portal` cookie `Domain=.nostrhost.test`, dashboard as dave |
+| `nip46` | real NIP-46 bunker round-trip through Caddy (no interception), logged in |
+| `passkey` | `window.NostrPasskey` served via Caddy; full use still needs a PRF-capable real browser (documented limitation) |
+| `launch` | app `nostrhost-test-catalog/` served via the Caddy→nginx shim route; session cookie crosses, status 200 |
+
+Changes that made this work (all committed on `feat/nginx2caddy`):
+
+1. **Portal** (`forks/portal`, `2d415f8`): build the portalapi URL from
+   `window.location.host` instead of `hostname`, so a portal served on a
+   non-default port talks to the same origin.
+2. **Portal-api** (`forks/yunohost`, `eb07045d2`): strip the `:port` from the
+   Host header when it is used as a domain — the session cookie `Domain`
+   attribute (browsers reject ports there), the JWT `host` claim (SSOwat
+   compares it to port-stripped `$host`), and the
+   `user_is_allowed_on_domain` allow-check.
+3. **Harness** (`testbed/e2e/portal-e2e.py`): `NOSTR_TEST_PORT` env; the
+   Python-side `http()` connects to loopback and SNIs `nostrhost.test` via a
+   TLS socket injection (avoids Caddy rejecting SNI `127.0.0.1`); it echoes
+   the port-bearing Host so the challenge/domain binding matches.
+4. **Caddyfile** (`testbed/caddy-p0/Caddyfile`): `handle
+   /nostrhost-test-catalog/*` reverse-proxies to nginx:443 (`Host:
+   nostrhost.test`, `tls_insecure_skip_verify`) so the launch mode exercises
+   the legacy-shim path with SSOwat still enforcing.

@@ -50,6 +50,18 @@ nostrhost.test {
 		reverse_proxy 127.0.0.1:6788
 	}
 
+	# P1: test app proxied through Caddy to the legacy nginx shim, so the
+	# launch e2e exercises the session cookie across the Caddy boundary.
+	# SSOwat on nginx still enforces the app until the P3 auth cutover.
+	handle /nostrhost-test-catalog/* {
+		reverse_proxy https://127.0.0.1:443 {
+			header_up Host nostrhost.test
+			transport http {
+				tls_insecure_skip_verify
+			}
+		}
+	}
+
 	handle {
 		respond "nostrhost caddy P0 spike" 200
 	}

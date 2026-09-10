@@ -20,9 +20,14 @@ from coincurve import PrivateKey
 
 from playwright.sync_api import sync_playwright
 
-BASE = "https://nostrhost.test/yunohost/sso"
+PORT = os.environ.get("NOSTR_TEST_PORT", "443")
+_PORT = "" if PORT == "443" else f":{PORT}"
+BASE = f"https://nostrhost.test{_PORT}/yunohost/sso"
 HOST = "nostrhost.test"
-PORTAL_API = "https://127.0.0.1/yunohost/portalapi"
+# http() connects to loopback but SNIs HOST, so Caddy (or nginx) selects the
+# right site. PORTAL_API is the browser-facing origin for readability; the
+# request path is built explicitly in http().
+PORTAL_API = f"https://{HOST}{_PORT}/yunohost/portalapi"
 
 
 def ssl_ctx() -> ssl.SSLContext:
@@ -54,23 +59,30 @@ def xonly(sk: PrivateKey) -> str:
 
 
 def http(method: str, path: str, body: dict | None = None) -> tuple[int, dict, list[str]]:
+    import http.client
+    import socket
+
     data = json.dumps(body).encode() if body is not None else None
-    req = urllib.request.Request(
-        f"{PORTAL_API}{path}", data=data, method=method,
-        headers={"Host": HOST, "Content-Type": "application/json"},
-    )
-    cookies: list[str] = []
+    raw = socket.create_connection(("127.0.0.1", int(PORT)), timeout=10)
+    conn = http.client.HTTPConnection("127.0.0.1", int(PORT), timeout=10)
     try:
-        with urllib.request.urlopen(req, context=ssl_ctx(), timeout=10) as r:
-            cookies = r.headers.get_all("Set-Cookie") or []
-            return r.status, json.loads(r.read()), cookies
-    except urllib.error.HTTPError as e:
-        cookies = e.headers.get_all("Set-Cookie") or []
-        raw = e.read()
-        try:
-            return e.code, json.loads(raw), cookies
-        except Exception:
-            return e.code, {"raw": raw.decode(errors="replace")[:200]}, cookies
+        conn.sock = ssl_ctx().wrap_socket(raw, server_hostname=HOST)
+        conn.request(
+            method,
+            f"/yunohost/portalapi{path}",
+            body=data,
+            headers={"Host": HOST + _PORT, "Content-Type": "application/json"},
+        )
+        resp = conn.getresponse()
+        raw_body = resp.read()
+        cookies = [v for k, v in resp.getheaders() if k.lower() == "set-cookie"]
+        status = resp.status
+    finally:
+        conn.close()
+    try:
+        return status, json.loads(raw_body), cookies
+    except Exception:
+        return status, {"raw": raw_body.decode(errors="replace")[:200]}, cookies
 
 
 def main() -> None:
@@ -265,7 +277,7 @@ def main() -> None:
             print("[launch] post-login isLoggedIn:", logged, "| url:", page.url)
             print("[launch] dashboard apps:", [a.strip() for a in page.inner_text("body").split("|") if "Nostrhost" in a])
             # Now open the SSO-protected app URL with the session cookie.
-            app_url = "https://nostrhost.test/nostrhost-test-catalog/"
+            app_url = f"https://nostrhost.test{_PORT}/nostrhost-test-catalog/"
             r = page.goto(app_url, wait_until="domcontentloaded", timeout=25000)
             page.wait_for_timeout(2000)
             print("[launch] app url:", page.url)
