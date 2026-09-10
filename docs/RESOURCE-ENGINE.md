@@ -57,3 +57,7 @@ submitted through the same validated `/load` endpoint as route creation.
 Backup resources persist validated `nostrhost-backup-v1` manifests. The
 provider registers filesystem/database inputs but deliberately leaves the
 Restic repository and credential data plane to host policy.
+
+Host policy resources can also render managed Fail2ban jail and Logrotate
+definitions with the same atomic-write, drift-detection, and reverse-operation
+semantics as application resources.
