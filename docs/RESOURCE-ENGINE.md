@@ -38,6 +38,11 @@ while service units are removed from the managed unit directory.
 `NativeOperationExecutor` dispatches only registered providers, leaving
 privileged policy and approval at the existing NostrHost executor boundary.
 
+Systemd resource reversals are explicit: timers are disabled before their
+unit pair is removed, credentials are deleted from the managed credential
+store, and sysusers declarations are withdrawn without implicitly deleting
+the underlying operating-system account.
+
 APT, PostgreSQL and MySQL database, Caddy, secrets, backup, user/sysusers, and tmpfiles providers
 use this same registry; timers, health checks, typed settings, and backup
 declarations are also native providers. They are intentionally not silently
