@@ -982,6 +982,9 @@ is a clear operational benefit.
 
 ## 18.1 Native Nostr messaging and notifications
 
+See `docs/NOTIFICATION-SERVICE.md` for the working design of this service —
+architecture, event classes, policy schema and delivery mechanics.
+
 NostrHost should not depend on email as its native notification mechanism.
 Platform notifications should originate as structured local events and, where
 human delivery is required, be delivered through encrypted Nostr messaging.
@@ -1031,6 +1034,9 @@ normal NostrHost operation does not require an Internet-accessible inbound
 Nostr relay (§0 / architectural principle 17).
 
 ## 18.2 Remove the built-in mail stack from the default platform
+
+See `docs/MAIL-RETIREMENT.md` for the working dependency inventory and phase
+plan required by §18.7 before any removal work lands in `forks/yunohost`.
 
 NostrHost should not operate a complete Internet mail server by default. The
 inherited YunoHost mail stack can be progressively removed from the default
