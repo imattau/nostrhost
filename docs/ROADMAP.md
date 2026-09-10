@@ -967,6 +967,302 @@ Password login should remain available initially as a recovery path.
 
 ---
 
+# 18. Platform Simplification: Native Messaging, Mail Retirement and Host Security — ⏳
+
+Once the Nostr-native identity, Portal/Admin, control plane and state/recovery
+layers are stable (§4–§10), simplify the inherited YunoHost platform services
+that no longer fit the NostrHost architecture.
+
+The objective is not to replace proven Linux infrastructure unnecessarily. It
+is to remove services whose responsibilities are now provided more naturally
+by the Nostr control plane, and to modernise security components where there
+is a clear operational benefit.
+
+## 18.1 Native Nostr messaging and notifications
+
+NostrHost should not depend on email as its native notification mechanism.
+Platform notifications should originate as structured local events and, where
+human delivery is required, be delivered through encrypted Nostr messaging.
+
+```text
+NostrHost subsystem
+        |
+        +-- backup result
+        +-- health alert
+        +-- approval required
+        +-- operation result
+        +-- security event
+        +-- update available
+        +-- recovery result
+        |
+        v
+private NostrHost relay
+        |
+        v
+notification service
+        |
+        v
+encrypted Nostr message
+        |
+        +--> owner
+        +--> administrator
+        +--> delegated operator
+        +--> authorised agent
+```
+
+Use existing Nostr primitives wherever possible, with NIP-17/NIP-59-style
+private messaging as the preferred direction for human-readable private
+notifications.
+
+Machine control events must remain structured NostrHost events (kinds
+2200-2204 etc. = structured machine operations). Do not turn the
+administrative event protocol into a chat protocol; private Nostr messaging is
+the human-facing notification layer *derived from* those events, not a
+replacement for them.
+
+Notification policy should determine: recipient npub, event classes, severity
+threshold, immediate vs. summary delivery, local-only vs. external delivery.
+
+The private NostrHost relay remains the local event source (§3). Notification
+delivery uses outbound relay connections, preserving the design goal that
+normal NostrHost operation does not require an Internet-accessible inbound
+Nostr relay (§0 / architectural principle 17).
+
+## 18.2 Remove the built-in mail stack from the default platform
+
+NostrHost should not operate a complete Internet mail server by default. The
+inherited YunoHost mail stack can be progressively removed from the default
+NostrHost installation, including components and configuration associated
+with: Postfix, Dovecot, Rspamd/spam filtering, DKIM signing, SMTP submission,
+IMAP, local mailboxes, MX configuration, SPF/DMARC platform assumptions, and
+mail reputation management.
+
+The target model is:
+
+```text
+Nostr  = native identity, native private messaging, native system notifications
+Email  = optional external integration or separately installed application
+```
+
+This removes a substantial operational and security burden from the default
+server while retaining the ability for users to run email where they
+explicitly need it. Do not prevent NostrHost applications from sending or
+receiving email — remove the assumption that every NostrHost server must
+itself be a mail server. Applications requiring email should be able to use an
+external SMTP provider, a self-hosted mail application, a local optional mail
+package, or application-specific mail configuration. External email
+notification bridges may also be provided for administrators who want
+conventional email alerts.
+
+## 18.3 Simplify the identity model around Nostr
+
+Removing mandatory platform email also simplifies the user model (§4). The
+long-term native identity should centre on npub, signer, Kind 0 profile,
+capabilities, groups and delegations — rather than username, password,
+mandatory email address and mailbox. A compatibility username may continue to
+exist where required by Unix accounts or legacy applications. Email becomes
+optional profile/contact metadata rather than an architectural identity
+requirement. LDAP compatibility projections must therefore not require
+creation of a functioning mailbox for every Nostr identity.
+
+## 18.4 Modernise host intrusion protection
+
+Retain nftables as the underlying Linux firewall:
+
+```text
+NostrHost policy/control -> firewall management -> nftables
+```
+
+Do not replace a mature kernel firewall with a Nostr-specific implementation.
+Reassess the inherited fail2ban layer separately. CrowdSec is the preferred
+candidate for evaluation because it can provide behaviour-based detection and
+shared threat intelligence while still integrating with the host firewall.
+
+Target evaluation:
+
+```text
+Current:    logs -> fail2ban -> nftables
+Candidate:  journald / service logs -> CrowdSec -> local decisions -> nftables
+```
+
+CrowdSec adoption is conditional rather than mandatory. Evaluate: memory
+footprint, CPU footprint, dependency footprint, offline behaviour, privacy
+implications, external threat-intelligence dependency, nftables integration,
+false-positive behaviour, IPv4/IPv6 handling, NostrHost event integration, and
+upgrade/maintenance burden. If CrowdSec does not materially improve the
+security/operational model, retain fail2ban rather than replacing it merely
+for modernisation.
+
+## 18.5 Integrate security events with the Nostr control plane
+
+Regardless of whether fail2ban or CrowdSec is used, security detection should
+feed the NostrHost control plane:
+
+```text
+CrowdSec / fail2ban / nftables
+             |
+             v
+      security projector
+             |
+             v
+     local NostrHost relay
+             |
+       +-----+------+
+       |            |
+       v            v
+    audit       notification
+                    |
+                    v
+              admin npub
+```
+
+Examples: repeated authentication failures, blocked address, unusual service
+activity, firewall policy change, new listening service, administrative
+authentication failure, privileged operation rejection. These should become
+structured security/audit events first (following the audit model of §5–§6);
+human-facing encrypted Nostr notifications are then derived from them. This
+preserves the architectural distinction: a structured event is system
+truth/audit, while a private Nostr message is a notification to a person.
+
+## 18.6 State and recovery integration
+
+Changes to security, notification and optional-mail configuration must
+participate in `nostrhost-state` (§7):
+
+```text
+state/
+├── notifications/
+│   ├── policy.toml
+│   └── recipients.toml
+├── network/
+│   └── firewall.toml
+├── security/
+│   └── intrusion-protection.toml
+└── integrations/
+    └── email.toml
+```
+
+Do not place private keys, SMTP passwords or other credentials in the ngit
+repository — reference secrets through the NostrHost secret-management
+mechanism. Changes follow the normal lifecycle: signed request/approved
+desired-state change -> pre-change state snapshot -> policy evaluation ->
+executor -> health validation -> post-change state (§7.3, §7.8). Firewall and
+remote-access changes should receive a higher risk classification because a
+failed configuration may lock an administrator out of the machine.
+
+## 18.7 Implementation sequence
+
+Implement this work after the core Portal/Admin (§8, §10) and state/recovery
+(§7, §9) paths are operational:
+
+```text
+Nostr identity
+      |
+control / policy / executor
+      |
+ngit state + Restic recovery
+      |
+Portal + Admin
+      |
+      v
+Native notification service
+      |
+encrypted Nostr notifications
+      |
+remove internal dependencies on email notifications
+      |
+make email optional
+      |
+remove default mail-server stack
+      |
+security event integration
+      |
+evaluate CrowdSec against fail2ban
+      |
+adopt winner with nftables backend
+      |
+distribution hardening
+```
+
+Do not remove the mail stack until all NostrHost components that currently
+depend on local mail have been identified and migrated. Before removal,
+inventory: YunoHost core mail dependencies, diagnosis, certificate
+notifications, backup notifications, Admin notifications, application
+installation assumptions, user creation/deletion, domain configuration,
+SSO/Portal assumptions, application packaging helpers, and system
+cron/systemd mail output. Each dependency must be classified as: replace with
+Nostr notification, remove entirely, make optional, or retain as
+compatibility behaviour.
+
+## 18.8 Milestone: Nostr-native platform services
+
+```text
+✓ system alerts can reach an administrator through encrypted Nostr messaging
+✓ approval requests can generate private Nostr notifications
+✓ operation/backup/recovery results can generate notifications
+✓ notification recipients are npub-based
+✓ notification policy is represented in semantic state
+✓ core NostrHost functionality no longer depends on local email
+✓ new users do not require a local mailbox
+✓ mail-server installation is optional rather than default
+✓ nftables remains the firewall backend
+✓ fail2ban vs CrowdSec has been benchmarked/evaluated
+✓ selected intrusion-protection system feeds structured security events
+✓ important security events can generate encrypted Nostr notifications
+✓ security configuration participates in ngit state history
+✓ rollback/recovery procedures cover firewall/security configuration
+```
+
+The resulting platform boundary:
+
+```text
+NostrHost
+
+                    Private Local Relay
+                            |
+       +--------------------+--------------------+
+       |                    |                    |
+    Identity              Policy             Operations
+       |                    |                    |
+       +--------------------+--------------------+
+                            |
+                      nostrhost-state
+                            |
+                       ngit / NIP-34
+                            |
+                +-----------+-----------+
+                |                       |
+             Executor                 Restic
+                |
+       +--------+---------+----------------+
+       |                  |                |
+    systemd             NGINX          nftables
+       |                                   |
+ optional apps                       intrusion
+                                     protection
+
+                    Notification Service
+                            |
+                            v
+                 encrypted Nostr messaging
+                            |
+                  owner/admin/user npubs
+```
+
+Default platform: Nostr identity + messaging + notifications. Optional:
+external email provider / self-hosted mail application.
+
+**Architectural principle:** NostrHost should provide Nostr-native identity,
+control and communication by default. Traditional Internet email remains
+available where users need it, but operating a public mail server should no
+longer be a prerequisite for operating a NostrHost server.
+
+This change reduces the default service footprint, removes one of the most
+operationally difficult parts of self-hosting, and makes the base platform
+more consistent with its Nostr-native identity and control architecture.
+
+---
+
 # Recommended Implementation Order
 
 The order matters. The internal relay + event model (§3) was the
@@ -992,6 +1288,8 @@ on identity, policy and execution semantics, which now exist.
 14. ngit replication / disaster recovery (Stage C)          ⏳
 15. Declarative reconciliation (Stage D)                    ⏳
 16. Distribution release                                    ⏳
+17. Platform simplification (native messaging, mail          ⏳
+    retirement, host security)
 ```
 
 Do not begin by rewriting SSOwat or rebuilding the admin interface. Stand up
@@ -1094,6 +1392,19 @@ The first release of this layer stops short of fully automatic reconciliation.
 ⏳ tested derivative upgrade path
 ⏳ release repository and installer
 ```
+
+## 1.1 - Platform Simplification (Native Messaging, Mail Retirement, Host Security)
+
+```text
+⏳ native notification service (encrypted Nostr messaging for alerts/approvals/results)
+⏳ mail-server installation optional rather than default
+⏳ new users do not require a local mailbox
+⏳ CrowdSec vs fail2ban evaluated; winner integrated with nftables
+⏳ security events feed the control plane and generate Nostr notifications
+⏳ notification/security/mail-integration state participates in nostrhost-state
+```
+
+See §18 for the full design.
 
 ---
 
