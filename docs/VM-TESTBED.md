@@ -449,3 +449,77 @@ The live daemon-driven rollback is now proven on the testbed too:
 This closes the milestone-0.3 restoration gate: repository authority never
 applies state outside the signed control plane (the CLI `--approve` path
 remains the operator's local convenience, not a bypass).
+
+## §8 Portal Nostr login: full browser proof (2026-09-10)
+
+All three portal signer flows are proven in a real browser (headless chromium
+via Playwright on the VM) against the deployed stack. Harness:
+`testbed/e2e/portal-e2e.py` (modes `nip07`, `nip46`, `passkey`, `launch`) and
+`testbed/e2e/nip46-bunker.js`; see `testbed/e2e/README.md`.
+
+Prerequisites installed on the VM: Playwright + chromium
+(`pip install --break-system-packages playwright` + `playwright install
+chromium`, plus the chromium system libs), pynacl/coincurve for the harness,
+and `nostr-tools`/`ws` for the bunker (`/opt/node22/bin/npm`).
+
+### NIP-07
+A `window.nostr` shim (dave key) is injected. The challenge GET passes
+through to the real server; the login POST is re-signed (BIP-340 Schnorr)
+then forwarded to the real endpoint, so the real cookie is minted:
+`login POST -> 200 {"ok": true, "user": "dave", "pubkey": "6532b670…"}`,
+`Set-Cookie: yunohost.portal=…` (passwordless JWT), `isLoggedIn: true`, and
+the dashboard renders (App list, Nostrhost-Test, Nostrhost-Test__2,
+Administration).
+
+### NIP-46 (local bunker)
+A minimal NIP-46 bunker (`nip46-bunker.js`, nostr-tools 2.25.2, raw `ws`)
+signs with the dave key. It runs against a **second, permissive loopback
+relay** on `127.0.0.1:7448` (`allowed_kinds = [24133]`,
+`allowlist_mode = false`; `nostrhost-relay-nip46.service`) because the
+control-plane relay is write-allowlisted and the NIP-46 client uses an
+ephemeral key. Pasting
+`bunker://6532b670…?relay=ws://127.0.0.1:7448` into the deployed
+`/nostr-login` page drives: connect (nsec handed over the relay) → challenge
+→ `sign_event` (kind 22242) → login → `isLoggedIn: true`, `yunohost.portal`
+cookie, dashboard as dave.
+
+### Passkey
+`window.NostrPasskey` loads and the "Use passkey" button renders once a
+stored identity exists (`hasStoredPasskeyIdentity()` true). Headless
+chromium's WebAuthn virtual authenticator does not support the PRF
+extension the passkey encryption requires, so the library surfaces
+"This device does not support passkey-based encryption (PRF extension
+required)" — the unlock path is reachable and the limitation is the
+documented headless/WebAuthn boundary, not the portal.
+
+### Portal milestone (app launch)
+After a NIP-07 login, opening the SSO-protected test app
+(`https://nostrhost.test/nostrhost-test-catalog/`) returns **200** and
+renders "NostrHost test app … verifies catalog installation, portal
+discovery, and auth-request headers" — the passwordless session crosses
+SSOwat to the application. This is the full §8 milestone flow: link npub →
+Sign in with Nostr → open Portal → launch an existing YunoHost application.
+
+### Portal bugs found and fixed (fork `a18c53e`)
+1. `middleware/auth.global.ts` treated `/nostr-login` as a non-login route,
+   so the auth guard bounced it to `/login` unless the whole portal was
+   public. It is now handled like `/login` (and preserves `?r=`).
+2. `pages/nostr-login.vue` used relative `$fetch('/yunohost/portalapi/…')`,
+   which the Nuxt `baseURL: /yunohost/sso` double-prefixed into
+   `/yunohost/sso/yunohost/portalapi/…` (served the SPA HTML). Now absolute.
+3. `public/nostr/nostr-passkey-vendor.js`'s IIFE was
+   `var NostrPasskey=(()=>{…window.NostrPasskey=Rn;})()` — the outer `var`
+   assignment (IIFE returns undefined) clobbered the global. Now returns `Rn`.
+4. The "Use passkey" button raced the deferred vendor script; `onMounted`
+   now polls briefly until `window.NostrPasskey` exists.
+
+### Required derivative config
+- SSO CSP (`forks/yunohost/conf/nginx/yunohost_sso.conf.inc`): added
+  `connect-src 'self' ws: wss:` so the NIP-46 remote-signer relay is
+  reachable from the browser (previously `default-src 'self'` blocked it).
+- The VM's deployed SSOwat needed the fork's `/yunohost/sso/` public-route
+  fix (`forks/ssowat/access.lua`, commit `b0f1345`) or the portal login page
+  itself was redirected through SSOwat.
+
+Open follow-ups: `/nostr-account` (saved signer management UI) and a real
+extension-capable browser for passkey attestation + visual grid check.
