@@ -25,6 +25,7 @@ the canonical one; CADDY-MIGRATION.md P5 should link here once this lands).
 | Enforcement mechanism | `crowdsec-firewall-bouncer` (nftables mode) | Bouncer owns a dedicated nftables set (`crowdsec-blacklists`); does not touch YunoHost's `inet filter` table (`conf/nftables/nftables.conf`) |
 | Threat intelligence | **Local scenarios only by default**; CAPI (Central API / community blocklist) is opt-in, off until evaluated | Roadmap §18.4 flags "external threat-intelligence dependency" and "privacy implications" as evaluation criteria; default install must not phone home without consent |
 | Gate before cutover | Evaluation report against roadmap §18.4 criteria, run in parallel with fail2ban still enforcing | Matches the "conditional, not mandatory" framing in §18.4 — this plan produces the evidence, then a go/no-go decision, not an unconditional rip-out |
+| App-packaging integration | **Native-only.** CrowdSec is exposed exclusively as a `PolicyResource(type: "crowdsec")` in `package.toml`, reconciled by an extended `PolicyProvider`. No CrowdSec-backed Bash helper is written | Matches `RESOURCE-ENGINE-CUTOVER.md` §1: "[the helper tree] must not be a dependency of native providers." `ynh_config_add_fail2ban`/`ynh_config_remove_fail2ban` (`helpers.v1.d`/`v2.1.d`) are left untouched, stay fail2ban-only, and remain a legacy compatibility surface governed by that doc's existing removal gate — not extended into a second backend |
 | Plan location | `docs/CROWDSEC-MIGRATION.md` on `feat/fail2ban2crowdsec` | New branch off `main` |
 
 ## 2. What fail2ban owns today
@@ -37,8 +38,8 @@ the canonical one; CADDY-MIGRATION.md P5 should link here once this lands).
 | Config regeneration | `regenconf` `fail2ban` category | `forks/yunohost/hooks/conf_regen/52-fail2ban`, `src/regenconf.py` |
 | Setting-driven reconfig | `ssh_port` change → regen fail2ban + reload firewall | `src/settings.py:349-353` |
 | Service health/status | `fail2ban-server --test`, `/var/log/fail2ban.log` | `conf/yunohost/services.yml:8-11`, `src/service.py` |
-| App-packaging helper (legacy/v1+v2.1) | `ynh_config_add_fail2ban` / `ynh_config_remove_fail2ban` | `helpers/helpers.v1.d/fail2ban`, `helpers/helpers.v2.1.d/fail2ban` — used by essentially every `_ynh` app package that has an auth surface |
-| Native resource engine | `PolicyResource(type: "fail2ban")`, `PolicyProvider` renders `jail.d/nostrhost-<name>.local` | `forks/yunohost/src/nostrhost/package_engine.py:335`, `native_providers.py:924-945` |
+| App-packaging helper (legacy/v1+v2.1) | `ynh_config_add_fail2ban` / `ynh_config_remove_fail2ban` — **fail2ban-only, out of scope for this migration** | `helpers/helpers.v1.d/fail2ban`, `helpers/helpers.v2.1.d/fail2ban` — a legacy compatibility surface owned by `RESOURCE-ENGINE-CUTOVER.md`, used by any remaining legacy `_ynh`-style package |
+| Native resource engine | `PolicyResource(type: "fail2ban")`, `PolicyProvider` renders `jail.d/nostrhost-<name>.local`. **Confirmed unused today** — `packages/nostrhost-native-example/package.toml` declares no policy resource, so there is no live `type: "fail2ban"` consumer to migrate | `forks/yunohost/src/nostrhost/package_engine.py:335`, `native_providers.py:924-945` |
 | Service readiness check | Waits on `nginx`/`fail2ban` service status before app operations | `forks/yunohost/src/utils/app_utils.py:1359` |
 | Debian dependency | Hard dependency, min version pinned | `forks/yunohost/debian/control:26,49` |
 | Backup/restore | No dedicated hook; fail2ban config is host state, not per-app backup data | (confirmed: no `hooks/backup|restore` reference — nothing to port) |
@@ -85,9 +86,9 @@ and be surfaced as a NostrHost setting, not silently enabled by the
 | `conf/fail2ban/systemd-override-bind-nftables.conf` | **Replace**: `crowdsec-firewall-bouncer` ships its own nftables binding; verify ordering against `nftables.service` the same way |
 | `src/settings.py:349-353` (`reconfigure_ssh_and_fail2ban`) | **Rename/rework** to regen CrowdSec's sshd acquisition (port is read from journald unit, not a jail `port=` field — likely simplifies, may become a no-op) |
 | `conf/yunohost/services.yml` fail2ban entry | **Replace** with `crowdsec` (`cscli version`/`systemctl status crowdsec` as `test_conf` equivalent — CrowdSec has no config-syntax-check CLI equivalent to `fail2ban-server --test`; use `cscli hub list` sanity or a wrapper) |
-| `helpers/helpers.v1.d/fail2ban`, `helpers.v2.1.d/fail2ban` | **Compatibility shim, not removal**: keep `ynh_config_add_fail2ban`/`ynh_config_remove_fail2ban` helper *names* (app packages call them unconditionally), reimplement internals to emit a CrowdSec parser+scenario pair instead of a fail2ban jail/filter. This is the highest-blast-radius item — see §7 Risk 1 |
-| `src/nostrhost/package_engine.py:335` `PolicyResource.type` | **Extend**: `Literal["fail2ban", "crowdsec", "logrotate"]` during transition, then drop `"fail2ban"` once no native package declares it |
-| `src/nostrhost/native_providers.py:924-945` `PolicyProvider` | **Extend** `directories` map with a `crowdsec` entry (parsers/scenarios under `/etc/crowdsec/{parsers,scenarios}/nostrhost-<name>.yaml`, no `.local` suffix convention needed) |
+| `helpers/helpers.v1.d/fail2ban`, `helpers.v2.1.d/fail2ban` | **Leave untouched.** Not reimplemented, not extended to target CrowdSec. Stays fail2ban-only, exactly as `RESOURCE-ENGINE-CUTOVER.md` already treats the helper tree — a legacy surface removable only when "no installed or supported package... sources the helper tree." CrowdSec is deliberately *not* added as a second bash-helper backend; see the "App-packaging integration" row in §1 |
+| `src/nostrhost/package_engine.py:335` `PolicyResource.type` | **Extend**: `Literal["fail2ban", "crowdsec", "logrotate"]`. No transition/drop step needed for `"fail2ban"` — it has no live consumer (§2) — but the literal is left in place since removing it is `RESOURCE-ENGINE-CUTOVER.md`'s call, not this plan's |
+| `src/nostrhost/native_providers.py:924-945` `PolicyProvider` | **Extend** `directories` map with a `crowdsec` entry (parsers/scenarios under `/etc/crowdsec/{parsers,scenarios}/nostrhost-<name>.yaml`, no `.local` suffix convention needed). This is the **only** app-packaging integration point CrowdSec gets — native `package.toml` declares `[[policy]] type = "crowdsec"`; there is no Bash-callable equivalent, matching "There is no Bash or legacy-script capability in this engine" (`RESOURCE-ENGINE.md`) |
 | `src/utils/app_utils.py:1359` service-wait list | **Update**: `["nginx", "crowdsec"]` (and later `["caddy", "crowdsec"]` post CADDY-MIGRATION) |
 | `debian/control:26,49` | **Replace** `fail2ban` dependency with `crowdsec`, `crowdsec-firewall-bouncer` |
 | `docs/NOTIFICATION-SERVICE.md`, `docs/ROADMAP.md` §18.5 | **Update** "fail2ban/CrowdSec → structured event" language once CrowdSec is the sole source; wire the security projector to CrowdSec's decision/alert API (`cscli alerts list -o json` or LAPI websocket) instead of fail2ban's log/`fail2ban-client` polling |
@@ -141,21 +142,29 @@ its phase gate" pattern.
 - Gate: decisions generated by CrowdSec for real traffic match fail2ban bans
   for the soak period, with an acceptable (documented) false-positive delta.
 
-### P3 — App-packaging helper compatibility shim
-- Reimplement `ynh_config_add_fail2ban`/`ynh_config_remove_fail2ban`
-  (`helpers.v1.d/fail2ban`, `helpers.v2.1.d/fail2ban`) to emit a CrowdSec
-  parser+scenario pair from the same `--logpath`/`--failregex` arguments (or
-  the app-provided `f2b_jail.conf`/`f2b_filter.conf` templates), instead of a
-  fail2ban jail/filter. **Helper names and call signature stay unchanged** —
-  every existing `_ynh` app install script calls these helpers and must not
-  need modification.
-- Extend `PolicyResource.type` (`package_engine.py:335`) with `"crowdsec"`
-  and the corresponding `PolicyProvider.directories` entry
-  (`native_providers.py:924`) for native packages.
-- Gate: a representative sample of existing `_ynh` apps (pick 3-5 with
-  fail2ban jails, e.g. from this workspace's `*_ynh` packages) install/reload
-  cleanly and produce a working CrowdSec scenario with zero changes to their
-  install scripts.
+### P3 — Native policy resource (no Bash helper)
+- Extend `PolicyResource.type` (`package_engine.py:335`) with `"crowdsec"`,
+  taking a parser/scenario `content` payload (mirroring the existing
+  `content: str` field used for fail2ban jail text).
+- Extend `PolicyProvider.directories` (`native_providers.py:924`) with a
+  `crowdsec` entry; `inspect`/`plan`/`apply`/`remove` render/remove
+  `/etc/crowdsec/{parsers,scenarios}/nostrhost-<name>.yaml` and trigger a
+  `cscli` hub refresh + `crowdsec` reload, following the same
+  inspect→plan→apply→verify shape as the other native providers (no shell
+  helper indirection).
+- Update `packages/nostrhost-native-example/package.toml` (or a new example
+  package) to declare `[[policy]] type = "crowdsec"` as the reference usage,
+  since §2 confirmed no package exercises the `PolicyResource` type today.
+- **Explicitly no work on `helpers/helpers.v1.d/fail2ban` or
+  `helpers.v2.1.d/fail2ban`.** They keep targeting fail2ban unmodified. Any
+  legacy (non-native) package that needs CrowdSec-backed protection must be
+  converted to a native `package.toml` — the same path `CADDY-MIGRATION.md`
+  P4 already takes for `nostrhost-test`'s web routes — not served through a
+  new bash entry point.
+- Gate: the reference native package's `crowdsec` policy resource
+  round-trips through `package.plan`/`package.reconcile` (install, verify,
+  remove) with a real parser/scenario file, exercised by
+  `tests_nostr/test_crowdsec_*.py`.
 
 ### P4 — Bouncer cutover
 - Enable `crowdsec-firewall-bouncer` for real, owning its own nftables set
@@ -185,11 +194,23 @@ its phase gate" pattern.
   encrypted Nostr notification to the admin npub.
 
 ### P6 — Retire fail2ban
+- **Pre-condition, not just a nice-to-have:** confirm via
+  `tools/legacy_inventory.py` (or its successor) that no supported package
+  still sources `helpers/helpers.v1.d/fail2ban` / `helpers.v2.1.d/fail2ban`.
+  Per `LEGACY-INVENTORY.md`, `nostrhost-test` is currently the sole legacy
+  fixture; if it (or anything else) still calls `ynh_config_add_fail2ban` at
+  this point, either convert it to the native `crowdsec` policy resource
+  from P3 first, or explicitly accept it loses intrusion-protection coverage
+  — do not silently strand a package calling a helper that now targets a
+  removed daemon.
 - Stop/disable/remove the fail2ban service and package.
 - Remove `forks/yunohost/conf/fail2ban/`, `hooks/conf_regen/52-fail2ban`,
   the `fail2ban` entry from `services.yml`, `debian/control` dependency, and
-  the now-dead `PolicyResource.type` literal `"fail2ban"` (only after
-  confirming no shipped/native package still declares it).
+  (once the pre-condition above holds) the `helpers.v1.d/fail2ban` /
+  `helpers.v2.1.d/fail2ban` files and the `PolicyResource.type` literal
+  `"fail2ban"`. Helper-tree removal still follows
+  `RESOURCE-ENGINE-CUTOVER.md`'s general gate — this phase only removes the
+  fail2ban-specific slice of it, once that gate is met for this slice.
 - Update `src/utils/app_utils.py:1359` service-wait list.
 - Update tests referencing fail2ban (`test_regenconf.py`, `test_service.py`,
   `test_settings.py` if `reconfigure_ssh_and_fail2ban` is renamed).
@@ -217,19 +238,20 @@ its phase gate" pattern.
 | `forks/yunohost/conf/crowdsec/parsers/nostrhost-portal-auth.yaml` | Port of `yunohost-portal.conf` filter |
 | `forks/yunohost/conf/crowdsec/scenarios/*.yaml` | Port of jail `maxretry`/`findtime`/`bantime` semantics |
 | `forks/yunohost/hooks/conf_regen/52-crowdsec` | CrowdSec regen category (replaces `52-fail2ban`) |
-| `helpers/helpers.v1.d/fail2ban`, `helpers.v2.1.d/fail2ban` (modified in place) | Same public helper API, CrowdSec-backed implementation |
 | `forks/yunohost/tests_nostr/test_crowdsec_*.py` | Provider/parser/regen tests, mirroring the resource-engine test conventions |
+| `packages/nostrhost-native-example/package.toml` (extended) or a new example package | Reference `[[policy]] type = "crowdsec"` declaration exercising the new `PolicyProvider` path |
 | `state/security/intrusion-protection.toml` | Semantic-state record of CrowdSec policy (roadmap §18.6) |
 
 ## 7. Risks
 
-1. **App-packaging helper compatibility is the highest-blast-radius item.**
-   Every `_ynh` app package with an auth surface calls
-   `ynh_config_add_fail2ban` unmodified; the reimplementation must accept the
-   exact same `--logpath`/`--failregex` arguments and `f2b_jail.conf`/
-   `f2b_filter.conf` template convention, or every such app breaks on next
-   install/upgrade. Test against real packages in this workspace (`*_ynh`
-   dirs), not just synthetic fixtures.
+1. **Legacy packages get no automatic CrowdSec coverage.** Because CrowdSec
+   is native-only (§1), any package still calling `ynh_config_add_fail2ban`
+   keeps working against fail2ban right up until P6 removes it, then loses
+   intrusion-protection entirely unless converted to a native
+   `package.toml` with a `crowdsec` policy resource first. This is a
+   one-time migration cost concentrated on legacy packages, not an ongoing
+   dual-backend maintenance burden — confirm the P6 pre-condition (no
+   package still sources the fail2ban helper) before removing anything.
 2. **CrowdSec's decision store and fail2ban's ban table are not the same
    thing.** During the P2-P3 parallel-run window, both engines may generate
    independent state referencing the same source IPs; the cutover in P4 must
