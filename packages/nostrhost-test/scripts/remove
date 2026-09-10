@@ -1,0 +1,9 @@
+#!/bin/bash
+set -eu
+
+source /usr/share/yunohost/helpers
+
+app=$YNH_APP_INSTANCE_NAME
+final_path=$(ynh_app_setting_get --app="$app" --key=final_path)
+ynh_remove_nginx_config
+ynh_secure_remove -- "$final_path"

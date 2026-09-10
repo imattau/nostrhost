@@ -1,0 +1,14 @@
+# Publisher input for kind-32267. Replace commit and hashes at release time.
+app_id = "nostrhost-test"
+name = "NostrHost Test App"
+description = "Minimal harmless application for NostrHost integration tests"
+version = "0.1~ynh1"
+repository = "https://github.com/imattau/nostrhost"
+package_path = "packages/nostrhost-test"
+platform = "yunohost"
+auth_request = true
+
+# Required by nostrhost-catalog publisher.Metadata.
+commit = "0000000000000000000000000000000000000000"
+manifest = "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+content = "sha256:0000000000000000000000000000000000000000000000000000000000000000"

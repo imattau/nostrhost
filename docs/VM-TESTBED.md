@@ -329,6 +329,44 @@ Tailwind/shadcn-vue redesign + Host-header match fix) is built and deployed:
 - Open follow-up: a real browser NIP-07 session (needs an extension-capable
   browser) and visual check of the redesigned portal/app grid post-login.
 
+## SSO compatibility bridge (2026-09-10)
+
+The portal API now exposes `GET /nostr/auth-request` for the next SSO
+simplification slice. It validates the existing `yunohost.portal` session
+through YunoHost's authenticator and returns `204` with `X-Remote-User`,
+`X-Remote-Email`, and `X-Remote-Fullname`; linked identities additionally
+provide `X-Nostr-Pubkey` and `X-Nostr-Npub`.
+
+The public NGINX path is an `internal` exact location, so direct requests
+return `404`; an application can consume it through NGINX `auth_request`.
+Legacy SSOwat is bypassed only for this internal subrequest, while the portal
+authenticator remains responsible for cookie, host, allow-list, and session
+file validation. Application-specific `auth_request` adoption remains the
+next step.
+
+The YunoHost fork ships `conf/nginx/nostrhost_auth_request_params`, an opt-in
+include for application locations. It invokes the internal endpoint, copies
+the returned identity into upstream request headers, and overwrites any
+client-supplied copies. Because this VM runs SSOwat at server scope, a normal
+location include cannot yet disable the earlier SSOwat redirect; the include
+is therefore ready for applications behind a server/location where SSOwat is
+already disabled, but generated server-level routing is still required for a
+safe migration on the default YunoHost path.
+
+## Minimal NostrHost test package
+
+The repository package at `packages/nostrhost-test` is a harmless static
+YunoHost application for exercising catalogue metadata, installation, portal
+discovery, permissions, and the staged SSO migration. It has no daemon,
+database, external dependency, or network service. Install it from the
+package directory with `yunohost app install packages/nostrhost-test` when a
+VM test is desired.
+
+The package has been installed and upgraded successfully on the VM at
+`nostrhost.test/nostrhost-test`. The generated permission reports
+`auth_request=true` and `auth_header=false`; unauthenticated access returns
+`401`, while the portal continues to return `200`.
+
 ## Stage B: Restic client + assisted rollback E2E (2026-09-10)
 
 The Stage B slice (fork `0c75873`) is deployed and proven live:

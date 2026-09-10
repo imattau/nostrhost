@@ -1074,9 +1074,9 @@ The first release of this layer stops short of fully automatic reconciliation.
 ## 0.5 - SSO and Application Compatibility
 
 ```text
-⏳ NGINX auth_request
-⏳ reduced/simplified SSOwat
-⏳ compatibility headers
+◑ NGINX auth_request compatibility endpoint (internal subrequest wiring, reusable app include, portal session validation, and identity headers landed; generated server-level routing is required before per-app adoption)
+◑ reduced/simplified SSOwat (guarded identity mode and per-permission migration contract exist; disabled until an application opts in with matching NGINX routing)
+◑ compatibility headers (X-Remote-* and linked X-Nostr-* headers available from auth-request; X-Remote-* also passed by legacy SSOwat when `auth_header` is enabled)
 ⏳ OIDC provider
 ```
 

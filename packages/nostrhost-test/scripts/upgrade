@@ -1,0 +1,9 @@
+#!/bin/bash
+set -eu
+
+source /usr/share/yunohost/helpers
+
+app=$YNH_APP_INSTANCE_NAME
+final_path=$(ynh_app_setting_get --app="$app" --key=final_path)
+cp "../sources/index.html" "$final_path/index.html"
+ynh_add_nginx_config

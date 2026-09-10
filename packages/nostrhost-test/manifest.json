@@ -1,0 +1,49 @@
+{
+  "id": "nostrhost-test",
+  "name": "NostrHost Test App",
+  "description": {
+    "en": "Minimal harmless application for NostrHost integration tests"
+  },
+  "version": "0.1~ynh1",
+  "url": "https://github.com/imattau/nostrhost",
+  "license": "AGPL-3.0-or-later",
+  "maintainers": [
+    {
+      "name": "NostrHost maintainers",
+      "email": "maintainers@nostrhost.test"
+    }
+  ],
+  "integration": {
+    "yunohost": ">= 12.1",
+    "architectures": "all",
+    "multi_instance": false,
+    "disk": "10M",
+    "ram": {
+      "build": "0M",
+      "runtime": "0M"
+    }
+  },
+  "multi_instance": false,
+  "services": [],
+  "packaging_format": 2,
+  "install": {
+    "domain": {
+      "type": "domain"
+    },
+    "path": {
+      "type": "path",
+      "default": "/nostrhost-test"
+    }
+  },
+  "resources": {
+    "permissions": {
+      "main": {
+        "url": "/",
+        "allowed": "all_users",
+        "show_tile": true,
+        "auth_header": false,
+        "auth_request": true
+      }
+    }
+  }
+}
