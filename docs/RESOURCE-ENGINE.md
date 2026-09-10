@@ -31,8 +31,11 @@ without shell helper wrappers. Config resources support inline content or
 strict Jinja2 templates, with atomic writes and Python-managed ownership and
 mode. Source handling uses streaming HTTP, hash
 verification, and Python archive libraries with traversal, link, and
-special-file rejection; services render hardened systemd
-units. `NativeOperationExecutor` dispatches only registered providers, leaving
+special-file rejection; services render hardened systemd units and perform
+bounded daemon reloads on changes/removal. Directory and service reverse
+operations are lifecycle-aware: directories are only removed when empty,
+while service units are removed from the managed unit directory.
+`NativeOperationExecutor` dispatches only registered providers, leaving
 privileged policy and approval at the existing NostrHost executor boundary.
 
 APT, PostgreSQL and MySQL database, Caddy, secrets, backup, user/sysusers, and tmpfiles providers
