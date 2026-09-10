@@ -75,7 +75,9 @@ The current `package.plan` response is the first version of this seam: a
 schema-versioned envelope containing package id/version, `manifest_sha256`,
 the typed operation list, and `plan_sha256`. `package.reconcile` verifies the
 plan digest before provider execution. Raw operation lists remain accepted
-only as a marked legacy compatibility path.
+only as a marked legacy compatibility path. The daemon now loads the shared
+`nostrhost-policy` rules and maps native plans to the upgrade/remove policy
+tiers; the plan digest is carried into pre/post state snapshots.
 
 ### Identity and policy to execution
 
@@ -153,8 +155,13 @@ adapter and prevent it from becoming an implicit fallback for native packages.
 1. Add a canonical native package-coordinate/plan envelope shared by catalog,
    policy, control, and state.
 2. Add a policy-aware executor adapter in `nostr_operationsd`; remove direct
-   `native_providers()` construction from request handlers.
-3. Add pre/post state and Restic linkage around native reconciliation.
+   `native_providers()` construction from request handlers. The policy and
+   approval seam is now live; provider construction remains inside the
+   executor backend as the next isolation step.
+3. Add pre/post state and Restic linkage around native reconciliation. Native
+   reconciliation is now classified as data-affecting and carries its plan
+   digest; the remaining step is linking the policy-selected Restic snapshot
+   into the native plan result.
 4. Wire Admin and catalogue installation to native plans while retaining the
    legacy path for non-native packages.
 5. Migrate representative packages and publish a native/legacy inventory.
