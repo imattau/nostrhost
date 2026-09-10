@@ -43,7 +43,9 @@ unit pair is removed, credentials are deleted from the managed credential
 store, and sysusers declarations are withdrawn without implicitly deleting
 the underlying operating-system account.
 
-APT, PostgreSQL and MySQL database, Caddy, access, secrets, backup, user/sysusers, and tmpfiles providers
+APT, PostgreSQL, MySQL, MongoDB, and Redis database resources, including SQL
+user/grant declarations, Caddy, access, secrets, backup, user/sysusers, and
+tmpfiles providers
 use this same registry; timers, health checks, typed settings, and backup
 declarations are also native providers. They are intentionally not silently
 implemented through legacy helper commands. Runtime resources now verify the
@@ -53,6 +55,17 @@ package-manager-specific strategy.
 
 Caddy route removal requires an explicit native configuration builder and is
 submitted through the same validated `/load` endpoint as route creation.
+
+Portal permissions are separate from filesystem access policies. Native
+packages declare permission URLs, additional URLs, allowed users/groups, tile
+visibility, protection, auth headers, and the staged `auth_request` flag;
+the provider reconciles those values through the existing permission API and
+regenerates the SSO policy projection.
+
+Settings resources may declare typed fields (`string`, `integer`, `number`,
+`boolean`, or `enum`) with defaults. Values are validated before planning and
+persisted state is checksum-compared during reconciliation; secret settings
+must use the dedicated secret resource.
 
 Backup resources persist validated `nostrhost-backup-v1` manifests. The
 provider registers filesystem/database inputs but deliberately leaves the
