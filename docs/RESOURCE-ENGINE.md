@@ -26,6 +26,12 @@ converted before they can enter the native engine.
 
 Operation envelopes have stable names, resource identities, typed arguments,
 dependencies, risk, reversibility, reverse operation, and a human-readable
-summary. This leaves the planner independent of the current Nostr operation
-tool names while allowing a later adapter to submit approved operations to the
-existing NostrHost executor.
+summary. Native providers now apply directory, source, and service operations
+without shell helper wrappers. Source handling uses streaming HTTP, hash
+verification, and Python archive libraries; services render hardened systemd
+units. `NativeOperationExecutor` dispatches only registered providers, leaving
+privileged policy and approval at the existing NostrHost executor boundary.
+
+APT, database, Caddy, secrets, backup, user/sysusers, and tmpfiles providers
+will use this same registry; they are intentionally not silently implemented
+through legacy helper commands.
