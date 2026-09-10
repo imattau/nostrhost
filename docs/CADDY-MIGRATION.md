@@ -1,6 +1,9 @@
 # nginx → Caddy Migration Plan
 
-Status: proposed. Branch: `feat/nginx2caddy` (base `main`).
+Status: phases P0–P6 complete on the VM (`feat/nginx2caddy`, base `main`); P7
+remaining (backup hooks + semantic state). Caddy serves the public ports,
+authd owns authorization, certd exports certs, native routes reconcile via the
+admin API, and nginx is retired from the package/templates.
 
 Replace nginx with Caddy as NostrHost's single web/TLS front end, let Caddy own
 automatic Let's Encrypt, and retire or simplify the YunoHost components that
@@ -220,10 +223,14 @@ Each phase has a gate. nginx keeps the public ports until Phase 6.
   green (pending), VM e2e passes (✔ on Caddy :443).
 
 ### P7 — Docs, state, backup
+- Status: this document is current; the backup-hook change and semantic-state
+  recording are the remaining items.
 - Keep this document current; update ROADMAP/VM-TESTBED/STATELAYER.
 - Back up Caddy storage (or the exported `/etc/yunohost/certs`); update
-  `hooks/backup/21-conf_ynh_certs` and `hooks/restore/21-conf_ynh_certs`.
-- Record `certificates/` and `services/` in semantic state.
+  `hooks/backup/21-conf_ynh_certs` and `hooks/restore/21-conf_ynh_certs` to
+  include `/var/lib/caddy` (Caddy's ACME/routes storage) alongside the
+  exported certs.
+- Record `certificates/` and `services/` in semantic state (follow-up).
 
 ## 6. New artifacts
 
