@@ -171,16 +171,33 @@ Each phase has a gate. nginx keeps the public ports until Phase 6.
   is idempotent and reversible. **Met on the VM.**
 
 ### P5 — Domains, service, diagnosis, security
-- `domain_add`/`domain_remove` create/remove Caddy sites and ACME policy;
-  remove the nginx-specific force-clear hacks (`domain.py:393`, `580`).
-- `services.yml`: `caddy` service with `test_conf: caddy validate`; service
-  reload via the admin API.
-- `diagnosers/21-web.py`: replace nginx-conf checks with Caddy equivalents.
-- Port `security.conf.inc`, the SSO/admin CSP, and HSTS to Caddy.
-- TLS passthrough via `caddy-l4`; HTTP/3 + open firewall `443/udp`.
-- fail2ban: Caddy access-log format + new filters, or adopt CrowdSec.
-- Update admin `criticalServices` and i18n strings.
-- Gate: `yunohost diagnosis` clean; fail2ban bans work.
+- Status: **partial — passed on the VM** for the web-facing items; see
+  [CADDY-P5-SPIKE.md](CADDY-P5-SPIKE.md). Several items are explicitly
+  deferred (below).
+- `domain_add`/`domain_remove` create/remove Caddy sites and ACME policy:
+  `caddy_admin` gained `ensure_domain_site`/`remove_domain_site` (`@id`
+  `nostrhost-domain:<domain>`, root-path matcher so it never shadows apps);
+  ACME is the global `acme_ca` + automatic HTTPS, and `certd` exports the
+  cert. Wiring into `domain.py` (`domain_add`/`domain_remove` calling the
+  client) and removing the nginx force-clear hacks (`domain.py:393`, `580`)
+  is a follow-up.
+- `services.yml`: `caddy` service added with `test_conf: caddy validate
+  --config /etc/caddy/Caddyfile`; service reload via the admin API still to
+  be wired into `service.py` (the nginx `test_conf` path remains the default).
+- `diagnosers/21-web.py`: nginx-conf existence check replaced with a Caddy
+  site check (`_domain_has_caddy_site` queries the admin API for a host
+  match). i18n summary strings still nginx-named (follow-up).
+- Port `security.conf.inc`, the SSO/admin CSP, and HSTS to Caddy: the Caddy
+  sites now send the base security headers + the SSO portal CSP
+  (`yunohost_sso.conf.inc`), verified against the portal e2e. The stricter
+  admin CSP is a follow-up (needs SPA testing).
+- **Deferred to follow-ups**: nginx force-clear hack removal + `domain.py`
+  wiring; TLS passthrough via `caddy-l4`; HTTP/3 + firewall `443/udp`; admin
+  `criticalServices`/i18n strings. fail2ban→CrowdSec is owned by the
+  concurrent `feat/fail2ban2crowdsec` branch.
+- Gate: `yunohost diagnosis` clean; fail2ban bans work — partially met (site
+  check proven; full diagnosis run and fail2ban/CrowdSec land with the
+  deferred items).
 
 ### P6 — Retire nginx
 - Remove `nginx`/`nginx-extras` from `debian/control`, migrations, helpers,

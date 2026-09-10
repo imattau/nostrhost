@@ -11,6 +11,15 @@
 # P2: default domain -- minimal site so Caddy obtains a cert and certd exports
 # it to /etc/yunohost/certs/yunohost.org for slapd (LDAP).
 yunohost.org {
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "SAMEORIGIN"
+		X-XSS-Protection "1; mode=block"
+		Referrer-Policy "no-referrer"
+		Permissions-Policy "interest-cohort=()"
+		Content-Security-Policy "upgrade-insecure-requests"
+	}
 	handle {
 		respond "default domain (caddy P2)" 200
 	}
@@ -21,6 +30,18 @@ yunohost.org {
 # configured with httpPort 8080 and resolves the names to 127.0.0.1 via
 # /etc/hosts, so validation stays on loopback and never touches nginx.
 nostrhost.test {
+	# Ported from conf/nginx/security.conf.inc (base, non-experimental set) +
+	# the SSO portal CSP (yunohost_sso.conf.inc) which the portal SPA needs.
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "SAMEORIGIN"
+		X-XSS-Protection "1; mode=block"
+		Referrer-Policy "no-referrer"
+		Permissions-Policy "interest-cohort=()"
+		Content-Security-Policy "upgrade-insecure-requests; default-src 'self'; connect-src 'self' ws: wss:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; object-src 'none'; img-src 'self' data:;"
+	}
+
 	redir /yunohost/sso /yunohost/sso/ permanent
 	redir /yunohost/admin /yunohost/admin/ permanent
 
