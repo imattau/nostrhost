@@ -203,8 +203,23 @@ service). It must exist and be operational before Phase 2 of that document
 
 | Item | Status |
 |---|---|
-| Architecture / event class mapping (this document) | ⏳ in progress |
-| Notification policy state schema | ⏳ drafted, not implemented |
-| Kind/tag allocation in `nostrhost-control` | ⏳ not started (separate repo) |
-| Notification service implementation | ⏳ not started |
-| Wired to certificate/backup/cron sources (Mail phase 2) | ⏳ blocked on the above |
+| Architecture / event class mapping (this document) | ✓ done |
+| Notification policy state schema | ✓ implemented (as local TOML; `state/` wiring per §18.6 still open) |
+| Notice class/severity/summary convention on kinds 2210-2213 | ✓ implemented — `nostrhost-control` `EVENT-PROTOCOL.md` §2.3, `eventmodel.Notice`/`Validate` |
+| Notification service implementation | ✓ `nostrhost-notify` binary (`nostrhost-control` repo, branch `claude/mail-stack-removal-notify-service`) — subscribes to the operation chain + notices, matches policy, delivers via NIP-17/59 |
+| Wired to certificate/backup/cron sources (Mail phase 2) | ⏳ blocked on those subsystems actually publishing 2210-2213 events; the service itself is ready to consume them |
+
+No new kind numbers were needed: `update available`, `recovery result`,
+`certificate event` and `system/cron notice` all ride on the existing
+`2210` (system) / `2211` (service) kinds, distinguished by the `class` field
+in content, per `NIP-MAPPING.md`'s "minimal custom kind surface" principle.
+
+Open follow-ups, tracked in `nostrhost-control`:
+
+- Wire `recipients.toml`/`policy.toml` through `nostrhost-state` (§18.6)
+  instead of being read as plain local files.
+- Integration test against a live relay (unit tests cover policy matching,
+  classification and digest batching; the NIP-17 wire path itself is
+  exercised only by go-nostr's own tests today).
+- Decide the default digest cadence and whether `security` needs a lower
+  default `severity_min` than other classes (§7 above).

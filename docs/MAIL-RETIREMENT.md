@@ -101,7 +101,7 @@ sequencing. Phases below track that ordering:
 | Phase | Status |
 |---|---|
 | 0 — Inventory | ⏳ in progress (this document) |
-| 1 — Native notification service | ⏳ in progress (see `docs/NOTIFICATION-SERVICE.md`) |
+| 1 — Native notification service | ✓ implemented in `nostrhost-control` (`nostrhost-notify` binary, branch `claude/mail-stack-removal-notify-service`); see `docs/NOTIFICATION-SERVICE.md` |
 | 2 — Migrate internal notifications | ⏳ not started |
 | 3 — Make email optional | ⏳ not started |
 | 4 — Remove mandatory mailbox | ⏳ not started |
