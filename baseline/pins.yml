@@ -27,7 +27,7 @@ forks:
     branch: nostrhost          # derivative branch (first fork modification, Phase 3)
     derivative: true
     pin: debian/12.1.41.2      # upstream baseline the branch was cut from
-    pin_commit: a0896b415ba9ad88ba8c1167d409558995ed6d2d
+    pin_commit: 4992274342677e9e94eebaa1e0861c179cc3c703
     live_server: 12.1.41.2
 
   - component: portal          # Nuxt/Vue/TypeScript user portal
@@ -38,7 +38,7 @@ forks:
     branch: dev               # Nostr (NIP-07) login page + Tailwind/shadcn-vue redesign (PR #1)
     derivative: true
     pin: debian/12.1.2
-    pin_commit: 95b4905f0d8ffd5ba1924bac6dddb62d2f4fd29c
+    pin_commit: 2d415f8785166fe2132a2b8bd7c19cc47803d123
     live_server: 12.1.2
 
   - component: admin           # Vue/Vite/TypeScript admin interface
@@ -49,17 +49,8 @@ forks:
     branch: dev               # Tailwind/shadcn-vue redesign (app shell, PR #1)
     derivative: true
     pin: debian/12.1.15
-    pin_commit: b9935c282d06ad71451f093928ad9837073e2cca
+    pin_commit: 1a014eefb7d954d20962b5bfebc80e11ab633e60
     live_server: 12.1.15
-
-  - component: ssowat          # NGINX single-sign-on layer
-    upstream_repo: YunoHost/SSOwat
-    fork_repo: imattau/nostrhost-ssowat
-    path: forks/ssowat
-    upstream_branch: dev
-    pin: debian/12.1.1
-    pin_commit: a59b558bbbcaeb00199a19ce952bf3c75ce78bef
-    live_server: 12.1.1
 
 # Upstream dependencies pinned by the same stable tags, but NOT forked in
 # Stage 1 (the derivative builds against upstream versions of these).
