@@ -163,10 +163,16 @@ its phase gate" pattern.
   `request.uri`), `http_verb` (from `request.method`), `source_ip`; it sets
   `sub_type='auth_fail'` only on 401+Basic (YunoHost's JSON login sends no
   Basic, so we key on path/verb/status, which is moot with no custom parser).
-- Port `postfix-sasl.conf`; **confirmed in P0 (§8.2):** the `crowdsecurity/
-  postfix` collection already covers SASL auth failures (`postfix-spam` on
-  `log_type_enh: spam-attempt`) — align its threshold to fail2ban's `[sasl]`
-  jail (maxretry 5) rather than re-deriving the parser.
+- Port `postfix-sasl.conf` as `nostrhost/postfix-sasl-bf.yaml`; **confirmed in
+  P0 (§8.2):** the `crowdsecurity/postfix` collection already tags SASL
+  failures (`postfix-logs` grok `SASL … authentication failed` →
+  `log_type_enh: spam-attempt`), so the scenario **reuses that parser** rather
+  than re-deriving one. It filters on `log_type_enh == 'spam-attempt'` **and**
+  `evt.Parsed.message_failure != ''` — `message_failure` is set only by the
+  SASL grok, which keeps the scenario narrow to the `[sasl]` jail (the broad
+  `postfix-spam` also fires on "lost connection" spam and postfix `reject`).
+  Threshold aligned to fail2ban `[sasl]`: `maxretry 5` → capacity 5,
+  `findtime 10m` → `leakspeed 120s`.
 - Decision duration (fail2ban `bantime`) is set by the **bouncer (P4)**, not a
   per-scenario field — consistent with every stock scenario.
 - Gate: `cscli explain` / replay against captured auth-failure log samples
@@ -316,7 +322,8 @@ notice pipeline, so P5 proves the mail-stack removal end to end. There is
 | `forks/yunohost/conf/crowdsec/acquis.yaml.tpl` | Log/journald acquisition template (rendered by the regen hook) — Caddy-unit/file acquisition, not nginx |
 | `forks/yunohost/conf/crowdsec/scenarios/nostrhost-yunohost-auth-bf.yaml` | Port of `yunohost.conf` filter as a leaky scenario (capacity 10 / leakspeed 60s) on Caddy metas |
 | `forks/yunohost/conf/crowdsec/scenarios/nostrhost-yunohost-portal-auth-bf.yaml` | Port of `yunohost-portal.conf` filter (capacity 20 / leakspeed 30s) |
-| `forks/yunohost/conf/crowdsec/scenarios/*.yaml` (further ports) | `postfix-sasl` threshold alignment (P1) and any jail-semantics ports |
+| `forks/yunohost/conf/crowdsec/scenarios/nostrhost-postfix-sasl-bf.yaml` | Port of `postfix-sasl.conf` (`[sasl]` jail) — reuses `postfix-logs` parser; capacity 5 / leakspeed 120s |
+| `forks/yunohost/conf/crowdsec/scenarios/*.yaml` (further ports) | Any remaining jail-semantics ports |
 | `forks/yunohost/hooks/conf_regen/52-crowdsec` | CrowdSec regen category (replaces `52-fail2ban`) |
 | `forks/yunohost/tests_nostr/test_crowdsec_*.py` | Provider/parser/regen tests, mirroring the resource-engine test conventions |
 | `packages/nostrhost-native-example/package.toml` (extended) or a new example package | Reference `[[policy]] type = "crowdsec"` declaration exercising the new `PolicyProvider` path |
@@ -576,6 +583,8 @@ store:
 |---|---|---|
 | `nostrhost/yunohost-auth-bf` | 12× `POST /yunohost/api/login` 401 from one IP | fired after 11 events; **ban** decision |
 | `nostrhost/yunohost-portal-auth-bf` | 22× `POST /yunohost/portalapi/login` 401 from one IP | fired after 21 events; **ban** decision |
+| `nostrhost/postfix-sasl-bf` | 6× `SASL … authentication failed` from one IP | fired at capacity 5; **ban** decision (6 events) |
+| `nostrhost/postfix-sasl-bf` (negative) | 7× `lost connection` spam from one IP | **did not fire** — only `postfix-spam` (fail2ban `[sasl]` parity) |
 
 `cscli explain` confirmed each line only matched its intended path-specific
 scenario (plus the broad `LePresidente/http-generic-401-bf`, which coexists
