@@ -43,7 +43,9 @@ privileged policy and approval at the existing NostrHost executor boundary.
 Systemd resource reversals are explicit: timers are disabled before their
 unit pair is removed, credentials are deleted from the managed credential
 store, and sysusers declarations are withdrawn without implicitly deleting
-the underlying operating-system account.
+the underlying operating-system account. System-user resources may also
+declare managed groups, and service/timer/FPM executables and credential paths
+are validated before rendering.
 
 APT, PostgreSQL, MySQL, MongoDB, and Redis database resources, including SQL
 user/grant declarations, Caddy, access, secrets, backup, user/sysusers, and
