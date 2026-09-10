@@ -33,7 +33,8 @@ strict Jinja2 templates, with atomic writes and Python-managed ownership and
 mode. Source handling uses streaming HTTP, hash
 verification, and Python archive libraries with traversal, link, and
 special-file rejection. Sources also support explicit tar/zip/file formats,
-safe renaming, and bounded path-component stripping. Services render hardened systemd units and perform
+safe renaming, bounded path-component stripping, and architecture variants
+selected during planning. Services render hardened systemd units and perform
 bounded daemon reloads on changes/removal. Directory and service reverse
 operations are lifecycle-aware: directories are only removed when empty,
 while service units are removed from the managed unit directory.
