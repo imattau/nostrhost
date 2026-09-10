@@ -27,7 +27,7 @@ the canonical one; CADDY-MIGRATION.md P5 should link here once this lands).
 | Threat intelligence | **Local scenarios only by default**; CAPI (Central API / community blocklist) is opt-in, off until evaluated | Roadmap §18.4 flags "external threat-intelligence dependency" and "privacy implications" as evaluation criteria; default install must not phone home without consent |
 | Gate before cutover | Evaluation report against roadmap §18.4 criteria, run in parallel with fail2ban still enforcing | Matches the "conditional, not mandatory" framing in §18.4 — this plan produces the evidence, then a go/no-go decision, not an unconditional rip-out |
 | App-packaging integration | **Native-only.** CrowdSec is exposed exclusively as a `PolicyResource(type: "crowdsec")` in `package.toml`, reconciled by an extended `PolicyProvider`. No CrowdSec-backed Bash helper is written | Matches `RESOURCE-ENGINE-CUTOVER.md` §1: "[the helper tree] must not be a dependency of native providers." `ynh_config_add_fail2ban`/`ynh_config_remove_fail2ban` (`helpers.v1.d`/`v2.1.d`) are left untouched, stay fail2ban-only, and remain a legacy compatibility surface governed by that doc's existing removal gate — not extended into a second backend |
-| Package source | CrowdSec daemon + bouncer from **CrowdSec's official apt repo** (current 1.x), with hub collections vendored into the image | Debian bookworm ships `crowdsec`/`crowdsec-firewall-bouncer` (bouncer `0.0.25-4~deb12u1`) but the daemon is the old 0.1.x-era line, which may not satisfy `crowdsecurity/*` collection requirements; vendoring also makes first-boot offline (hub downloads otherwise need network) |
+| Package source | CrowdSec daemon + bouncer from **the Debian repo** (`crowdsec` 1.4.6 + `crowdsec-firewall-bouncer` 0.0.25, both bookworm main). Offline hub shipped by the Debian package at `/usr/share/crowdsec/hub`; CAPI is **opt-out-by-emptying** `online_api_credentials.yaml` (README.Debian's `# no thanks` mechanism) | One source for daemon and bouncer — no version/source skew (P0 confirmed the official repo lacks the bouncer), and a clean bookworm→trixie upgrade path since Debian carries both packages in both releases. P0 re-verified detection parity on 1.4.6. The Debian daemon is a current 1.x line (1.4.6), not an old 0.1.x; its offline hub satisfies `crowdsecurity/*` collection requirements without first-boot network |
 | Plan location | `docs/CROWDSEC-MIGRATION.md` on `feat/fail2ban2crowdsec` | New branch off `main`, rebased after CADDY-MIGRATION merged |
 
 ## 2. What fail2ban owns today
@@ -173,6 +173,11 @@ its phase gate" pattern.
   `cscli` hub refresh + `crowdsec` reload, following the same
   inspect→plan→apply→verify shape as the other native providers (no shell
   helper indirection).
+- A `crowdsec` policy apply/remove must also **snapshot state**: enabling or
+  disabling the policy resource updates
+  `state/security/intrusion-protection.toml` through `StateRecorder`, tying
+  the resource engine to the state system (not just the file render) — see
+  P5.
 - Update `packages/nostrhost-native-example/package.toml` (or a new example
   package) to declare `[[policy]] type = "crowdsec"` as the reference usage,
   since §2 confirmed no package exercises the `PolicyResource` type today.
@@ -204,15 +209,47 @@ its phase gate" pattern.
   disabled; `yunohost diagnosis` clean.
 
 ### P5 — Security event integration (roadmap §18.5)
-- Security projector consumes CrowdSec alerts/decisions (LAPI, not log
-  scraping) and emits structured audit events + admin npub notifications per
-  §18.5's pipeline, matching `docs/NOTIFICATION-SERVICE.md`'s existing
-  "security event" row.
-- Record CrowdSec config (collections enabled, CAPI opt-in state, bantime
-  policy) under `state/security/intrusion-protection.toml` per roadmap
-  §18.6; no credentials/keys in ngit.
-- Gate: a triggered ban produces an audit event and (if configured) an
-  encrypted Nostr notification to the admin npub.
+This is the concrete replacement of the mail-based security notifications:
+the security event class is the *first* real producer for the `2210-2213`
+notice pipeline, so P5 proves the mail-stack removal end to end. There is
+**no dual mail+nostr path** for security events.
+
+- **Producer = `publish_notice()` on kind 2213.** A `security_projector`
+  consumes CrowdSec alerts/decisions from **LAPI** and emits via the existing
+  `nostr_notify.publish_notice(class_="security", severity=...,
+  summary=..., kind=KIND_SECURITY_EVENT)` path
+  (`forks/yunohost/src/nostr_notify.py:46`). Content `{class, severity,
+  summary}` already matches `EVENT-PROTOCOL.md` §2.3; kind 2213 is
+  validated, NIP-42-protected on the control relay, and consumed by
+  `nostrhost-notify` unchanged. Server-signed (`server_sk`) like the
+  existing `certificate`/`diagnosis` notices.
+  - **Consumption mode (default: polling).** Poll `cscli alerts list -o
+    json` on a short interval, tracking seen alert IDs; this matches how the
+    notify service already consumes the control plane and needs no new LAPI
+    client. A push-based LAPI websocket is a later optimization, not P5.
+- **Coalesce CrowdSec's duplicate decisions.** P0 showed CrowdSec can emit
+  overlapping decisions for one IP (e.g. `ssh-bf` *and* `ssh-slow-bf` for
+  the same source). The projector must fold a ban's multiple decisions into
+  **one** alert (source IP + merged scenario reasons) so a single ban yields
+  a single DM — otherwise every ban double-notifies.
+- **Severity mapping.** Default a `ban` decision to `SEVERITY_WARNING`
+  (matching `policy.toml`'s default `severity_min = "warning"`, so a first
+  ban notifies). A recurring source (an IP already banned that triggers
+  again after expiry) escalates to `SEVERITY_CRITICAL`. Expose the mapping
+  as config so the notify `policy.toml` `severity_min` can tune it (§4 of
+  NOTIFICATION-SERVICE.md).
+- **State record.** Extend `nostr_state.export_state()`
+  (`nostr_state.py:342`) with a `security` section (add a
+  `Backend.security()` accessor) rendering
+  `state/security/intrusion-protection.toml`: collections enabled, CAPI
+  opt-in state, bantime policy, and last-alert bookkeeping. Committed
+  through the existing `StateRecorder` pre/post lifecycle on config
+  change/`package.reconcile` — no new machinery. Reconciliation of this
+  section stays report-only (`_reconciliation_tool` treats non-services/apps
+  sections as high risk); document that.
+- Gate: a triggered ban produces exactly one kind-2213 audit event, a
+  `state/security/intrusion-protection.toml` record, and (if the policy
+  allows) one encrypted Nostr DM to the admin npub.
 
 ### P6 — Retire fail2ban
 - **Pre-condition, not just a nice-to-have:** confirm via
@@ -302,11 +339,12 @@ its phase gate" pattern.
    bookworm main actually ships `crowdsec` **1.4.6** (a current 1.x line,
    not the old 0.1.x as this risk originally claimed), while the official
    apt repo carries **1.8.1**; the `crowdsec-firewall-bouncer` (0.0.25) is
-   only in bookworm main, so daemon and bouncer come from different sources.
-   Mixing a vendored hub (collections) with a system package from a
-   different source can silently fail on parser/scenario API drift — P0 pins
-   the official repo for the daemon; resolve the daemon/bouncer skew before
-   the P4 cutover.
+   only in bookworm main. The §1 package-source decision resolves this by
+   taking **daemon + bouncer both from the Debian repo** (single source, no
+   cross-source drift, clean bookworm→trixie upgrade). Mixing a vendored hub
+   with a system package from a different source can still silently fail on
+   parser/scenario API drift — P0 validated the detection pipeline against
+   the Debian 1.4.6 daemon + offline hub (§8.2) rather than the newer build.
 9. **Caddy emits no HTTP access logs today** (§8.3). With no `log` /
    `access_log` directive in the Caddyfile, per-request access entries are
    absent, so neither fail2ban's nginx-reading jails nor CrowdSec's
@@ -320,22 +358,43 @@ its phase gate" pattern.
 *Status: **P0 complete.** Go/No-Go: **GO** (with the two prerequisites in
 §8.5 below satisfied). Measurements below were taken on the `nostrhost-vm`
 testbed (Debian 12 bookworm, kernel 6.1.0-53-cloud-amd64) with CrowdSec
-1.8.1 running detect-only alongside fail2ban 1.0.2, CAPI/console disabled.
+running detect-only alongside fail2ban 1.0.2, CAPI/console disabled. The
+parity tests were run twice — first on the packagecloud **1.8.1** build, then
+re-verified unchanged on the **Debian-repo 1.4.6** build after the §1 package
+source decision switched to the Debian repo (both are current 1.x; §8.1).
 
 ### 8.1 Package source and version (corrects risk #8)
 
-- Official CrowdSec apt repo (`packagecloud.io/crowdsec/crowdsec`) carries
-  `crowdsec` 1.8.1 (current 1.x line).
+**Decision (locked in §1): daemon + bouncer from the Debian repo.**
+
 - **Risk #8's premise was wrong:** bookworm main does **not** ship the "old
-  0.1.x" line — it carries `crowdsec 1.4.6` (still a 1.x daemon). So both
-  candidate sources are viable 1.x; the official repo is simply newer.
-- The official repo does **not** carry `crowdsec-firewall-bouncer`. The
-  bouncer (`0.0.25-4~deb12u1`, depends `nftables | iptables, nftables |
-  ipset, libc6`) is only in bookworm main. Daemon (official repo, 1.8.1) and
-  bouncer (bookworm main, 0.0.25) therefore come from **different sources** —
-  a real version-skew risk to resolve in P4 (§8.5).
+  0.1.x" line — it carries `crowdsec 1.4.6`, a current 1.x daemon. The
+  packagecloud repo carries 1.8.1. Both are viable 1.x.
+- The official packagecloud repo does **not** carry
+  `crowdsec-firewall-bouncer`; the bouncer (`0.0.25-4~deb12u1`, depends
+  `nftables | iptables, nftables | ipset, libc6`) is only in bookworm main.
+  Mixing the two sources would split daemon (1.8.1) from bouncer (0.0.25) —
+  the skew risk §8.5 flags. **The Debian repo ships both, so it is the
+  chosen single source**, and it gives a clean bookworm→trixie upgrade since
+  Debian carries both packages in both releases.
+- The Debian 1.4.6 package has two favourable packaging traits:
+  - **Offline hub** at `/usr/share/crowdsec/hub` (collections/parsers/
+    scenarios/patterns vendored) — first-boot needs no internet for hub
+    items. Default-enabled collections are `linux`, `apache2`, `nginx`,
+    `sshd` (nginx removed on this testbed as dead post-Caddy; `postfix`
+    enabled explicitly). The offline hub includes `postfix`, `dovecot`,
+    `caddy`, `whitelist-good-actors`, etc.
+  - **CAPI opt-out by default-controllable file:** README.Debian specifies
+    creating `/etc/crowdsec/online_api_credentials.yaml` containing only a
+    comment (e.g. `# no thanks`) to skip CAPI registration; the package
+    honours it on install and on purge. This gives an explicit, on-disk
+    opt-out that survives reinstall — the §1 "CAPI off until evaluated"
+    requirement, cleanly.
 - `crowdsec` installs standalone (simulate showed no extra deps; `Depends:
   coreutils` only).
+- Detection parity was **re-verified byte-for-byte on 1.4.6** after the
+  source switch (§8.2): SSH tight/spread bursts → `ssh-bf`/`ssh-slow-bf`,
+  SASL realistic burst → `postfix-spam`, IPv6 → `ssh-bf`.
 
 ### 8.2 Detection parity (the core test)
 
@@ -356,8 +415,27 @@ collection **does** cover SASL auth failures — `postfix-logs.yaml` grok
 (`SASL ... authentication failed`) sets `log_type_enh: spam-attempt`, which
 `postfix-spam.yaml` acts on. No parser parity gap for SMTP/SASL.
 
+**Re-verified on 1.4.6 (Debian repo).** The three parity runs reproduce on
+the Debian build: tight ssh burst → `ssh-bf`; spread ssh burst →
+`ssh-slow-bf`; realistic SASL burst → `postfix-spam`; IPv6 → `ssh-bf`. Two
+test-hygiene notes that surfaced during re-verification:
+
+- **The 1.4.6 `postfix-logs` grok is stricter than 1.8.1's.** It only sets
+  `spam-attempt` when the line names a mechanism and carries a trailing
+  reason (`SASL LOGIN|PLAIN|(CRAM|DIGEST)-MD5 authentication failed: …`);
+  the bare `SASL authentication failed` (no mechanism, no reason) matched on
+  1.8.1 but not 1.4.6. Real postfix always emits the mechanism + reason, so
+  this is not a practical gap — but a synthetic-bare-line test would
+  false-negative on 1.4.6. Any replay fixture in P2/P3 must use the realistic
+  `SASL <MECH> authentication failed: <reason>` shape.
+- **Which ssh scenario fires depends on burst timing, not version.** Both
+  `ssh-bf` (capacity 5 / 10s) and `ssh-slow-bf` (capacity 10 / 60s) are
+  enabled and byte-identical in semantics on 1.8.1 and 1.4.6. A tight burst
+  fires `ssh-bf`; failures spread >10s apart fall to `ssh-slow-bf`. Either
+  way the same source IP is banned, matching fail2ban's `[sshd]`.
+
 **Threshold semantics differ from fail2ban defaults:** CrowdSec's `ssh-bf`
-is capacity 5 (5 failures within ~50s) vs fail2ban `[sshd]` maxretry 10
+is capacity 5 (5 failures within ~10s) vs fail2ban `[sshd]` maxretry 10
 within 600s; default bantime ~4h vs fail2ban 600s. CrowdSec is more
 sensitive with a longer default ban. The plan's P1/P3 scenario work must pin
 these to the current jail values (§18.4) rather than accept CrowdSec
@@ -397,29 +475,36 @@ this first.
 
 ### 8.4 Roadmap §18.4 criteria
 
-| Criterion | fail2ban 1.0.2 | CrowdSec 1.8.1 |
+Footprint measured on the **chosen Debian 1.4.6 package** (the heavier
+packagecloud 1.8.1 build is noted where it differs).
+
+| Criterion | fail2ban 1.0.2 | CrowdSec 1.4.6 (Debian) |
 |---|---|---|
-| Idle memory (RSS) | ~49 MB | ~194–249 MB (Go runtime) |
-| Package footprint (disk) | ~2.1 MB | ~315 MB (`Installed-Size: 322091 KB`) |
-| Dependencies | python3 | coreutils |
-| Local store | n/a (log+config) | SQLite `crowdsec.db` + hub (`/etc/crowdsec/hub`, 1.1 MB) |
-| Network at install | none | apt repo + hub + GeoLite2 mmdb (63+11 MB) fetched from `hub-data.crowdsec.net` |
-| Network at runtime | none (mail/auth logs only) | **persistent outbound TLS to CrowdSec cloud** even with CAPI off |
-| Hub/collection updates | n/a | `cscli hub update`; vendor into package for offline first-boot |
+| Idle memory (RSS) | ~49 MB | ~77 MB idle (`MemoryCurrent=76.9 MB`) — 1.8.1 measured ~203 MB |
+| Package footprint (disk) | ~2.1 MB | ~108 MB (`Installed-Size: 110742 KB`); `/var/lib/crowdsec` 14 MB, offline hub 4.1 MB; binaries 36+29 MB — 1.8.1 measured ~315 MB |
+| Dependencies | python3 | `ca-certificates, libc6, libsqlite3-0` |
+| Local store | n/a (log+config) | SQLite `crowdsec.db` (WAL enabled by Debian postinst) + offline hub at `/usr/share/crowdsec/hub` |
+| Network at install | none | apt repo only; **hub + GeoLite mmdb are not fetched** — offline hub ships in-package (§8.1) |
+| Network at runtime | none (mail/auth logs only) | **none external with the CAPI opt-out** (§8.1 `# no thanks`); only loopback LAPI. The 1.8.1 build held a persistent outbound to `52.51.22.15:443` even with CAPI off |
+| Hub/collection updates | n/a | `cscli hub update` optional (moves off the offline hub); vendored offline hub means no first-boot network |
 
-CrowdSec is roughly **150x the disk** and **4–5x the idle RAM** of fail2ban.
-That is a real footprint cost, acceptable only if the §18.4 value (decision
-store, parser ecosystem, structured events for §18.5) justifies it.
+CrowdSec 1.4.6 is ~**52x the disk** and ~**1.6x the idle RAM** of fail2ban —
+a real but modest footprint cost on the chosen source (the 1.8.1 build would
+have been ~150x disk / 4x RAM). It is acceptable only if the §18.4 value
+(decision store, parser ecosystem, structured events for §18.5) justifies it.
 
-**Offline behaviour:** with CAPI/console fully disabled (no `capi.yaml`,
-no console enrollment), the daemon still opens and holds an outbound TLS
-connection to `52.51.22.15:443` (CrowdSec AWS eu-west-1) — the
-`online_client` (`/etc/crowdsec/online_api_credentials.yaml` is auto-created
-at install) plus geoip enrichment. So "detect-only, CAPI off" is **not**
-network-free: the host phones home by default. Offline first-boot requires
-pre-baking the hub collections **and** the GeoLite mmdb (or disabling
-`geoip-enrich`) into the package, and explicitly closing the `online_client`
-outbound — a config the package must ship, not rely on defaults.
+**Offline behaviour — materially better on the Debian source.** With the
+§8.1 CAPI opt-out (an `online_api_credentials.yaml` containing only
+`# no thanks`), the 1.4.6 daemon makes **no external outbound connection**
+at all: after install and a settle window only loopback LAPI sockets exist,
+no GeoLite mmdb is downloaded, and geoip enrichment is absent. The hub is
+offline/vendored, so first-boot needs no network. Contrast the 1.8.1
+packagecloud build, which auto-created `online_api_credentials.yaml`,
+fetched the GeoLite mmdb, and held a persistent outbound to
+`52.51.22.15:443` even with CAPI off. The package must ship the `# no
+thanks` opt-out file explicitly (and the regen hook must not recreate
+`capi.yaml`/empty it) to keep §1's "CAPI off until evaluated" honest on the
+Debian source.
 
 **Private-IP whitelist finding:** CrowdSec ships a whitelist that ignores
 `192.168.0.0/16`, `10.0.0.0/8`, `172.16.0.0/12`, `127.0.0.0/8`. fail2ban on
@@ -448,7 +533,11 @@ Two prerequisites gate P1/P2, not the go/no-go itself:
 1. **Caddy `log { output file … }` directive must land** (a Caddy packaging
    change) before any web-layer parser (CrowdSec `caddy-logs` or a
    ported `yunohost-portal`) can be acquired — §8.3.
-2. **Pin one package source** per risk #8. Daemon comes from the official
-   repo (1.8.1); the bouncer is only in bookworm main (0.0.25) — resolve the
-   daemon/bouncer skew before P4 cutover, and vendor hub + GeoLite mmdb into
-   the package for offline first-boot (§8.4).
+2. **Ship the Debian-source package with its offline/opt-out traits intact.**
+   The source decision (§1) now resolves the daemon/bouncer skew: both come
+   from bookworm main (1.4.6 + 0.0.25), so there is no cross-source
+   mismatch. The remaining packaging work is to (a) ship the `# no thanks`
+   CAPI opt-out file so the daemon stays network-quiet (§8.4), (b) keep the
+   vendored offline hub (`/usr/share/crowdsec/hub`) on first-boot, and
+   (c) re-verify `cscli hub` against 1.4.6 — P0 already validated the
+   detection pipeline on it (§8.2).

@@ -208,6 +208,7 @@ service). It must exist and be operational before Phase 2 of that document
 | Notice class/severity/summary convention on kinds 2210-2213 | ✓ implemented — `nostrhost-control` `EVENT-PROTOCOL.md` §2.3, `eventmodel.Notice`/`Validate` |
 | Notification service implementation | ✓ `nostrhost-notify` binary (`nostrhost-control` repo, branch `claude/mail-stack-removal-notify-service`) — subscribes to the operation chain + notices, matches policy, delivers via NIP-17/59 |
 | Wired to certificate/backup/cron sources (Mail phase 2) | ⏳ blocked on those subsystems actually publishing 2210-2213 events; the service itself is ready to consume them |
+| Wired to a security-event source | ⏳ the **security projector** is the first real producer for kind 2213 — scheduled in `CROWDSEC-MIGRATION.md` P5 (CrowdSec LAPI → `publish_notice(kind=2213, class="security")` → this service). Until then no subsystem publishes 2213. |
 
 No new kind numbers were needed: `update available`, `recovery result`,
 `certificate event` and `system/cron notice` all ride on the existing
