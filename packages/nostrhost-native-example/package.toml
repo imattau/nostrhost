@@ -1,0 +1,40 @@
+[app]
+id = "example"
+version = "1.2.0"
+
+[source.main]
+url = "https://example.org/releases/example-1.2.0.tar.gz"
+sha256 = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+
+[runtime]
+type = "node"
+version = "24"
+
+[packages]
+apt = ["ffmpeg", "imagemagick"]
+
+[user]
+system = true
+
+[directories.install]
+path = "/opt/example"
+
+[directories.data]
+path = "/var/lib/example"
+backup = true
+
+[service]
+exec = "/opt/example/bin/server"
+working_directory = "/var/lib/example"
+
+[service.environment]
+NODE_ENV = "production"
+
+[web]
+upstream = "127.0.0.1:8090"
+auth = "nostrhost"
+https = "automatic"
+
+[health]
+type = "http"
+path = "/health"

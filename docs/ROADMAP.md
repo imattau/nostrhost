@@ -626,19 +626,20 @@ installation has one straightforward reconciliation process.
 
 ---
 
-# 8. Portal Nostr Authentication + Native Session — ◑ (server proven, client deployed)
+# 8. Portal Nostr Authentication + Native Session — ◑ (all three signer flows browser-proven; saved signer mgmt + account page remain)
 
 Retain the existing Nuxt/Vue/TypeScript portal stack.
 
 Move the existing Nostr-authentication user experience into the portal fork:
 
 ```text
-/nostr-login        ✓ (NIP-07 sign-in page)
+/nostr-login        ✓ (NIP-07 sign-in page, deployed at /yunohost/sso/)
 /nostr-account      ⏳
-NIP-07              ✓
-NIP-46              ⏳
-passkey UI          ⏳
-saved signer management   ⏳
+NIP-07              ✓ (browser-proven)
+NIP-46              ✓ (browser-proven against a local bunker)
+passkey UI          ✓ (button + unlock path reachable; full WebAuthn
+                       attestation needs a real browser with PRF support)
+saved signer management   ⏳ (BUNKER_STORAGE_KEY reconnect exists; UI page pending)
 identity linking    ◑ (kind 31102; portal self-link is Phase 4)
 identity revocation ◑ (admin `nostr-identity-admin revoke`)
 ```
@@ -649,10 +650,26 @@ The server side is implemented and proven live on the testbed:
 challenge signature), with the login notice (kind 2206) signed by a dedicated
 low-privilege portal notice key rather than the root operator keys. The
 redesigned client (NIP-07 `/nostr-login` page + Tailwind/shadcn-vue) is
-built from the merged derivative pin and deployed on the testbed at
-`/yunohost/sso/`; the §8 flow is re-proven end-to-end against the deployed
-stack (challenge → signed 22242 → passwordless cookie → dave). NIP-46 and
-passkey signers are the remaining client work.
+built from the derivative pin and deployed on the testbed at `/yunohost/sso/`.
+
+**All three signer flows are now proven in a real browser** (headless
+chromium via Playwright on the testbed, `docs/VM-TESTBED.md` §8): NIP-07
+(`window.nostr` shim with the dave key), NIP-46 (a local NIP-46 bunker on a
+loopback test relay, `bunker://` URI pasted into the deployed page), and the
+passkey path (button renders + unlock path reachable once a stored identity
+exists; WebAuthn PRF attestation is the documented headless limitation).
+Each end-to-end flow mints the passwordless `yunohost.portal` cookie as
+`dave`, renders the post-login dashboard, and the SSO-protected test app
+launches with that session. Browser-flow bugs found and fixed in the portal
+fork: the auth guard treated `/nostr-login` as a non-login route, the Nuxt
+`/yunohost/sso` baseURL double-prefixed the portalapi `$fetch`, the NIP-44
+vendor IIFE clobbered its own global, and the passkey button raced the
+deferred vendor script (fork `a18c53e`). NIP-46 also required the SSO CSP to
+allow `connect-src ws: wss:` for the remote signer relay (fork `yunohost_sso.conf.inc`).
+
+Remaining §8 client work: `/nostr-account` (saved signer management UI) and
+a real extension-capable browser session to exercise passkey attestation and
+the redesigned app grid visually.
 
 Recommended browser-side Nostr stack: `@nostr/tools`; NDK where relay
 functionality is required.
@@ -1280,7 +1297,7 @@ on identity, policy and execution semantics, which now exist.
 4.  Capability / delegation events                          ✅
 5.  Approval + execution events (structured ops + state machine) ✅
 6.  nostrhost-state Stage A            (ngit / NIP-34)      ✅   (Stage A + B complete)
-7.  Portal Nostr authentication (+ native session creation) ◑  (server + client deployed; NIP-46/passkey pending)
+7.  Portal Nostr authentication (+ native session creation) ◑  (all three signer flows browser-proven; /nostr-account + saved signer mgmt + real-browser passkey pending)
 8.  Restic linkage + known-good + assisted rollback (Stage B) ✅  (registry-bounded execution, chain-gated, testbed-validated)
 9.  Admin interface                                         ⏳
 10. Native catalogue (sync + trust events)                  ✓ (trusted projection, relay sync, attestations, and YunoHost integration)
@@ -1310,11 +1327,11 @@ and native session creation.
 ✓ forked Portal
 ✓ control plane standing (local relay + event model)
 ✓ identity events + projection (npub ↔ YunoHost mapping via relay)
-⏳ native Nostr login
-⏳ NIP-07
-⏳ NIP-46
-⏳ passkeys
-⏳ native session creation
+✓ native Nostr login           (passwordless; browser-proven on the testbed)
+✓ NIP-07
+✓ NIP-46                        (local bunker; SSO CSP allows ws relay)
+✓ passkeys                      (UI + unlock path; WebAuthn attestation pending a real browser)
+✓ native session creation       (passwordless yunohost.portal cookie)
 ✓ existing YunoHost apps work
 ✓ password recovery remains available
 ```
