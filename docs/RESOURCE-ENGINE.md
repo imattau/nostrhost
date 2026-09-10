@@ -20,7 +20,8 @@ nostrhost-package migrate existing-app/manifest.toml --output package.toml
 ```
 
 Migration is explicit and declarative-only. The migration command converts
-supported YunoHost v2 resources, but refuses packages containing imperative
+supported YunoHost v2 resources including ports, Portal permissions, database
+declarations, runtimes, config, settings, and backup inputs, but refuses packages containing imperative
 install, upgrade, remove, backup, or restore scripts. Those packages must be
 converted before they can enter the native engine.
 
