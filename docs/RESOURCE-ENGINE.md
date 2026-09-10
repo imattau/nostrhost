@@ -33,5 +33,8 @@ units. `NativeOperationExecutor` dispatches only registered providers, leaving
 privileged policy and approval at the existing NostrHost executor boundary.
 
 APT, database, Caddy, secrets, backup, user/sysusers, and tmpfiles providers
-will use this same registry; they are intentionally not silently implemented
-through legacy helper commands.
+use this same registry; timers, health checks, typed settings, and backup
+declarations are also native providers. They are intentionally not silently
+implemented through legacy helper commands. Runtime installation remains the
+next provider boundary because each runtime needs a package-manager-specific
+installation strategy.
