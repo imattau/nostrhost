@@ -619,10 +619,10 @@ to multiple external relays; Git object storage uses ordinary Git/GRASP-style
 storage without making a central forge authoritative.
 
 ### Stage D: declarative reconciliation
-Only once the state schema and executor are proven should merged desired-state
-changes be automatically reconciled. Avoid Kubernetes-like complexity: a
-single-server NostrHost installation has one straightforward reconciliation
-process.
+Compare the committed semantic state with live YunoHost state, classify drift
+by risk, and apply only bounded, policy-approved operations. Unsupported drift
+remains manual; avoid Kubernetes-like complexity: a single-server NostrHost
+installation has one straightforward reconciliation process.
 
 ---
 
@@ -921,13 +921,13 @@ forge becomes authoritative.
 
 ---
 
-# 16. Declarative Reconciliation (Stage D) — ⏳
+# 16. Declarative Reconciliation (Stage D) — ✓
 
-Only once the state schema and executor are proven (§6–§7) should merged
-desired-state changes be automatically reconciled. Avoid Kubernetes-like
-complexity: a single-server NostrHost installation has one straightforward
-reconciliation process, still routed through `nostrhost-policy` (§7.8) — a
-valid repository change never bypasses policy.
+The reconciler compares the clean committed semantic state with live YunoHost
+state and emits low/medium/high-risk changes. Bounded service and application
+changes can be submitted as `state.reconcile` operations and require the
+existing scope plus administrator approval; unsupported changes remain
+manual. A valid repository change never bypasses `nostrhost-policy` (§7.8).
 
 ---
 
@@ -1286,7 +1286,7 @@ on identity, policy and execution semantics, which now exist.
 12. MCP adapter                                             ✅
 13. OIDC                                                    ⏳
 14. ngit replication / disaster recovery (Stage C)          ◑ (multi-relay NIP-34 announcement publication landed; repository/object replication remains)
-15. Declarative reconciliation (Stage D)                    ⏳
+15. Declarative reconciliation (Stage D)                    ✓ (risk-classified plans + approval-gated bounded apply)
 16. Distribution release                                    ⏳
 17. Platform simplification (native messaging, mail          ⏳
     retirement, host security)
