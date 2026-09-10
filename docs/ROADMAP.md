@@ -1285,7 +1285,7 @@ on identity, policy and execution semantics, which now exist.
 11. SSO simplification                                      ⏳
 12. MCP adapter                                             ✅
 13. OIDC                                                    ⏳
-14. ngit replication / disaster recovery (Stage C)          ⏳
+14. ngit replication / disaster recovery (Stage C)          ◑ (multi-relay NIP-34 announcement publication landed; repository/object replication remains)
 15. Declarative reconciliation (Stage D)                    ⏳
 16. Distribution release                                    ⏳
 17. Platform simplification (native messaging, mail          ⏳
@@ -1375,7 +1375,7 @@ The first release of this layer stops short of fully automatic reconciliation.
 ◑ NGINX auth_request compatibility endpoint (internal subrequest wiring, reusable app include, portal session validation, and identity headers landed; generated server-level routing is required before per-app adoption)
 ◑ reduced/simplified SSOwat (guarded identity mode and per-permission migration contract exist; disabled until an application opts in with matching NGINX routing)
 ◑ compatibility headers (X-Remote-* and linked X-Nostr-* headers available from auth-request; X-Remote-* also passed by legacy SSOwat when `auth_header` is enabled)
-◑ OIDC provider (discovery/JWKS/authorization-code bridge and userinfo are live and VM-proven; client-management and signing-key rotation remain)
+◑ OIDC provider (discovery/JWKS/authorization-code bridge and userinfo are live and VM-proven; client-management and signing-key rotation deferred)
 ```
 
 ## 1.0 - Native Distribution
@@ -1387,7 +1387,7 @@ The first release of this layer stops short of fully automatic reconciliation.
 ✓ MCP native (adapter)                    (adapter ◑)
 ✓ Nostr approvals native
 ⏳ state native (ngit / NIP-34 repo + assisted rollback + DR)
-⏳ OIDC compatibility
+◑ OIDC compatibility (deferred after the VM-proven bridge)
 ⏳ `_ynh` bridge packages no longer required
 ⏳ tested derivative upgrade path
 ⏳ release repository and installer
