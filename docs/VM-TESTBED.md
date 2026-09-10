@@ -344,6 +344,26 @@ authenticator remains responsible for cookie, host, allow-list, and session
 file validation. Application-specific `auth_request` adoption remains the
 next step.
 
+## OIDC compatibility bridge (2026-09-10)
+
+The portal API now exposes a minimal standards-shaped OIDC bridge at
+`/.well-known/openid-configuration`, `/oidc/authorize`, `/oidc/token`,
+`/oidc/userinfo`, and `/oidc/jwks.json`. NGINX routes these paths directly to
+the portal API and the legacy SSOwat access hook exempts only these exact
+compatibility paths. Discovery and JWKS were verified live on the VM (`200`;
+HTTPS issuer; RSA/RS256 signing key). A disposable configured client was then
+used for the complete portal-session → authorization-code → token → userinfo
+flow; the ID token was returned as RS256 JWT and userinfo resolved to the
+YunoHost `matt` account. The session fixture had to be owned by `ynh-portal`,
+matching real portal-created sessions.
+
+Clients are explicit entries in `/etc/nostrhost/oidc.toml`, with exact
+redirect-URI matching and client-secret authentication. Authorization codes
+are single-use and short-lived, and the subject comes from the existing
+YunoHost portal session rather than a second identity database. The remaining
+work is client-management UX and production provisioning/rotation of the
+signing key.
+
 The YunoHost fork ships `conf/nginx/nostrhost_auth_request_params`, an opt-in
 include for application locations. It invokes the internal endpoint, copies
 the returned identity into upstream request headers, and overwrites any
