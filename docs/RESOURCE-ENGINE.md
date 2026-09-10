@@ -53,3 +53,7 @@ package-manager-specific strategy.
 
 Caddy route removal requires an explicit native configuration builder and is
 submitted through the same validated `/load` endpoint as route creation.
+
+Backup resources persist validated `nostrhost-backup-v1` manifests. The
+provider registers filesystem/database inputs but deliberately leaves the
+Restic repository and credential data plane to host policy.
