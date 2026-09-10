@@ -47,10 +47,10 @@ Classification per dependency, per roadmap §18.7:
 | 6 | MX / SPF / DMARC domain-config assumptions | yunohost core `domain` commands, DNS template generation | Make optional | DNS templates currently assume every domain sends mail. |
 | 7 | Mandatory mailbox per user (`yunohost user create`) | yunohost core `user.py` | Remove entirely | Superseded by §18.3 (npub-centred identity); a Unix-compatible username may remain without a mailbox. |
 | 8 | `root@`/`admin@` aliases to first user | yunohost core | Retain (compatibility) | Only meaningful once mail is installed; kept as alias config, not a mailbox requirement. |
-| 9 | Certificate expiry/renewal notifications | yunohost core `certificate` diagnosis + cron | Replace with Nostr notification | Currently mailed to the admin alias; becomes a structured `update available`/security-class event (§18.1). |
-| 10 | Backup completion/failure notifications | yunohost core `backup` hooks | Replace with Nostr notification | Maps directly to the "backup result" event class in §18.1. |
-| 11 | Diagnosis mail-category checks (`mail_config`, `mail_dns`, etc.) | yunohost core `diagnosers/` | Make optional | Should only run when the mail stack is installed; otherwise these are false-positive noise. |
-| 12 | System cron/systemd mail output (`MAILTO=`, sendmail-based cron mail) | yunohost core system config | Replace with Nostr notification | Route through the notification service instead of local `sendmail`. |
+| 9 | Certificate expiry/renewal notifications | `forks/yunohost` `src/certificate.py` `_email_renewing_failed()`, cron `yunohost-certificate-renew` | Replace with Nostr notification | **Done** — also publishes a kind-2210 `certificate` notice (`nostr-mail-stack-removal-phase2` PR). Mail send itself untouched (still default at this phase). |
+| 10 | Backup completion/failure notifications | yunohost core `backup` hooks | Replace with Nostr notification | **No existing mail producer found** in `forks/yunohost` (`src/backup.py`/`src/utils/*` have no `smtplib`/mail-notify call) — nothing to migrate here; if this gets added later it should publish a kind-2212 `backup` notice directly rather than mailing first. |
+| 11 | Diagnosis mail-category checks (`mail_config`, `mail_dns`, etc.) | yunohost core `diagnosers/` | Make optional | Should only run when the mail stack is installed; otherwise these are false-positive noise. Not started. |
+| 12 | System cron/systemd mail output (`MAILTO=`, sendmail-based cron mail) | `forks/yunohost` `src/diagnosis.py` `_email_diagnosis_issues()`, cron `yunohost-diagnosis` | Replace with Nostr notification | **Done** — same call site as row 9's diagnosis email; now also publishes a kind-2210 `diagnosis` notice. |
 | 13 | Admin (webadmin) mail-status widgets and mail settings pages | `forks/admin` | Make optional | UI should hide/disable mail panels when the stack isn't installed. |
 | 14 | SSO/Portal identity assumptions (login by email, password reset by email) | `forks/portal`, `forks/ssowat` | Remove entirely (long-term) | Superseded by Nostr-native login (§4, §18.3); email becomes optional contact metadata. |
 | 15 | App packaging helpers assuming a local mailbox/SMTP relay exists | YunoHost app helpers (`ynh_*` mail helpers) consumed by installed apps | Retain (compatibility) | Apps that genuinely need mail should be pointed at an external SMTP provider or an optional local mail app, not assume the platform provides one. |
@@ -77,7 +77,10 @@ sequencing. Phases below track that ordering:
 3. **Phase 2 — Migrate internal notification dependencies.** Re-point
    certificate, backup, and cron/systemd notifications (rows 9, 10, 12) at
    the notification service. Mail stack still installed by default at this
-   point; this phase only removes *internal* reliance on it.
+   point; this phase only removes *internal* reliance on it. Implemented for
+   rows 9 and 12 (certificate renewal and diagnosis-cron mail both now also
+   publish a structured notice); row 10 turned out to have no existing mail
+   producer to migrate. See `imattau/nostrhost-yunohost#1`.
 4. **Phase 3 — Make email optional.** Change the default install profile so
    Postfix/Dovecot/Rspamd/DKIM (rows 1-6) are an optional package group
    rather than base install; gate the mail diagnosis checks (row 11) on
@@ -102,7 +105,7 @@ sequencing. Phases below track that ordering:
 |---|---|
 | 0 — Inventory | ⏳ in progress (this document) |
 | 1 — Native notification service | ✓ implemented in `nostrhost-control` (`nostrhost-notify` binary, branch `claude/mail-stack-removal-notify-service`); see `docs/NOTIFICATION-SERVICE.md` |
-| 2 — Migrate internal notifications | ⏳ not started |
+| 2 — Migrate internal notifications | ✓ done (rows 9, 12; row 10 had nothing to migrate) — `imattau/nostrhost-yunohost#1`, branch `claude/mail-stack-removal-phase2` |
 | 3 — Make email optional | ⏳ not started |
 | 4 — Remove mandatory mailbox | ⏳ not started |
 | 5 — Identity model follow-through | ⏳ not started |
