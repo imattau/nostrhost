@@ -50,3 +50,6 @@ implemented through legacy helper commands. Runtime resources now verify the
 selected native executable and version with bounded argv-based execution;
 installation remains host-policy-owned because each runtime needs a
 package-manager-specific strategy.
+
+Caddy route removal requires an explicit native configuration builder and is
+submitted through the same validated `/load` endpoint as route creation.
