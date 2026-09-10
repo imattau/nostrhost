@@ -12,6 +12,11 @@ backups, settings, secrets, and restricted Python hooks. Native packages use
 the `source` table (`source.main`, `source.plugins`, etc.). There is no Bash or
 legacy-script capability in this engine.
 
+`plan_package_removal()` produces a reverse-order lifecycle plan from the
+same manifest. It reverses only explicitly owned resources; shared APT
+dependencies and runtimes are retained, and database removal remains a
+high-risk operation subject to backup policy.
+
 ```sh
 nostrhost-package plan packages/nostrhost-native-example/package.toml
 nostrhost-package plan packages/nostrhost-native-example/package.toml --json
