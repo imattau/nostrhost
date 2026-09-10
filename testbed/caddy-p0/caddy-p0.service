@@ -1,0 +1,19 @@
+[Unit]
+Description=Caddy P0 spike (nginx->caddy migration)
+Documentation=file:/home/lostcause/workspace/nostrhost/docs/CADDY-MIGRATION.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/opt/caddy-p0/caddy run --config /etc/caddy-p0/Caddyfile
+ExecReload=/opt/caddy-p0/caddy reload --config /etc/caddy-p0/Caddyfile
+Restart=on-failure
+RestartSec=2
+LimitNOFILE=1048576
+# spike runs as root: binds and reads /usr/share/yunohost/{portal,admin,applogos}
+User=root
+Group=root
+
+[Install]
+WantedBy=multi-user.target

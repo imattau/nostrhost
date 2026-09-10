@@ -1,0 +1,69 @@
+# Caddy P0 spike results
+
+Date: 2026-09-10. Branch: `feat/nginx2caddy`. Plan:
+[CADDY-MIGRATION.md](CADDY-MIGRATION.md) §5 P0.
+
+Goal: prove a stock Caddy build with `caddy-l4` can serve the portal, admin,
+and the API/portalapi/OIDC proxies on alternate ports, with `tls internal` for
+`nostrhost.test`, **without disturbing the nginx instance on 80/443**.
+
+## Build
+
+- `xcaddy` v0.4.7, Go 1.22.2, Caddy **v2.11.4**.
+- `caddy-l4` compiled in (`caddy listen-modules` reports `layer4.*`; 180
+  modules total).
+- `GOFLAGS=-buildvcs=false` is required: xcaddy builds in a temp dir where
+  Go's VCS stamping fails.
+- Reproducible via `testbed/caddy-p0/build.sh`.
+
+## VM layout (spike)
+
+| Path | Purpose |
+|---|---|
+| `/opt/caddy-p0/caddy` | spike binary |
+| `/etc/caddy-p0/Caddyfile` | spike config (`testbed/caddy-p0/Caddyfile`) |
+| `/etc/systemd/system/caddy-p0.service` | spike unit (`testbed/caddy-p0/caddy-p0.service`) |
+
+Ports: **8080** (HTTP→HTTPS redirect), **8443** (HTTPS), **2019** (admin API,
+loopback only). nginx still owns 80/443.
+
+`tls internal` issued a certificate from *Caddy Local Authority - ECC
+Intermediate* (no ACME; that is P2).
+
+## Results
+
+Requests used `curl -k --resolve nostrhost.test:8443:127.0.0.1`.
+
+| Path | Result |
+|---|---|
+| `/yunohost/sso/` | **200**, SPA served |
+| `/yunohost/sso/assets/<hash>.js` | **200** |
+| `/yunohost/sso` (no slash) | **301** → `/yunohost/sso/` |
+| `/yunohost/admin/` | **200** |
+| `/yunohost/api/` | **405** (proxy reaches Moulinette; GET on a POST-only root) |
+| `/yunohost/portalapi/nostr/challenge` | **200** `{"challenge": "..."}` |
+| `/.well-known/openid-configuration` | **200** |
+| `http://nostrhost.test:8080/` | **308** → HTTPS |
+
+`caddy validate` passes; the unit is `active` and `enabled`.
+
+## Notes / follow-ups for P1
+
+1. Curl must match the site name (SNI/Host); a bare `127.0.0.1` request is not
+   served because there is no default site. P1 should decide whether to add a
+   catch-all.
+2. The 8080→HTTPS redirect emitted `https://nostrhost.test/` without `:8443`.
+   Confirm redirect-host/port behaviour before the real cutover.
+3. **No authentication yet.** Caddy currently serves the portal and proxies
+   the API with SSOwat entirely bypassed; `forward_auth` is P3. Do not expose
+   these ports publicly.
+4. The admin API is bound to loopback only and is unauthenticated on that
+   interface (Caddy default); treat it as root-equivalent.
+5. Spike runs as root; the production unit should drop privileges and use a
+   dedicated `caddy` user with read access to the served paths.
+
+## Gate status
+
+- Caddy binary reproducible: **yes** (`testbed/caddy-p0/build.sh`).
+- Spike notes committed: **yes** (this file).
+- P1 (portal e2e against Caddy) not yet run.

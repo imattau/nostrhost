@@ -1,0 +1,56 @@
+{
+	admin 127.0.0.1:2019
+	http_port 8080
+	https_port 8443
+}
+
+# P0 spike: nostrhost.test on alt ports so nginx keeps 80/443.
+# tls internal = Caddy's local CA (no ACME yet; that is P2).
+nostrhost.test {
+	tls internal
+
+	redir /yunohost/sso /yunohost/sso/ permanent
+	redir /yunohost/admin /yunohost/admin/ permanent
+
+	# applogos live outside the portal build dir
+	handle_path /yunohost/sso/applogos/* {
+		root * /usr/share/yunohost/applogos
+		file_server
+	}
+
+	# portal SPA (served at /yunohost/sso/ by nginx today)
+	handle_path /yunohost/sso/* {
+		root * /usr/share/yunohost/portal
+		try_files {path} /index.html
+		file_server
+	}
+
+	# admin SPA
+	handle_path /yunohost/admin/* {
+		root * /usr/share/yunohost/admin
+		try_files {path} /index.html
+		file_server
+	}
+
+	# yunohost-api (Moulinette)
+	handle_path /yunohost/api/* {
+		reverse_proxy 127.0.0.1:6787
+	}
+
+	# portal-api (nostr login / auth-request / oidc)
+	handle_path /yunohost/portalapi/* {
+		reverse_proxy 127.0.0.1:6788
+	}
+
+	handle /.well-known/openid-configuration {
+		reverse_proxy 127.0.0.1:6788
+	}
+
+	handle /oidc/* {
+		reverse_proxy 127.0.0.1:6788
+	}
+
+	handle {
+		respond "nostrhost caddy P0 spike" 200
+	}
+}
