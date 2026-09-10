@@ -980,6 +980,9 @@ is a clear operational benefit.
 
 ## 18.1 Native Nostr messaging and notifications
 
+See `docs/NOTIFICATION-SERVICE.md` for the working design of this service —
+architecture, event classes, policy schema and delivery mechanics.
+
 NostrHost should not depend on email as its native notification mechanism.
 Platform notifications should originate as structured local events and, where
 human delivery is required, be delivered through encrypted Nostr messaging.

@@ -72,7 +72,8 @@ sequencing. Phases below track that ordering:
 2. **Phase 1 — Native notification service (§18.1).** Land the
    event → private-relay → notification-service → encrypted Nostr message
    pipeline. Nothing in mail retirement can proceed before this exists,
-   since it is the replacement channel for rows 9, 10 and 12 above.
+   since it is the replacement channel for rows 9, 10 and 12 above. Design
+   in progress: `docs/NOTIFICATION-SERVICE.md`.
 3. **Phase 2 — Migrate internal notification dependencies.** Re-point
    certificate, backup, and cron/systemd notifications (rows 9, 10, 12) at
    the notification service. Mail stack still installed by default at this
@@ -100,7 +101,7 @@ sequencing. Phases below track that ordering:
 | Phase | Status |
 |---|---|
 | 0 — Inventory | ⏳ in progress (this document) |
-| 1 — Native notification service | ⏳ not started |
+| 1 — Native notification service | ⏳ in progress (see `docs/NOTIFICATION-SERVICE.md`) |
 | 2 — Migrate internal notifications | ⏳ not started |
 | 3 — Make email optional | ⏳ not started |
 | 4 — Remove mandatory mailbox | ⏳ not started |
