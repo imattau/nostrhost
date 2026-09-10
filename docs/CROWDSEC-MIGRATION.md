@@ -82,11 +82,11 @@ and be surfaced as a NostrHost setting, not silently enabled by the
 | Component | Action |
 |---|---|
 | `forks/yunohost/conf/fail2ban/*` | **Retire** once cutover completes; content ported to CrowdSec `acquis.yaml` + parsers/scenarios below |
-| `yunohost.conf` / `yunohost-portal.conf` filters | **Port** to custom CrowdSec parsers (`nostrhost-yunohost-auth.yaml`, `nostrhost-portal-auth.yaml`) — same detection logic, but rewritten for **Caddy's** log output (nginx is retired; the old regexes were nginx-format), YAML parser DSL instead of fail2ban's filter format |
-| `postfix-sasl.conf` | **Port**; likely covered by `crowdsecurity/postfix` collection, verify SASL variant is included or needs a local parser override |
-| `hooks/conf_regen/52-fail2ban` | **Replace** with `hooks/conf_regen/52-crowdsec` rendering `acquis.yaml`, local parsers/scenarios, and bouncer config |
+| `yunohost.conf` / `yunohost-portal.conf` filters | **Done (P1).** Ported to **scenario-level path filters** (`nostrhost-yunohost-auth-bf.yaml`, `nostrhost-yunohost-portal-auth-bf.yaml`) — not custom parsers (local parsers don't load, §8.6). Same detection logic, rewritten for Caddy's log output via the `caddy-logs` metas |
+| `postfix-sasl.conf` | **Done (P1).** `nostrhost-postfix-sasl-bf.yaml` reuses the `crowdsecurity/postfix` collection's `postfix-logs` parser; narrows with `log_type_enh == 'spam-attempt' && evt.Parsed.message_failure != ''` (no parser override needed) |
+| `hooks/conf_regen/52-fail2ban` | **Done (P2).** Replaced with `hooks/conf_regen/52-crowdsec` rendering `acquis.yaml` + installing local scenarios + reloading `crowdsec` (bouncer config deferred to P4) |
 | `conf/fail2ban/systemd-override-bind-nftables.conf` | **Replace**: `crowdsec-firewall-bouncer` ships its own nftables binding; verify ordering against `nftables.service` the same way |
-| `src/settings.py:349-353` (`reconfigure_ssh_and_fail2ban`) | **Rename/rework** to regen CrowdSec's sshd acquisition (port is read from journald unit, not a jail `port=` field — likely simplifies, may become a no-op) |
+| `src/settings.py:349-353` (`reconfigure_ssh_and_fail2ban`) | **Done (P2).** Renamed `reconfigure_ssh_and_crowdsec`; `ssh_port` change regens `["ssh", "crowdsec"]`. sshd acquisition is a journald unit (port-agnostic), so crowdsec regen is a consistency no-op |
 | `conf/yunohost/services.yml` fail2ban entry | **Replace** with `crowdsec` (`cscli version`/`systemctl status crowdsec` as `test_conf` equivalent — CrowdSec has no config-syntax-check CLI equivalent to `fail2ban-server --test`; use `cscli hub list` sanity or a wrapper). The `caddy` entry stays; the retired `nginx` entry is already gone |
 | `helpers/helpers.v1.d/fail2ban`, `helpers.v2.1.d/fail2ban` | **Leave untouched.** Not reimplemented, not extended to target CrowdSec. Stays fail2ban-only, exactly as `RESOURCE-ENGINE-CUTOVER.md` already treats the helper tree — a legacy surface removable only when "no installed or supported package... sources the helper tree." CrowdSec is deliberately *not* added as a second bash-helper backend; see the "App-packaging integration" row in §1 |
 | `src/nostrhost/package_engine.py:349` `PolicyResource.type` | **Extend**: `Literal["fail2ban", "crowdsec", "logrotate"]`. No transition/drop step needed for `"fail2ban"` — it has no live consumer (§2) — but the literal is left in place since removing it is `RESOURCE-ENGINE-CUTOVER.md`'s call, not this plan's |
@@ -181,12 +181,23 @@ its phase gate" pattern.
   fired a `ban` after capacity rapid 401 logins on its own path (see §8.6).
 
 ### P2 — acquis.yaml + regenconf
-- Write `hooks/conf_regen/52-crowdsec`: renders `acquis.yaml` (journald units
-  for sshd/postfix/dovecot/PAM + the Caddy unit — or a file path if P1's
-  spike adds a `log` directive — replacing today's `/var/log/nginx` logpath
-  entries), installs the local parsers/scenarios from P1, reloads `crowdsec`.
-- Wire `settings.py` (`ssh_port` post-change hook) to regen the relevant
-  acquisition, not the whole jail set.
+- **Done:** `hooks/conf_regen/52-crowdsec` replaces `52-fail2ban`. In
+  `pre_regen` it renders `acquis.yaml` and installs the packaged local
+  scenarios to `/etc/crowdsec/scenarios/`; in `post_regen` it chmod/chowns
+  and `systemctl reload crowdsec` only when files actually changed. The base
+  hub collections that provide the required parsers
+  (`crowdsecurity/caddy`, `/sshd`, `/postfix`, `/linux`) are installed at
+  package install time, not by the hook.
+- **Done:** `conf/crowdsec/acquis.yaml` (static — no render variables needed).
+  Sources: Caddy access log `/var/log/caddy/access.log` as `type: caddy`
+  (a **file** path, since P1's `log` directive is in effect, replacing the
+  nginx logpath entries); sshd/postfix/dovecot as journald units; and
+  `/var/log/auth.log` + `/var/log/syslog` as `type: syslog`.
+- **Done:** `src/settings.py` — `reconfigure_ssh_and_fail2ban` renamed to
+  `reconfigure_ssh_and_crowdsec`; `ssh_port` change now regens
+  `["ssh", "crowdsec"]`. The sshd acquisition is a journald unit
+  (port-agnostic), so the regen mainly rewrites sshd config; crowdsec regen
+  is kept for consistency.
 - CrowdSec still runs detect-only (no bouncer); compare its decisions log
   against fail2ban's actual bans over a soak period.
 - Gate: decisions generated by CrowdSec for real traffic match fail2ban bans
@@ -319,7 +330,7 @@ notice pipeline, so P5 proves the mail-stack removal end to end. There is
 
 | Artifact | Purpose |
 |---|---|
-| `forks/yunohost/conf/crowdsec/acquis.yaml.tpl` | Log/journald acquisition template (rendered by the regen hook) — Caddy-unit/file acquisition, not nginx |
+| `forks/yunohost/conf/crowdsec/acquis.yaml` | Acquisition sources (rendered by the regen hook) — Caddy access log as `type: caddy` (file, since P1's `log` directive writes `/var/log/caddy/access.log`) plus sshd/postfix/dovecot journald units and auth.log/syslog as `type: syslog`; replaces the retired nginx logpath entries |
 | `forks/yunohost/conf/crowdsec/scenarios/nostrhost-yunohost-auth-bf.yaml` | Port of `yunohost.conf` filter as a leaky scenario (capacity 10 / leakspeed 60s) on Caddy metas |
 | `forks/yunohost/conf/crowdsec/scenarios/nostrhost-yunohost-portal-auth-bf.yaml` | Port of `yunohost-portal.conf` filter (capacity 20 / leakspeed 30s) |
 | `forks/yunohost/conf/crowdsec/scenarios/nostrhost-postfix-sasl-bf.yaml` | Port of `postfix-sasl.conf` (`[sasl]` jail) — reuses `postfix-logs` parser; capacity 5 / leakspeed 120s |
@@ -599,3 +610,19 @@ unchanged). Two packaging facts established here:
   `distinct: evt.Meta.source_ip` alongside `groupby: evt.Meta.source_ip` pins
   each bucket's distinct count at 1, so the leaky bucket never reaches
   capacity. Removed `distinct`; scenarios then fired as expected.
+
+### 8.7 P2 acquisition validation (regen `acquis.yaml`)
+
+Applied the packaged `conf/crowdsec/acquis.yaml` and the three scenarios to
+the Debian 12 test host (CrowdSec 1.4.6) and restarted `crowdsec`; it came up
+clean (only the expected offline CAPI-credentials warning). Appending 12×
+`POST /yunohost/api/login` 401 lines to the live `/var/log/caddy/access.log`
+produced:
+
+| Source | Result |
+|---|---|
+| Caddy file acquisition (`type: caddy` on `/var/log/caddy/access.log`) | `nostrhost/yunohost-auth-bf` fired after 11 events; **ban** decision — confirms the file-path acquisition flows through `caddy-logs` into the scenario |
+| sshd/postfix/dovecot journald + auth.log/syslog sources | loaded with no errors; `type: syslog` sources inert until real traffic |
+
+All `nostrhost/*` scenarios listed as `enabled,local`; the `crowdsecurity/caddy`
+collection (and its `caddy-logs` parser) is installed alongside.
