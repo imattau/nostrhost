@@ -1,0 +1,72 @@
+{
+	admin 127.0.0.1:2019
+	http_port 8080
+	https_port 8443
+	storage file_system {
+		root /var/lib/caddy
+	}
+	acme_ca https://127.0.0.1:14000/dir
+}
+
+# P2: default domain -- minimal site so Caddy obtains a cert and certd exports
+# it to /etc/yunohost/certs/yunohost.org for slapd (LDAP).
+yunohost.org {
+	handle {
+		respond "default domain (caddy P2)" 200
+	}
+}
+
+# P2 spike: nostrhost.test via the Pebble test CA (127.0.0.1:14000).
+# HTTP-01 is served on Caddy's HTTP listener (:8080); Pebble's VA is
+# configured with httpPort 8080 and resolves the names to 127.0.0.1 via
+# /etc/hosts, so validation stays on loopback and never touches nginx.
+nostrhost.test {
+	redir /yunohost/sso /yunohost/sso/ permanent
+	redir /yunohost/admin /yunohost/admin/ permanent
+
+	handle_path /yunohost/sso/applogos/* {
+		root * /usr/share/yunohost/applogos
+		file_server
+	}
+
+	handle_path /yunohost/sso/* {
+		root * /usr/share/yunohost/portal
+		try_files {path} /index.html
+		file_server
+	}
+
+	handle_path /yunohost/admin/* {
+		root * /usr/share/yunohost/admin
+		try_files {path} /index.html
+		file_server
+	}
+
+	handle_path /yunohost/api/* {
+		reverse_proxy 127.0.0.1:6787
+	}
+
+	handle_path /yunohost/portalapi/* {
+		reverse_proxy 127.0.0.1:6788
+	}
+
+	handle /.well-known/openid-configuration {
+		reverse_proxy 127.0.0.1:6788
+	}
+
+	handle /oidc/* {
+		reverse_proxy 127.0.0.1:6788
+	}
+
+	handle /nostrhost-test-catalog/* {
+		reverse_proxy https://127.0.0.1:443 {
+			header_up Host nostrhost.test
+			transport http {
+				tls_insecure_skip_verify
+			}
+		}
+	}
+
+	handle {
+		respond "nostrhost caddy P2 ACME spike" 200
+	}
+}

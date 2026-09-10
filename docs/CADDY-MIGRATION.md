@@ -32,7 +32,7 @@ status); those gates still apply.
 | App routing | `ynh_add_nginx_config` → `/etc/nginx/conf.d/<domain>.d/<app>.conf` | `helpers/helpers.v1.d/nginx`, `helpers/helpers.v2.1.d/nginx` |
 | Service health | `nginx -t` as `test_conf` | `conf/yunohost/services.yml:17`, `src/service.py:259-295`, `494-496` |
 | Security/logs | `more_set_headers`, fail2ban nginx jails | `conf/nginx/security.conf.inc`, `conf/fail2ban/yunohost-jails.conf` |
-| Cert consumers | nginx **and** postfix, dovecot, slapd | `conf/postfix/main.cf:26-30`, `conf/dovecot/dovecot.conf:21-27`, `conf/slapd/config.ldif:53-54` |
+| Cert consumers | nginx **and** slapd (LDAP); postfix/dovecot retired | `conf/slapd/config.ldif:53-54` |
 | Admin/API/portal/OIDC | nginx `location` blocks | `conf/nginx/yunohost_admin.conf.inc`, `yunohost_api.conf.inc`, `yunohost_sso.conf.inc` |
 | TLS passthrough | nginx `stream` + `ssl_preread` | `conf/nginx/tls_passthrough.conf`, `tls_passthrough_server.conf` |
 
@@ -57,7 +57,7 @@ Caddy (public 80/443, 443/udp HTTP/3; admin API 127.0.0.1:2019)
  ├─ reverse_proxy → yunohost-api:6787, portalapi:6788, OIDC, native upstreams
  ├─ file_server → /yunohost/sso, /yunohost/admin (SPA fallback)
  ├─ [transitional] reverse_proxy → nginx 127.0.0.1:8080 (quarantined legacy apps)
- └─ nostrhost-certd: export certs → /etc/yunohost/certs → reload postfix/dovecot/slapd
+ └─ nostrhost-certd: export certs → /etc/yunohost/certs → reload slapd (LDAP)
 ```
 
 The semantic state model already reserves the relevant sections
@@ -109,18 +109,28 @@ Each phase has a gate. nginx keeps the public ports until Phase 6.
 - Gate: portal e2e green on Caddy.
 
 ### P2 — ACME and cert export
+- Status: **passed on the VM** — see [CADDY-P2-SPIKE.md](CADDY-P2-SPIKE.md).
+  Issuance + renewal exercised against the Pebble test CA (loopback HTTP-01);
+  `nostr_certd` exports Caddy's store into `/etc/yunohost/certs` and slapd
+  serves the exported cert over LDAPS.
 - Enable automatic HTTPS; use the Let's Encrypt staging CA first
   (`acme_ca`), then production.
 - Implement `nostrhost-certd`: watch Caddy's cert store, atomically export
   `<domain>/{crt,key}.pem` to `/etc/yunohost/certs`, fire the existing
-  `post_cert_update` hook, reload postfix/dovecot/slapd.
-- Re-point `certificate_status`/`_get_status` at Caddy/exported state; retire
-  `_certificate_install_letsencrypt`, `certificate_renew`,
+  `post_cert_update` hook, **restart** slapd (LDAP). postfix/dovecot are
+  already retired, so slapd is the sole non-web consumer today. Note: OpenLDAP
+  caches the TLS material at process start, so `systemctl reload` is not
+  enough — certd restarts it.
+- Re-point `certificate_status`/`_get_status` at Caddy/exported state
+  (achieved by certd feeding the standard store; the read path is unchanged).
+  Retire `_certificate_install_letsencrypt`, `certificate_renew`,
   `_fetch_and_enable_new_certificate`, `vendor/acme_tiny`, and the self-signed
-  issuance path.
+  issuance path — **deferred to P5/P6** (kept intact-but-superseded until
+  domain/ACME policy moves into Caddy).
 - Keep `conf/nginx`-independent bootstrap for the `yunohost.org` default
-  server via `tls internal`.
-- Gate: a certificate is obtained and renewed; mail TLS still validates.
+  server via `tls internal` (P2 spike also obtains + exports it via the test CA).
+- Gate: a certificate is obtained and renewed; slapd (LDAP) TLS serves the
+  exported Caddy-owned certificate. **Met on the VM.**
 
 ### P3 — Auth cutover
 - Extend the existing auth-request endpoint
@@ -190,9 +200,10 @@ Each phase has a gate. nginx keeps the public ports until Phase 6.
    for the same route.
 2. **`/load` semantics.** Whole-config replacement clobbers ACME/runtime
    state; use `@id`-tagged incremental admin-API mutations.
-3. **Cert export atomicity** for mail/LDAP; write-then-rename and reload only
-   on change. Mail retirement ([MAIL-RETIREMENT.md](MAIL-RETIREMENT.md))
-   shrinks this surface if it lands first.
+3. **Cert export atomicity** for LDAP; write-then-rename and reload only
+   on change. postfix/dovecot are already removed
+   ([MAIL-RETIREMENT.md](MAIL-RETIREMENT.md)); slapd is the only non-web
+   consumer, so the export surface is small.
 4. **Packaging on bookworm.** No distro Caddy with `caddy-l4`; the derivative
    must ship a reproducible `xcaddy` build via the source provider.
 5. **Legacy shim drift.** The shim must stay quarantined (loopback only) and

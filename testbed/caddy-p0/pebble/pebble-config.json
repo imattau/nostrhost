@@ -1,0 +1,19 @@
+{
+  "pebble": {
+    "listenAddress": "0.0.0.0:14000",
+    "managementListenAddress": "0.0.0.0:15000",
+    "certificate": "/etc/pebble/tls/cert.pem",
+    "privateKey": "/etc/pebble/tls/key.pem",
+    "httpPort": 8080,
+    "tlsPort": 5001,
+    "ocspResponderURL": "",
+    "externalAccountBindingRequired": false,
+    "retryAfter": { "authz": 1, "order": 1 },
+    "profiles": {
+      "default": {
+        "description": "P2 spike: short-lived certs for the renewal test",
+        "validityPeriod": 300
+      }
+    }
+  }
+}

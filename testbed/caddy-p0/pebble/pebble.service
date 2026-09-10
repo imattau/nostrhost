@@ -1,0 +1,13 @@
+[Unit]
+Description=Pebble ACME test CA (P2 spike)
+After=network.target
+
+[Service]
+Type=simple
+Environment=PEBBLE_VA_NOSLEEP=1
+Environment=PEBBLE_WFL_NOSLEEP=1
+ExecStart=/usr/local/bin/pebble -config /etc/pebble/pebble-config.json
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
