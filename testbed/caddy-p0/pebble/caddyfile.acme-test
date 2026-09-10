@@ -1,7 +1,7 @@
 {
 	admin 127.0.0.1:2019
-	http_port 8080
-	https_port 8443
+	http_port 80
+	https_port 443
 	storage file_system {
 		root /var/lib/caddy
 	}
@@ -79,15 +79,29 @@ nostrhost.test {
 	}
 
 	handle /nostrhost-test-catalog/* {
+		# forward_auth runs first (sees the original URI for permission
+		# matching); the nested handle strips the prefix for file_server,
+		# sidestepping Caddy's directive ordering (uri < forward_auth).
 		forward_auth 127.0.0.1:6788 {
 			uri /nostr/auth-request
 			copy_headers X-Remote-User X-Remote-Email X-Remote-Fullname X-Nostr-Pubkey X-Nostr-Npub
 		}
-		reverse_proxy https://127.0.0.1:443 {
-			header_up Host nostrhost.test
-			transport http {
-				tls_insecure_skip_verify
-			}
+		handle {
+			uri strip_prefix /nostrhost-test-catalog
+			root * /var/www/nostrhost-test__2
+			file_server
+		}
+	}
+
+	handle /nostrhost-test/* {
+		forward_auth 127.0.0.1:6788 {
+			uri /nostr/auth-request
+			copy_headers X-Remote-User X-Remote-Email X-Remote-Fullname X-Nostr-Pubkey X-Nostr-Npub
+		}
+		handle {
+			uri strip_prefix /nostrhost-test
+			root * /var/www/nostrhost-test
+			file_server
 		}
 	}
 

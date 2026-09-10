@@ -200,12 +200,24 @@ Each phase has a gate. nginx keeps the public ports until Phase 6.
   deferred items).
 
 ### P6 — Retire nginx
-- Remove `nginx`/`nginx-extras` from `debian/control`, migrations, helpers,
-  and templates.
-- Delete `hooks/conf_regen/15-nginx`, `conf/nginx/`, and the legacy shim.
-- Update tests: `test_regenconf.py`, `test_service.py`, `test_apps.py`,
-  `test_changeurl.py`, `test_backuprestore.py`, `test_sso_and_portalapi.py`.
-- Gate: nginx package removed, `scripts/verify-clean.sh` green, VM e2e passes.
+- Status: **operational teardown done on the VM; test-suite updates pending** —
+  see [CADDY-P6-SPIKE.md](CADDY-P6-SPIKE.md).
+- Caddy moved to the public ports (80/443) on the VM and nginx was stopped +
+  disabled; the full portal e2e matrix (nip07/nip46/passkey/launch) passes with
+  Caddy alone. The legacy nginx shim is gone — the test apps are served
+  natively (forward_auth → strip → file_server).
+- Repo teardown committed: `nginx`/`nginx-extras` removed from
+  `debian/control`, `hooks/conf_regen/15-nginx` deleted, `conf/nginx/`
+  templates deleted, and the `nginx` service removed from `services.yml`.
+- Follow-ups (tracked here): update the nginx-referencing test files
+  (`test_regenconf.py`, `test_service.py`, `test_apps.py`, `test_changeurl.py`,
+  `test_backuprestore.py`, `test_sso_and_portalapi.py`), remove the legacy
+  nginx helpers (`helpers/*/nginx`, `ynh_add_nginx_config`), and drop remaining
+  migration/nginx references. On the VM, `apt remove nginx` cascades to the
+  installed `yunohost` (still declares the dep), so the package-removal gate is
+  satisfied by the `debian/control` change rather than a live purge.
+- Gate: nginx package removed (debian/control ✔), `scripts/verify-clean.sh`
+  green (pending), VM e2e passes (✔ on Caddy :443).
 
 ### P7 — Docs, state, backup
 - Keep this document current; update ROADMAP/VM-TESTBED/STATELAYER.
