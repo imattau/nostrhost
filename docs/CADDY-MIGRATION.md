@@ -1,0 +1,207 @@
+# nginx → Caddy Migration Plan
+
+Status: proposed. Branch: `feat/nginx2caddy` (base `main`).
+
+Replace nginx with Caddy as NostrHost's single web/TLS front end, let Caddy own
+automatic Let's Encrypt, and retire or simplify the YunoHost components that
+exist only because of nginx and the hand-rolled ACME stack.
+
+This document is the cutover map for that work. It complements
+[RESOURCE-ENGINE-CUTOVER.md](RESOURCE-ENGINE-CUTOVER.md) (legacy lifecycle
+removal) and [LEGACY-INVENTORY.md](LEGACY-INVENTORY.md) (package cutover
+status); those gates still apply.
+
+## 1. Locked decisions
+
+| Decision | Choice | Consequence |
+|---|---|---|
+| Authentication | Caddy `forward_auth` → Python auth daemon | `forks/ssowat` Lua is retired; permission logic moves to Python |
+| App compatibility | Native `package.toml` web routes only | Caddy does **not** translate legacy `conf/nginx.conf`; nginx survives only as an internal legacy shim until the legacy inventory is clean |
+| Certificates | Caddy canonical, exported to `/etc/yunohost/certs` | postfix/dovecot/slapd keep working via an export service |
+| Caddy build | stock Caddy via `xcaddy` + `caddy-l4` | TLS passthrough and HTTP/3 preserved; needs a shipped binary/`.deb` |
+| Plan location | `docs/CADDY-MIGRATION.md` on `feat/nginx2caddy` | New branch off `main` |
+
+## 2. What nginx and friends own today
+
+| Concern | Current owner | Key locations |
+|---|---|---|
+| Web/TLS termination, vhosts | nginx + Jinja templates | `forks/yunohost/conf/nginx/server.tpl.conf`, `security.conf.inc`, `yunohost_admin.conf` |
+| ACME + self-signed CA | `certificate.py`, `vendor/acme_tiny`, `hooks/conf_regen/02-ssl` | HTTP-01 webroot `/var/www/.well-known/acme-challenge-public/` |
+| Auth/permission gate | **SSOwat Lua inside nginx** | `forks/ssowat/access.lua`, `init.lua`, `conf/nginx/ssowat.conf` |
+| Config regeneration | `regenconf` `nginx` category | `src/regenconf.py`, `hooks/conf_regen/15-nginx` |
+| App routing | `ynh_add_nginx_config` → `/etc/nginx/conf.d/<domain>.d/<app>.conf` | `helpers/helpers.v1.d/nginx`, `helpers/helpers.v2.1.d/nginx` |
+| Service health | `nginx -t` as `test_conf` | `conf/yunohost/services.yml:17`, `src/service.py:259-295`, `494-496` |
+| Security/logs | `more_set_headers`, fail2ban nginx jails | `conf/nginx/security.conf.inc`, `conf/fail2ban/yunohost-jails.conf` |
+| Cert consumers | nginx **and** postfix, dovecot, slapd | `conf/postfix/main.cf:26-30`, `conf/dovecot/dovecot.conf:21-27`, `conf/slapd/config.ldif:53-54` |
+| Admin/API/portal/OIDC | nginx `location` blocks | `conf/nginx/yunohost_admin.conf.inc`, `yunohost_api.conf.inc`, `yunohost_sso.conf.inc` |
+| TLS passthrough | nginx `stream` + `ssl_preread` | `conf/nginx/tls_passthrough.conf`, `tls_passthrough_server.conf` |
+
+A `CaddyProvider` already exists (`forks/yunohost/src/nostrhost/native_providers.py:1453`)
+and the package schema already declares `[web] auth = "nostrhost"` /
+`https = "automatic"` (`package_engine.py:303-307`). It is **not wired**: the
+executor constructs bare `native_providers()`
+(`src/nostr_operationsd.py:75-89`), no admin-API client exists, and the
+provider posts the whole config to `/load`, which would clobber Caddy's
+ACME/runtime state.
+
+## 3. Target architecture
+
+```text
+Caddy (public 80/443, 443/udp HTTP/3; admin API 127.0.0.1:2019)
+ ├─ TLS: automatic ACME (Let's Encrypt) for public names
+ │        `tls internal` for .test/.local/non-public names
+ ├─ domains + native app routes  ← generated from semantic state,
+ │                                  applied via @id-tagged admin-API routes
+ ├─ forward_auth → nostrhost-authd (Python)
+ │        → ALLOW / DENY / 302-to-portal + X-Remote-*/X-Nostr-* headers
+ ├─ reverse_proxy → yunohost-api:6787, portalapi:6788, OIDC, native upstreams
+ ├─ file_server → /yunohost/sso, /yunohost/admin (SPA fallback)
+ ├─ [transitional] reverse_proxy → nginx 127.0.0.1:8080 (quarantined legacy apps)
+ └─ nostrhost-certd: export certs → /etc/yunohost/certs → reload postfix/dovecot/slapd
+```
+
+The semantic state model already reserves the relevant sections
+(`docs/ROADMAP.md` §7.2): `certificates/`, `services/`, `domains/`, `apps/`.
+
+## 4. Component disposition
+
+| Component | Action |
+|---|---|
+| `forks/ssowat/*.lua`, `conf/nginx/ssowat.conf` | **Retire**; port `access.lua` permission logic to Python authd |
+| `certificate.py` issuance/renew, `vendor/acme_tiny`, `02-ssl` self-CA | **Retire**; keep `certificate_status`/`_get_status` re-pointed at Caddy/exported store |
+| `hooks/conf_regen/15-nginx`, `conf/nginx/*` | **Replace** with `15-caddy` + `conf/caddy/` |
+| `native_providers.CaddyProvider` | **Rewire**: real admin client + `@id` incremental routes (no whole-`/load`) |
+| `conf/nginx/nostrhost_auth_request_params` | **Replace** with a Caddy `forward_auth`/`header_up` snippet |
+| `conf/yunohost/services.yml`, `service.py` `nginx -t` | → `caddy` + `caddy validate` |
+| `conf/fail2ban/yunohost-jails.conf` | → Caddy log-format filters (or CrowdSec, see §18.7) |
+| `debian/control` nginx deps, migrations, admin critical-services/i18n | → caddy |
+| `tls_passthrough` | → `caddy-l4` layer4 app |
+| `helpers/*/nginx` | native `web.route` only |
+
+### Transitional legacy shim
+
+Because the Caddy path is native-only, quarantined `_ynh` apps stay served by
+nginx bound to `127.0.0.1:8080` (no public ports) and reverse-proxied by Caddy.
+The shim is explicitly temporary: it is deleted when
+[LEGACY-INVENTORY.md](LEGACY-INVENTORY.md) shows no installed or supported
+package needs the legacy path. `nostrhost-test` (the sole legacy fixture) is
+converted to a native `package.toml` with `[web] auth = "nostrhost"` to
+exercise the native route path.
+
+## 5. Phased plan
+
+Each phase has a gate. nginx keeps the public ports until Phase 6.
+
+### P0 — Spike and decisions
+- Create `feat/nginx2caddy`.
+- Build Caddy with `xcaddy` (`caddy-l4`); pin the version.
+- Stand Caddy on the VM on alt ports with `tls internal` for `nostrhost.test`.
+- Verify portal static serving + `reverse_proxy` to 6787/6788.
+- Gate: spike notes committed; Caddy binary reproducible.
+
+### P1 — Caddy serves portal/admin/API
+- `file_server` with SPA fallback for `/yunohost/sso` and `/yunohost/admin`.
+- `reverse_proxy` for `/yunohost/api` (6787), `/yunohost/portalapi` (6788),
+  `/.well-known/openid-configuration`, `/oidc/*`.
+- Port `security.conf.inc` headers (HSTS, CSP, `X-*`) to Caddy `header`.
+- Re-run `testbed/e2e/portal-e2e.py` modes nip07/nip46/passkey/launch against
+  Caddy.
+- Gate: portal e2e green on Caddy.
+
+### P2 — ACME and cert export
+- Enable automatic HTTPS; use the Let's Encrypt staging CA first
+  (`acme_ca`), then production.
+- Implement `nostrhost-certd`: watch Caddy's cert store, atomically export
+  `<domain>/{crt,key}.pem` to `/etc/yunohost/certs`, fire the existing
+  `post_cert_update` hook, reload postfix/dovecot/slapd.
+- Re-point `certificate_status`/`_get_status` at Caddy/exported state; retire
+  `_certificate_install_letsencrypt`, `certificate_renew`,
+  `_fetch_and_enable_new_certificate`, `vendor/acme_tiny`, and the self-signed
+  issuance path.
+- Keep `conf/nginx`-independent bootstrap for the `yunohost.org` default
+  server via `tls internal`.
+- Gate: a certificate is obtained and renewed; mail TLS still validates.
+
+### P3 — Auth cutover
+- Extend the existing auth-request endpoint
+  (`src/nostr_login.py:245-288`) into a full authorization decision:
+  URL→permission matching, allowed users/groups, tile/protected flags,
+  redirect-to-portal, cookie/session checks — ported from
+  `forks/ssowat/access.lua:137-152` and the permission block.
+- Wire Caddy `forward_auth` per protected route; copy identity headers
+  (`X-Remote-User`, `X-Remote-Email`, `X-Remote-Fullname`, `X-Nostr-Pubkey`,
+  `X-Nostr-Npub`) and refuse client-supplied copies.
+- Retire `forks/ssowat`; drop the `nginx-extras`/Lua dependency.
+- Gate: permission matrix and app-header proof pass; the `auth_request`
+  permission flag (`app.py:2089-2170`) is enforced end to end.
+
+### P4 — Native web routes
+- Add a real Caddy admin-API client and config builders; register
+  `web.route` in `native_providers()` and pass it from `YnhExecutorBackend`
+  (`src/nostr_operationsd.py:75-89`).
+- Reconcile routes with `@id` tags via granular admin-API calls, not `/load`.
+- Convert `packages/nostrhost-test` to a native package.
+- Gate: static and reverse-proxy native apps serve via Caddy; route add/remove
+  is idempotent and reversible.
+
+### P5 — Domains, service, diagnosis, security
+- `domain_add`/`domain_remove` create/remove Caddy sites and ACME policy;
+  remove the nginx-specific force-clear hacks (`domain.py:393`, `580`).
+- `services.yml`: `caddy` service with `test_conf: caddy validate`; service
+  reload via the admin API.
+- `diagnosers/21-web.py`: replace nginx-conf checks with Caddy equivalents.
+- Port `security.conf.inc`, the SSO/admin CSP, and HSTS to Caddy.
+- TLS passthrough via `caddy-l4`; HTTP/3 + open firewall `443/udp`.
+- fail2ban: Caddy access-log format + new filters, or adopt CrowdSec.
+- Update admin `criticalServices` and i18n strings.
+- Gate: `yunohost diagnosis` clean; fail2ban bans work.
+
+### P6 — Retire nginx
+- Remove `nginx`/`nginx-extras` from `debian/control`, migrations, helpers,
+  and templates.
+- Delete `hooks/conf_regen/15-nginx`, `conf/nginx/`, and the legacy shim.
+- Update tests: `test_regenconf.py`, `test_service.py`, `test_apps.py`,
+  `test_changeurl.py`, `test_backuprestore.py`, `test_sso_and_portalapi.py`.
+- Gate: nginx package removed, `scripts/verify-clean.sh` green, VM e2e passes.
+
+### P7 — Docs, state, backup
+- Keep this document current; update ROADMAP/VM-TESTBED/STATELAYER.
+- Back up Caddy storage (or the exported `/etc/yunohost/certs`); update
+  `hooks/backup/21-conf_ynh_certs` and `hooks/restore/21-conf_ynh_certs`.
+- Record `certificates/` and `services/` in semantic state.
+
+## 6. New artifacts
+
+| Artifact | Purpose |
+|---|---|
+| `forks/yunohost/conf/caddy/` | Caddy config templates (base, per-domain, snippets) |
+| `forks/yunohost/hooks/conf_regen/15-caddy` | Caddy regen category |
+| `forks/yunohost/src/nostrhost/caddy_admin.py` | Admin-API client + config builders |
+| `forks/yunohost/src/nostr_certd.py` | Cert export + reload driver |
+| `forks/yunohost/src/nostr_authd.py` | Authorization decision endpoint (or extension of `nostr_login.py`) |
+| `forks/yunohost/conf/systemd/caddy.service`, `nostrhost-certd.service` | Units |
+| `forks/yunohost/tests_nostr/test_caddy_*.py` | Provider/client/certd/authd tests |
+| Caddy packaging (xcaddy build + `caddy-l4`) | Shipped binary or `.deb` |
+
+## 7. Risks
+
+1. **Authd is security-critical.** Port SSOwat logic with a permission test
+   matrix before any cutover; never leave both nginx and Caddy enforcing auth
+   for the same route.
+2. **`/load` semantics.** Whole-config replacement clobbers ACME/runtime
+   state; use `@id`-tagged incremental admin-API mutations.
+3. **Cert export atomicity** for mail/LDAP; write-then-rename and reload only
+   on change. Mail retirement ([MAIL-RETIREMENT.md](MAIL-RETIREMENT.md))
+   shrinks this surface if it lands first.
+4. **Packaging on bookworm.** No distro Caddy with `caddy-l4`; the derivative
+   must ship a reproducible `xcaddy` build via the source provider.
+5. **Legacy shim drift.** The shim must stay quarantined (loopback only) and
+   be scheduled for deletion against the legacy inventory.
+6. **Concurrent branches.** `feat/resource-engine` work landed on `main`;
+   rebase this branch as `main` advances.
+
+## 8. Non-goals
+
+- Translating arbitrary legacy nginx snippets to Caddy.
+- DNS-01 wildcard certificates (current YunoHost uses HTTP-01 per name).
+- Rewriting the portal/admin front ends; only their serving layer changes.
