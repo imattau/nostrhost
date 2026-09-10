@@ -154,13 +154,21 @@ Each phase has a gate. nginx keeps the public ports until Phase 6.
   `forward_auth` → authd for `nostrhost-test`). **Met on the VM.**
 
 ### P4 — Native web routes
-- Add a real Caddy admin-API client and config builders; register
-  `web.route` in `native_providers()` and pass it from `YnhExecutorBackend`
-  (`src/nostr_operationsd.py:75-89`).
-- Reconcile routes with `@id` tags via granular admin-API calls, not `/load`.
-- Convert `packages/nostrhost-test` to a native package.
+- Status: **passed on the VM** — see [CADDY-P4-SPIKE.md](CADDY-P4-SPIKE.md).
+- Add a real Caddy admin-API client (`src/nostrhost/caddy_admin.py`) and config
+  builder (`build_web_route`); `web.route` is registered in `native_providers()`
+  by default on the real host (so `YnhExecutorBackend`'s bare call wires it).
+- Reconcile routes with `@id` tags via granular admin-API calls, not `/load`:
+  `PUT .../routes/0` inserts in front of the Caddyfile routes (precise
+  host+path matchers make that safe), `DELETE /id/<id>` removes, identical
+  routes are a no-op.
+- Convert `packages/nostrhost-test` to a native `package.toml` (`[web]` with
+  `file_root` + `auth = "nostrhost"`; legacy manifest retained until the nginx
+  shim is retired).
+- `WebResource` gained `path` and `file_root` (static file_server vs
+  reverse-proxy upstream); the web op args now carry `app` for a stable `@id`.
 - Gate: static and reverse-proxy native apps serve via Caddy; route add/remove
-  is idempotent and reversible.
+  is idempotent and reversible. **Met on the VM.**
 
 ### P5 — Domains, service, diagnosis, security
 - `domain_add`/`domain_remove` create/remove Caddy sites and ACME policy;

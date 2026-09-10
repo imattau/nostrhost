@@ -1,0 +1,28 @@
+# Native package declaration for the NostrHost test app (P4).
+#
+# This replaces the legacy YunoHost manifest/nginx path: the app is served by
+# Caddy as a static (file_server) native web route protected by the authd
+# (forward_auth). The legacy manifest.json + conf/nginx.conf are retained only
+# until the nginx shim is retired (CADDY-MIGRATION P6).
+#
+# `domain` is the testbed domain; the production engine resolves the primary
+# domain at reconcile time.
+
+[app]
+id = "nostrhost-test"
+version = "0.1"
+
+[directories.install]
+path = "/var/www/nostrhost-test"
+
+[web]
+domain = "nostrhost.test"
+path = "/nostrhost-test/"
+file_root = "/var/www/nostrhost-test"
+auth = "nostrhost"
+https = "automatic"
+
+[permissions.main]
+url = "/nostrhost-test"
+allowed = ["all_users"]
+auth_request = true
