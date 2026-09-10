@@ -987,7 +987,7 @@ on identity, policy and execution semantics, which now exist.
 9.  Admin interface                                         ⏳
 10. Native catalogue (sync + trust events)                  ⏳
 11. SSO simplification                                      ⏳
-12. MCP adapter                                             ⏳
+12. MCP adapter                                             ✅
 13. OIDC                                                    ⏳
 14. ngit replication / disaster recovery (Stage C)          ⏳
 15. Declarative reconciliation (Stage D)                    ⏳
@@ -1025,17 +1025,17 @@ milestone is proven; the login/session half is the §8 portal work.
 ## 0.2 - Policy and Agents
 
 ```text
-✓ capability / delegation events        (capability grants; delegations ◑)
+✓ capability / delegation events        (capability grants + formal delegations)
 ✓ agents
 ✓ relay-mediated approval + execution events
-⏳ NIP-46 privileged approvals
-⏳ MCP adapter integrated with the control plane
+✓ NIP-46 privileged approvals
+✓ MCP adapter integrated with the control plane
 ✓ audit = signed event chain (with derived index/read model)
 ```
 
 Achieved in substance on the testbed (capabilities, agents, the full signed
-operation chain, audit as event chain); remaining: formal delegation events
-and NIP-46 privileged approvals.
+operation chain, formal delegations, NIP-46 remote-signed approvals, and the
+protocol-neutral MCP adapter that submits and correlates native operations.
 
 ## 0.3 - State History and Recovery Foundation
 
