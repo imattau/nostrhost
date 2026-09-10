@@ -144,6 +144,10 @@ not `os.system` or unrestricted subprocess access.
 | logrotate/fail2ban | system policy providers |
 | error/progress/rollback behavior | structured operation results and state snapshots |
 
+Port helpers are a special case: they should not reserve ports through a
+global text database. The native provider validates the requested bind at plan
+application time, while the service declaration remains the source of truth.
+
 ## Recommended extraction order
 
 1. **Contract tests:** capture helper behavior for paths, ownership, retries,
