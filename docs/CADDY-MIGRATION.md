@@ -212,10 +212,11 @@ Each phase has a gate. nginx keeps the public ports until Phase 6.
 - Repo teardown committed: `nginx`/`nginx-extras` removed from
   `debian/control`, `hooks/conf_regen/15-nginx` deleted, `conf/nginx/`
   templates deleted, and the `nginx` service removed from `services.yml`.
-- Follow-ups (tracked here): update the nginx-referencing test files
-  (`test_regenconf.py`, `test_service.py`, `test_apps.py`, `test_changeurl.py`,
-  `test_backuprestore.py`, `test_sso_and_portalapi.py`), remove the legacy
-  nginx helpers (`helpers/*/nginx`, `ynh_add_nginx_config`), and drop remaining
+- Follow-ups: the six nginx-referencing test files now assert the Caddy model
+  and the `15-caddy` regenconf category + `domain.py` site wiring are in place;
+  `scripts/verify-clean.sh` no longer pins ssowat; semantic state records
+  `certificates/`. Remaining: remove the legacy nginx helpers
+  (`helpers/*/nginx`, `ynh_add_nginx_config`) and drop residual
   migration/nginx references. On the VM, `apt remove nginx` cascades to the
   installed `yunohost` (still declares the dep), so the package-removal gate is
   satisfied by the `debian/control` change rather than a live purge.
