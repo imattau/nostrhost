@@ -21,10 +21,13 @@ Nostr  = native identity, native private messaging, native system notifications
 Email  = optional external integration or separately installed application
 ```
 
-Mail-server installation becomes optional rather than default. Applications
-that need email use an external SMTP provider, a self-hosted mail
-application, an optional local mail package, or their own configuration —
-NostrHost stops assuming every server is itself a mail server.
+Mail is not an optional *install profile* toggle on the core package — it is
+removed from core entirely. Postfix/Dovecot/OpenDKIM are no longer a
+NostrHost dependency at all; if a user wants local mail, they install it the
+same way they'd install any other app. Applications that need email use an
+external SMTP provider, a self-hosted mail application, a separately
+installed mail app, or their own configuration — NostrHost stops assuming
+every server is itself a mail server.
 
 ## Dependency inventory
 
@@ -32,26 +35,27 @@ Classification per dependency, per roadmap §18.7:
 
 - **Replace with Nostr notification** — migrate to the notification service
   from §18.1 (encrypted Nostr DM to the relevant npub).
-- **Remove entirely** — no longer needed once native identity (§18.3) lands.
-- **Make optional** — keep available, but not installed/configured by
-  default.
+- **Remove entirely** — dropped from core outright (either superseded by
+  native identity, §18.3, or — for the mail packages themselves — no longer
+  a core dependency at all; installable afterward as an app like anything
+  else, not a toggleable "optional install profile").
 - **Retain (compatibility)** — kept as-is for Unix/legacy application needs.
 
 | # | Dependency | Where | Classification | Notes |
 |---|---|---|---|---|
-| 1 | Postfix (SMTP) | yunohost core, `yunohost/data/hooks`, `yunohost/conf/postfix` | Make optional | Becomes an optional installed component, not part of the base install. |
-| 2 | Dovecot (IMAP, local mailboxes) | yunohost core | Make optional | Mailbox storage only needed if a user opts into local mail. |
-| 3 | Rspamd (spam filtering) | yunohost core | Make optional | Only relevant when Postfix/Dovecot are installed. |
-| 4 | DKIM signing / key generation | yunohost core, domain add/remove hooks | Make optional | Tied to whether the domain sends mail at all. |
-| 5 | SMTP submission (587/465) | yunohost core, firewall/port defaults | Make optional | Port exposure should follow mail-stack install state. |
-| 6 | MX / SPF / DMARC domain-config assumptions | yunohost core `domain` commands, DNS template generation | Make optional | DNS templates currently assume every domain sends mail. |
-| 7 | Mandatory mailbox per user (`yunohost user create`) | yunohost core `user.py` | Remove entirely | Superseded by §18.3 (npub-centred identity); a Unix-compatible username may remain without a mailbox. |
+| 1 | Postfix (SMTP) | `forks/yunohost` `debian/control`, `hooks/conf_regen/19-postfix` | Remove entirely (from core) | **Done** — dropped from core `Depends`; the conf_regen hook self-guards (`ynh_package_is_installed`) so it's a no-op unless a user has installed it separately. |
+| 2 | Dovecot (IMAP, local mailboxes) | `forks/yunohost` `debian/control`, `hooks/conf_regen/25-dovecot` | Remove entirely (from core) | **Done** — same treatment as row 1. |
+| 3 | Rspamd (spam filtering) | yunohost core | N/A | This fork never actually depended on rspamd (checked `debian/control` — not present); nothing to remove. |
+| 4 | DKIM signing / key generation | `forks/yunohost` `debian/control`, `hooks/conf_regen/30-opendkim` | Remove entirely (from core) | **Done** — same treatment as row 1. |
+| 5 | SMTP submission (587/465) | yunohost core, firewall/port defaults | Remove entirely (from core) | No explicit port-587/465 firewall default was found tied specifically to mail; port exposure is a consequence of Postfix being installed at all, which is now row 1's job. Revisit if a dedicated firewall rule turns up. |
+| 6 | MX / SPF / DMARC domain-config assumptions | `forks/yunohost` `src/dns.py` domain DNS template generation | Remove entirely (from core) | **Not done** — DNS suggestion templates weren't touched in Phase 3; still assumes mail. Follow-up. |
+| 7 | Mandatory mailbox per user (`yunohost user create`) | yunohost core `user.py` | Remove entirely | Superseded by §18.3 (npub-centred identity); a Unix-compatible username may remain without a mailbox. Not started (Phase 4) — `user.py`'s existing dovecot check already degrades gracefully in the meantime. |
 | 8 | `root@`/`admin@` aliases to first user | yunohost core | Retain (compatibility) | Only meaningful once mail is installed; kept as alias config, not a mailbox requirement. |
-| 9 | Certificate expiry/renewal notifications | `forks/yunohost` `src/certificate.py` `_email_renewing_failed()`, cron `yunohost-certificate-renew` | Replace with Nostr notification | **Done** — also publishes a kind-2210 `certificate` notice (`nostr-mail-stack-removal-phase2` PR). Mail send itself untouched (still default at this phase). |
+| 9 | Certificate expiry/renewal notifications | `forks/yunohost` `src/certificate.py` `_email_renewing_failed()`, cron `yunohost-certificate-renew` | Replace with Nostr notification | **Done** — also publishes a kind-2210 `certificate` notice (`imattau/nostrhost-yunohost#1`). Mail send itself untouched. |
 | 10 | Backup completion/failure notifications | yunohost core `backup` hooks | Replace with Nostr notification | **No existing mail producer found** in `forks/yunohost` (`src/backup.py`/`src/utils/*` have no `smtplib`/mail-notify call) — nothing to migrate here; if this gets added later it should publish a kind-2212 `backup` notice directly rather than mailing first. |
-| 11 | Diagnosis mail-category checks (`mail_config`, `mail_dns`, etc.) | yunohost core `diagnosers/` | Make optional | Should only run when the mail stack is installed; otherwise these are false-positive noise. Not started. |
+| 11 | Diagnosis mail-category checks (`24-mail.py`) | `forks/yunohost` `src/diagnosers/24-mail.py` | Remove entirely (skip when not installed) | **Done** — the diagnoser now returns immediately (yields nothing) unless `mail_stack_installed()`. `imattau/nostrhost-yunohost#2`. |
 | 12 | System cron/systemd mail output (`MAILTO=`, sendmail-based cron mail) | `forks/yunohost` `src/diagnosis.py` `_email_diagnosis_issues()`, cron `yunohost-diagnosis` | Replace with Nostr notification | **Done** — same call site as row 9's diagnosis email; now also publishes a kind-2210 `diagnosis` notice. |
-| 13 | Admin (webadmin) mail-status widgets and mail settings pages | `forks/admin` | Make optional | UI should hide/disable mail panels when the stack isn't installed. |
+| 13 | Admin (webadmin) mail-status widgets and mail settings pages | `forks/admin` | Remove/hide | **Not done** — separate repo, not touched yet. |
 | 14 | SSO/Portal identity assumptions (login by email, password reset by email) | `forks/portal`, `forks/ssowat` | Remove entirely (long-term) | Superseded by Nostr-native login (§4, §18.3); email becomes optional contact metadata. |
 | 15 | App packaging helpers assuming a local mailbox/SMTP relay exists | YunoHost app helpers (`ynh_*` mail helpers) consumed by installed apps | Retain (compatibility) | Apps that genuinely need mail should be pointed at an external SMTP provider or an optional local mail app, not assume the platform provides one. |
 | 16 | `nostrhost-catalog` / packaging assumptions about a working `mail@domain` for app maintainer contact | `libs/nostrhost-catalog` | Remove entirely | Catalogue metadata should not require a functioning mailbox to register a maintainer contact; an npub is sufficient. |
@@ -81,11 +85,15 @@ sequencing. Phases below track that ordering:
    rows 9 and 12 (certificate renewal and diagnosis-cron mail both now also
    publish a structured notice); row 10 turned out to have no existing mail
    producer to migrate. See `imattau/nostrhost-yunohost#1`.
-4. **Phase 3 — Make email optional.** Change the default install profile so
-   Postfix/Dovecot/Rspamd/DKIM (rows 1-6) are an optional package group
-   rather than base install; gate the mail diagnosis checks (row 11) on
-   whether the stack is installed; update Admin UI (row 13) to hide mail
-   panels when not installed.
+4. **Phase 3 — Remove mail from core.** Not a toggleable install profile —
+   Postfix/Dovecot/OpenDKIM (rows 1, 2, 4) are dropped from core's hard
+   package dependencies outright; every code path that assumed they were
+   always present (domain add/remove, settings post-change hooks, the
+   "mail" app resource) now checks `mail_stack_installed()` first and
+   degrades gracefully. The mail diagnoser (row 11) skips entirely when not
+   installed. Done for rows 1, 2, 4, 11 — see `imattau/nostrhost-yunohost#2`.
+   Still open: DNS MX/SPF/DMARC templates (row 6) and Admin UI mail panels
+   (row 13, `forks/admin`).
 5. **Phase 4 — Remove the mandatory-mailbox assumption (§18.3).** Stop
    requiring a mailbox on user creation (row 7); keep alias compatibility
    (row 8) conditional on the mail stack being present.
@@ -106,7 +114,7 @@ sequencing. Phases below track that ordering:
 | 0 — Inventory | ⏳ in progress (this document) |
 | 1 — Native notification service | ✓ implemented in `nostrhost-control` (`nostrhost-notify` binary, branch `claude/mail-stack-removal-notify-service`); see `docs/NOTIFICATION-SERVICE.md` |
 | 2 — Migrate internal notifications | ✓ done (rows 9, 12; row 10 had nothing to migrate) — `imattau/nostrhost-yunohost#1`, branch `claude/mail-stack-removal-phase2` |
-| 3 — Make email optional | ⏳ not started |
+| 3 — Remove mail from core | ⏳ mostly done (rows 1, 2, 4, 11) — `imattau/nostrhost-yunohost#2`, branch `claude/mail-stack-removal-phase3`; rows 6, 13 still open. **Not VM-tested** — see PR's Risk section. |
 | 4 — Remove mandatory mailbox | ⏳ not started |
 | 5 — Identity model follow-through | ⏳ not started |
 | 6 — State integration | ⏳ not started |
