@@ -71,7 +71,10 @@ must use the dedicated secret resource.
 
 Backup resources persist validated `nostrhost-backup-v1` manifests. The
 provider registers filesystem/database inputs but deliberately leaves the
-Restic repository and credential data plane to host policy.
+Restic repository and credential data plane to host policy. Database providers
+also expose explicit bounded `database.dump` and `database.restore`
+operations using backend-native argv; Redis rejects SQL-style dump/restore
+because its databases are pre-created logical indexes.
 
 Host policy resources can also render managed Fail2ban jail and Logrotate
 definitions with the same atomic-write, drift-detection, and reverse-operation
