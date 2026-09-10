@@ -872,7 +872,7 @@ than maintaining a substantial Lua-based authentication implementation.
 
 ---
 
-# 13. MCP Adapter — ⏳
+# 13. MCP Adapter — ✅
 
 MCP becomes another interface to the same internal service layer, not an
 owner of bespoke integration:
@@ -884,14 +884,14 @@ owner of bespoke integration:
                  Admin   MCP   CLI
 ```
 
-Under the control-plane architecture, MCP becomes an **adapter**: it keeps the
+Under the control-plane architecture, MCP is now an **adapter**: it keeps the
 MCP protocol, tool definitions, package-development tools, diagnostics
-presentation, and NIP-98 client authentication, but behind the tools it
-publishes signed operation-request events to the local relay and subscribes to
-approval/execution/result events (§3). Its bespoke identity database, approval
-workflow, delegation state, audit history and command queue move out to the
-relay event stream. Remove duplicated YunoHost integration code as equivalent
-native APIs are introduced.
+presentation, and NIP-98 client authentication, while publishing signed
+operation-request events to the local relay and subscribing to
+approval/execution/result events (§3). Its identity, approval, delegation,
+audit and queue state use the shared policy/control-plane model. Remaining
+work is incremental removal of duplicated legacy YunoHost integration as
+equivalent native APIs are introduced.
 
 ---
 
