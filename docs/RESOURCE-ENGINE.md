@@ -39,6 +39,9 @@ operations are lifecycle-aware: directories are only removed when empty,
 while service units are removed from the managed unit directory.
 `NativeOperationExecutor` dispatches only registered providers, leaving
 privileged policy and approval at the existing NostrHost executor boundary.
+Restricted Python hooks are registered as semantic references only; they are
+not executed by the native provider layer and must be dispatched later through
+a bounded typed hook runtime.
 
 Systemd resource reversals are explicit: timers are disabled before their
 unit pair is removed, credentials are deleted from the managed credential
