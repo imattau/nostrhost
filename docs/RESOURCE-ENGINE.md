@@ -1,5 +1,8 @@
 # NostrHost Resource Engine
 
+The cutover and integration map for legacy removal and NostrHost plane
+integration is documented in [RESOURCE-ENGINE-CUTOVER.md](RESOURCE-ENGINE-CUTOVER.md).
+
 Native packages declare desired resources in `package.toml`. The Python
 package engine validates that document, builds a dependency graph, and emits a
 deterministic dry-run plan of executor-neutral operations. Planning is
