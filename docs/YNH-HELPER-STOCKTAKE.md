@@ -1,7 +1,7 @@
 # YunoHost helper and scripting stocktake
 
-The fork's `helpers/helpers.v2.1.d/` exports 122 `ynh_*` functions across 27
-domains. This is valuable operational knowledge, but it should be mined for
+The fork's `helpers/helpers.v2.1.d/` exports 122 `ynh_*` functions across 26
+helper files/domains. This is valuable operational knowledge, but it should be mined for
 contracts and invariants rather than translated one function at a time. The
 Resource Engine should expose declarative resources and bounded Python
 providers; helper names are an input catalogue, not the target API.

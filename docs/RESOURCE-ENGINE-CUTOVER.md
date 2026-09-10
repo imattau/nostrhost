@@ -136,6 +136,12 @@ transition.
 
 ## 4. Removal gates
 
+The current repository inventory is recorded in
+[`LEGACY-INVENTORY.md`](LEGACY-INVENTORY.md) and can be regenerated with
+`python3 tools/legacy_inventory.py`. It is intentionally report-only: deleting
+the helper tree before the VM proves both native and compatibility paths would
+remove host-hook dependencies and invalidate the legacy test fixture.
+
 Remove or disable a legacy surface only when all of these are true:
 
 - native package plan and reconcile pass in a clean test root;
