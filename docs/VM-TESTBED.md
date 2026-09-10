@@ -368,3 +368,27 @@ The Stage B slice (fork `0c75873`) is deployed and proven live:
   emits 2203/2204. Scoped `state.write`, unit-tested (121 fork tests); a live
   daemon-driven rollback on the testbed is a follow-up (the proven VM loop
   above used the operator CLI `--approve` path).
+
+### Chain-gated rollback E2E (2026-09-10, fork `a0896b4`)
+
+The live daemon-driven rollback is now proven on the testbed too:
+
+1. `systemctl stop dnsmasq` → `nostrhost-state commit … --health failed`
+   (known-good `014d39a9` retained).
+2. `nostrhost-state rollback plan --out /tmp/rb-plan.json` → 1 automatic step
+   (`services/dnsmasq.toml` runtime-setting, tool `service.control`).
+3. `nostr-opctl request --tool rollback.apply --plan-file /tmp/rb-plan.json`
+   → kind-2200 request `a518703c…` with the plan embedded (operator = admin).
+4. `nostr-opctl approve a518703c…` → kind-2201 approval.
+5. The daemon published 2203 (EXECUTING, server key) then 2204 (DONE,
+   `{"ok": true, "result": {"steps": […]}}`, server key); dnsmasq back
+   `active`. `nostr-opctl status` shows the full chain
+   REQUESTED → APPROVED → EXECUTING → DONE.
+6. The StateRecorder captured pre/post snapshots linked to the
+   `rollback.apply` operation id; the successful post snapshot auto-advanced
+   the known-good tag (recorder's `known_good=bool(ok)` — correct here: a
+   successful rollback restores the validated state).
+
+This closes the milestone-0.3 restoration gate: repository authority never
+applies state outside the signed control plane (the CLI `--approve` path
+remains the operator's local convenience, not a bypass).
