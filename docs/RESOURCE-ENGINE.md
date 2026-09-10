@@ -26,8 +26,10 @@ converted before they can enter the native engine.
 
 Operation envelopes have stable names, resource identities, typed arguments,
 dependencies, risk, reversibility, reverse operation, and a human-readable
-summary. Native providers now apply directory, source, and service operations
-without shell helper wrappers. Source handling uses streaming HTTP, hash
+summary. Native providers now apply directory, configuration, source, and service operations
+without shell helper wrappers. Config resources support inline content or
+strict Jinja2 templates, with atomic writes and Python-managed ownership and
+mode. Source handling uses streaming HTTP, hash
 verification, and Python archive libraries; services render hardened systemd
 units. `NativeOperationExecutor` dispatches only registered providers, leaving
 privileged policy and approval at the existing NostrHost executor boundary.
