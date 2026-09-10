@@ -43,7 +43,7 @@ unit pair is removed, credentials are deleted from the managed credential
 store, and sysusers declarations are withdrawn without implicitly deleting
 the underlying operating-system account.
 
-APT, PostgreSQL and MySQL database, Caddy, secrets, backup, user/sysusers, and tmpfiles providers
+APT, PostgreSQL and MySQL database, Caddy, access, secrets, backup, user/sysusers, and tmpfiles providers
 use this same registry; timers, health checks, typed settings, and backup
 declarations are also native providers. They are intentionally not silently
 implemented through legacy helper commands. Runtime resources now verify the
