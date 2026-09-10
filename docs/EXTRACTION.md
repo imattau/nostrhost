@@ -15,7 +15,7 @@ fully operational.
 |---|---|---|---|
 | `imattau/nostrhost-auth` | `imattau/yunohost-nostr-auth` | `auth` (challenge, NIP-01/42 verify), `identity` (npub, mappings, relays, relay cache), `nip05`, `web` (login/account/admin pages + JS) | `ynh/` (session minting, portal client/cookie, LDAP), `server.py`, `admin_cli.py`, `auth/login.py`, `identity/linking.py` — re-homed once native identity API + session creation land (stages 3–5) |
 | `imattau/nostrhost-policy` | `imattau/yunohost-mcp` | `policy` (roles, scopes, rules, confirmation, locks, package sessions), `auth` (identity, NIP-98, nostr, npub, replay, owner, delegation, signing, revocation, groups, server identity), `audit`, `redaction` | MCP transport glue: `policy/enforcement.py`'s `translate_known_errors` (MCP `ToolError`), `auth/middleware.py`, `auth/nostr_auth*_lookup.py`, `yunohost/adapter.py`, broker/concord layers — re-homed once the native service layer consumes this library (stage 11) |
-| `imattau/nostrhost-catalog` | `imattau/nostr-yunohost` | `internal/` `protocol`, `verification`, `relay`, `publisher`, `curation`, `repository`, `trust`, `ciresult` (Go) | daemon state + CLI: `internal/catalog`, `attestation`, `localstate`, `announce`, `reverify`, `cmd/*` — re-homed once the fork's native catalogue provider lands (stage 9) |
+| `imattau/nostrhost-catalog` | `imattau/nostr-yunohost` | `internal/` `protocol`, `verification`, `relay`, `publisher`, `curation`, `repository`, `trust`, `ciresult`, `catalog` (Go) | daemon sync + richer CLI: `internal/attestation`, `localstate`, `announce`, `reverify`, `cmd/*` — re-homed as the native provider is completed (stage 9) |
 
 ## Migration model
 

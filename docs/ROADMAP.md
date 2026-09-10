@@ -985,7 +985,7 @@ on identity, policy and execution semantics, which now exist.
 7.  Portal Nostr authentication (+ native session creation) ◑  (server + client deployed; NIP-46/passkey pending)
 8.  Restic linkage + known-good + assisted rollback (Stage B) ✅  (registry-bounded execution, chain-gated, testbed-validated)
 9.  Admin interface                                         ⏳
-10. Native catalogue (sync + trust events)                  ⏳
+10. Native catalogue (sync + trust events)                  ◑ (persistent projection + CLI landed; relay sync remains)
 11. SSO simplification                                      ⏳
 12. MCP adapter                                             ✅
 13. OIDC                                                    ⏳
