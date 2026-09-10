@@ -619,10 +619,10 @@ to multiple external relays; Git object storage uses ordinary Git/GRASP-style
 storage without making a central forge authoritative.
 
 ### Stage D: declarative reconciliation
-Only once the state schema and executor are proven should merged desired-state
-changes be automatically reconciled. Avoid Kubernetes-like complexity: a
-single-server NostrHost installation has one straightforward reconciliation
-process.
+Compare the committed semantic state with live YunoHost state, classify drift
+by risk, and apply only bounded, policy-approved operations. Unsupported drift
+remains manual; avoid Kubernetes-like complexity: a single-server NostrHost
+installation has one straightforward reconciliation process.
 
 ---
 
@@ -793,7 +793,7 @@ commands should progressively gain native UI.
 
 ---
 
-# 11. Make Nostr Catalog Native — ⏳
+# 11. Make Nostr Catalog Native — ✓
 
 Introduce a catalogue-provider interface in the YunoHost fork:
 
@@ -802,11 +802,13 @@ LegacyYunoHostCatalogue
 NostrCatalogue
 ```
 
-Initially support both; later `NostrCatalogue = default`. The Nostr provider
-handles relay queries, package events, publisher signatures, CI attestations,
-trust policy, architecture and YunoHost-version compatibility, and repository
-resolution. Once a package source is resolved, continue using the existing
-YunoHost application installer — do not rewrite the installation engine.
+Initially support both; the trusted Nostr projection is now the default when
+available, with legacy YunoHost catalogues retained as an explicit fallback.
+The Nostr provider handles relay queries, package events, publisher
+signatures, CI attestations, trust policy, architecture and YunoHost-version
+compatibility, and repository resolution. Once a package source is resolved,
+continue using the existing YunoHost application installer — do not rewrite
+the installation engine.
 
 Under the control-plane architecture, the local relay **is the local
 catalogue cache**: a catalogue synchroniser bridges external relays into the
@@ -870,7 +872,7 @@ than maintaining a substantial Lua-based authentication implementation.
 
 ---
 
-# 13. MCP Adapter — ⏳
+# 13. MCP Adapter — ✅
 
 MCP becomes another interface to the same internal service layer, not an
 owner of bespoke integration:
@@ -882,14 +884,14 @@ owner of bespoke integration:
                  Admin   MCP   CLI
 ```
 
-Under the control-plane architecture, MCP becomes an **adapter**: it keeps the
+Under the control-plane architecture, MCP is now an **adapter**: it keeps the
 MCP protocol, tool definitions, package-development tools, diagnostics
-presentation, and NIP-98 client authentication, but behind the tools it
-publishes signed operation-request events to the local relay and subscribes to
-approval/execution/result events (§3). Its bespoke identity database, approval
-workflow, delegation state, audit history and command queue move out to the
-relay event stream. Remove duplicated YunoHost integration code as equivalent
-native APIs are introduced.
+presentation, and NIP-98 client authentication, while publishing signed
+operation-request events to the local relay and subscribing to
+approval/execution/result events (§3). Its identity, approval, delegation,
+audit and queue state use the shared policy/control-plane model. Remaining
+work is incremental removal of duplicated legacy YunoHost integration as
+equivalent native APIs are introduced.
 
 ---
 
@@ -921,13 +923,13 @@ forge becomes authoritative.
 
 ---
 
-# 16. Declarative Reconciliation (Stage D) — ⏳
+# 16. Declarative Reconciliation (Stage D) — ✓
 
-Only once the state schema and executor are proven (§6–§7) should merged
-desired-state changes be automatically reconciled. Avoid Kubernetes-like
-complexity: a single-server NostrHost installation has one straightforward
-reconciliation process, still routed through `nostrhost-policy` (§7.8) — a
-valid repository change never bypasses policy.
+The reconciler compares the clean committed semantic state with live YunoHost
+state and emits low/medium/high-risk changes. Bounded service and application
+changes can be submitted as `state.reconcile` operations and require the
+existing scope plus administrator approval; unsupported changes remain
+manual. A valid repository change never bypasses `nostrhost-policy` (§7.8).
 
 ---
 
@@ -1287,12 +1289,12 @@ on identity, policy and execution semantics, which now exist.
 7.  Portal Nostr authentication (+ native session creation) ◑  (server + client deployed; NIP-46/passkey pending)
 8.  Restic linkage + known-good + assisted rollback (Stage B) ✅  (registry-bounded execution, chain-gated, testbed-validated)
 9.  Admin interface                                         ⏳
-10. Native catalogue (sync + trust events)                  ◑ (persistent projection + CLI landed; relay sync remains)
+10. Native catalogue (sync + trust events)                  ✓ (trusted projection, relay sync, attestations, and YunoHost integration)
 11. SSO simplification                                      ⏳
 12. MCP adapter                                             ✅
 13. OIDC                                                    ⏳
-14. ngit replication / disaster recovery (Stage C)          ⏳
-15. Declarative reconciliation (Stage D)                    ⏳
+14. ngit replication / disaster recovery (Stage C)          ◑ (multi-relay NIP-34 announcement publication landed; repository/object replication remains)
+15. Declarative reconciliation (Stage D)                    ✓ (risk-classified plans + approval-gated bounded apply)
 16. Distribution release                                    ⏳
 17. Platform simplification (native messaging, mail          ⏳
     retirement, host security)
@@ -1381,7 +1383,7 @@ The first release of this layer stops short of fully automatic reconciliation.
 ◑ NGINX auth_request compatibility endpoint (internal subrequest wiring, reusable app include, portal session validation, and identity headers landed; generated server-level routing is required before per-app adoption)
 ◑ reduced/simplified SSOwat (guarded identity mode and per-permission migration contract exist; disabled until an application opts in with matching NGINX routing)
 ◑ compatibility headers (X-Remote-* and linked X-Nostr-* headers available from auth-request; X-Remote-* also passed by legacy SSOwat when `auth_header` is enabled)
-◑ OIDC provider (discovery/JWKS/authorization-code bridge and userinfo are live and VM-proven; client-management and signing-key rotation remain)
+◑ OIDC provider (discovery/JWKS/authorization-code bridge and userinfo are live and VM-proven; client-management and signing-key rotation deferred)
 ```
 
 ## 1.0 - Native Distribution
@@ -1393,7 +1395,7 @@ The first release of this layer stops short of fully automatic reconciliation.
 ✓ MCP native (adapter)                    (adapter ◑)
 ✓ Nostr approvals native
 ⏳ state native (ngit / NIP-34 repo + assisted rollback + DR)
-⏳ OIDC compatibility
+◑ OIDC compatibility (deferred after the VM-proven bridge)
 ⏳ `_ynh` bridge packages no longer required
 ⏳ tested derivative upgrade path
 ⏳ release repository and installer
