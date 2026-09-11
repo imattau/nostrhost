@@ -38,3 +38,29 @@ https = "automatic"
 [health]
 type = "http"
 path = "/health"
+
+[policies.example-auth-bf]
+type = "crowdsec"
+name = "example-auth-bf"
+content = """
+type: leaky
+name: example/example-auth-bf
+description: "Example app login brute-force"
+filter: "evt.Meta.log_type == 'http_access-log' && evt.Parsed.http_verb == 'POST' && evt.Parsed.http_path == '/login'"
+leakspeed: 60s
+capacity: 10
+groupby: evt.Meta.source_ip
+"""
+
+[policies.example-login-bf]
+type = "crowdsec"
+name = "example-login-bf"
+content = """
+type: leaky
+name: example/example-login-bf
+description: "Example app account enumeration guard"
+filter: "evt.Meta.log_type == 'http_access-log' && evt.Parsed.http_status == '401'"
+leakspeed: 30s
+capacity: 20
+groupby: evt.Meta.source_ip
+"""
