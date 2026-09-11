@@ -77,11 +77,13 @@ references keep resolving.
 - `nostrhost` (meta) → `nostrhost-core-system` → `nostrhost-core` +
   `nostrhost-control` + `nostrhost-catalog` + `nostrhost-caddy` +
   `nostrhost-security-config` + `python3-nostrhost{-auth,-policy}` +
-  `nostrhost-runtime` (private venv; planned).
+  `nostrhost-runtime` (private venv with bundled wheels).
 - Some Python runtime deps (`nostr-sdk`, `bech32`, `coincurve`,
-  `pydantic>=2`) are not in Debian bookworm and are provisioned from PyPI
-  during development; the plan moves them into a private venv with bundled
-  wheels (see `docs/ALPHA-PLAN.md` §W1).
+  `pydantic>=2`) are not in Debian bookworm (pydantic only ships v1 there).
+  They are bundled into `nostrhost-runtime` as pinned manylinux cp311 wheels
+  and installed offline into `/opt/nostrhost/venv` (created with
+  `--system-site-packages` so the dist-packages debs stay visible); daemons
+  run on the venv interpreter — no manual `pip` on the target.
 
 ## Umbrella ownership
 
