@@ -523,5 +523,32 @@ Sign in with Nostr → open Portal → launch an existing YunoHost application.
   fix (`forks/ssowat/access.lua`, commit `b0f1345`) or the portal login page
   itself was redirected through SSOwat.
 
-Open follow-ups: `/nostr-account` (saved signer management UI) and a real
-extension-capable browser for passkey attestation + visual grid check.
+Open follow-ups: a real extension-capable browser for passkey attestation +
+visual grid check (headless limit only).
+
+## §8 /nostr-account: self-service identity management (2026-09-11)
+
+`/nostr-account` landed: the session user's linked identities (npub, label,
+signer, last-used, "Revoked" badge) with rename/revoke, a link section
+(NIP-07, bunker:// + QR, generated local key with remember/reveal/copy,
+passkey create/use/recovery/restore/forget), a saved-signers panel, and
+unlink-all.
+
+Privilege boundary: the portal-api runs as the unprivileged `ynh-portal`
+user, so mutations are forwarded over a local UNIX socket to
+`nostr-identityd` (`/run/nostrhost/identity.sock`, root:ynh-portal 0660,
+SO_PEERCRED-gated), which operator-signs the kind-31102 events.
+
+- New portalapi routes: `GET /nostr/identities`, `POST
+  /nostr/link/challenge`, `POST /nostr/link` (add/replace), `POST
+  /nostr/identities/revoke` + `/rename`, `POST /nostr/unlink`; 401 without a
+  session; `allow_identity_linking` gate in portal.toml.
+- Verified with `testbed/vm/e2e_account.py` (full API pass) and a Playwright
+  browser check (`/yunohost/sso/nostr-account/` renders, npub rows shown,
+  "Generate a new key" → "Use generated key" links a fresh identity 4→5).
+- A stale Caddy conf was regenerated from the fork template to restore
+  serving `/yunohost/sso/*` (the deployed file predated the sso block in
+  `caddy_domain.conf`).
+
+Remaining §8 client work: only the real-browser passkey attestation and a
+visual grid check (documented headless limits).

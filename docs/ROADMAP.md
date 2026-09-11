@@ -626,7 +626,7 @@ installation has one straightforward reconciliation process.
 
 ---
 
-# 8. Portal Nostr Authentication + Native Session — ◑ (all three signer flows browser-proven; saved signer mgmt + account page remain)
+# 8. Portal Nostr Authentication + Native Session — ✓ (all three signer flows browser-proven; /nostr-account landed 2026-09-11)
 
 Retain the existing Nuxt/Vue/TypeScript portal stack.
 
@@ -634,14 +634,21 @@ Move the existing Nostr-authentication user experience into the portal fork:
 
 ```text
 /nostr-login        ✓ (NIP-07 sign-in page, deployed at /yunohost/sso/)
-/nostr-account      ⏳
+/nostr-account      ✓ (saved signer management + self-service identity linking,
+                       landed 2026-09-11 — link/revoke/rename/unlink)
 NIP-07              ✓ (browser-proven)
 NIP-46              ✓ (browser-proven against a local bunker)
 passkey UI          ✓ (button + unlock path reachable; full WebAuthn
                        attestation needs a real browser with PRF support)
-saved signer management   ⏳ (BUNKER_STORAGE_KEY reconnect exists; UI page pending)
-identity linking    ◑ (kind 31102; portal self-link is Phase 4)
-identity revocation ◑ (admin `nostr-identity-admin revoke`)
+saved signer management   ✓ (reconnect/forget bunker + local key, passkey
+                       recovery/restore/forget on /nostr-account)
+identity linking    ✓ (portal self-link via a privilege-separated control
+                       socket: the unprivileged portal-api verifies session +
+                       kind-22242 challenge, root nostr-identityd operator-signs
+                       the kind-31102 definition — link/add/replace, revoke,
+                       rename, unlink-all; admins still use nostr-identity-admin)
+identity revocation ✓ (self-service revoke on /nostr-account; admin
+                       `nostr-identity-admin revoke` remains)
 ```
 
 The server side is implemented and proven live on the testbed:
@@ -667,9 +674,10 @@ vendor IIFE clobbered its own global, and the passkey button raced the
 deferred vendor script (fork `a18c53e`). NIP-46 also required the SSO CSP to
 allow `connect-src ws: wss:` for the remote signer relay (fork `yunohost_sso.conf.inc`).
 
-Remaining §8 client work: `/nostr-account` (saved signer management UI) and
-a real extension-capable browser session to exercise passkey attestation and
-the redesigned app grid visually.
+Remaining §8 client work: a real extension-capable browser session to
+exercise passkey attestation and the redesigned app grid visually (headless
+limit only). `/nostr-account` (saved signer management + self-service
+identity linking) landed and is VM-proven (2026-09-11).
 
 Recommended browser-side Nostr stack: `@nostr/tools`; NDK where relay
 functionality is required.
@@ -1305,7 +1313,7 @@ on identity, policy and execution semantics, which now exist.
 4.  Capability / delegation events                          ✅
 5.  Approval + execution events (structured ops + state machine) ✅
 6.  nostrhost-state Stage A            (ngit / NIP-34)      ✅   (Stage A + B complete)
-7.  Portal Nostr authentication (+ native session creation) ◑  (all three signer flows browser-proven; /nostr-account + saved signer mgmt + real-browser passkey pending)
+7.  Portal Nostr authentication (+ native session creation) ✓  (all three signer flows + /nostr-account self-service identity mgmt browser-proven; only real-browser passkey attestation pending — headless limit)
 8.  Restic linkage + known-good + assisted rollback (Stage B) ✅  (registry-bounded execution, chain-gated, testbed-validated)
 9.  Admin interface                                         ⏳
 10. Native catalogue (sync + trust events)                  ✓ (trusted projection, relay sync, attestations, and YunoHost integration)
