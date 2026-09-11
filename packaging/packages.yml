@@ -53,6 +53,7 @@ packages:
     summary: NostrHost — minimal headless system (meta-package)
     depends:
       - nostrhost-core
+      - python3-nostrhost
       - nostrhost-control
       - nostrhost-catalog
       - nostrhost-caddy
@@ -73,6 +74,7 @@ packages:
       binary_package: yunohost            # Stage 1: shipped as `yunohost`
     summary: Forked YunoHost Python server-management engine
     depends:
+      - python3-nostrhost
       - python3-nostrhost-auth
       - python3-nostrhost-policy
       - nostrhost-caddy
@@ -82,6 +84,28 @@ packages:
     recommends:
       - nostrhost-admin
       - nostrhost-portal
+
+  # python3-nostrhost — the native moulinette replacement (framework + CLI +
+  # API), built from the same debian/ tree as nostrhost-core. Not a separate
+  # matrix job: it is produced by the nostrhost-core dpkg-buildpackage step.
+  #
+  # Its binary Depends also includes `yunohost` (nostrhost.cli/api import
+  # yunohost.nostr_operations etc.), but that back-edge is omitted here to
+  # keep the manifest graph acyclic — the real dependency lives in the fork's
+  # debian/control.
+  - name: python3-nostrhost
+    kind: debian-source
+    source:
+      repo: imattau/nostrhost-yunohost
+      submodule: forks/yunohost
+      binary_package: python3-nostrhost
+    built_with: nostrhost-core       # excluded from the build matrix
+    summary: Native nostrhost framework — moulinette replacement (primitives + Typer CLI + Bottle/NIP-98 API)
+    depends:
+      - python3-typer
+      - python3-bottle
+      - python3-requests
+      - python3-nostrhost-auth
 
   # ------------------------------------------------------------ control ----
   # Two independently-versioned binaries from one Git repo. The release flow
@@ -227,6 +251,9 @@ packages:
 # External Debian packages these entries depend on, so verify-dependencies can
 # distinguish "our" packages from upstream ones. Only used for validation.
 external_deps:
+  - python3-typer
+  - python3-bottle
+  - python3-requests
   - python3-nostr-sdk
   - python3-bech32
   - python3-coincurve

@@ -45,8 +45,11 @@ jobs:
           out = sys.argv[1]
           with open("packaging/packages.yml") as fh:
               manifest = yaml.safe_load(fh)
-          # Everything buildable: all non-meta entries (meta generated separately).
-          names = [p["name"] for p in manifest["packages"] if p.get("kind") != "meta"]
+          # Everything buildable: all non-meta entries (meta generated
+          # separately) except those produced by another package's build
+          # (e.g. python3-nostrhost ships from the nostrhost-core build).
+          names = [p["name"] for p in manifest["packages"]
+                   if p.get("kind") != "meta" and not p.get("built_with")]
           with open(out, "a") as fh:
               fh.write(f"names={json.dumps(names)}\n")
           PY
@@ -77,16 +80,18 @@ jobs:
           corepack enable
           corepack prepare yarn@1.22.22 --activate
 
-      - name: Build nostrhost-core (debian-source, ships `yunohost`)
+      - name: Build nostrhost-core (debian-source, ships `yunohost` + `python3-nostrhost`)
         if: matrix.name == 'nostrhost-core'
         working-directory: forks/yunohost
         run: |
           # Build the fork's own debian/ tree. The result is the `yunohost`
-          # binary package (Stage 1 — see compatibility.yml core_rename).
+          # binary package (Stage 1 — see compatibility.yml core_rename) plus
+          # `python3-nostrhost` (the moulinette replacement) from the same
+          # source.
           sudo apt-get build-dep -y .
           dpkg-buildpackage -b -us -uc -d
           mkdir -p ../../packaging/build
-          cp ../nostrhost-*.deb ../yunohost_*.deb ../../packaging/build/ 2>/dev/null || true
+          cp ../nostrhost-*.deb ../python3-nostrhost_*.deb ../yunohost_*.deb ../../packaging/build/ 2>/dev/null || true
           ls -la ../../packaging/build/
 
       - name: Build non-core package

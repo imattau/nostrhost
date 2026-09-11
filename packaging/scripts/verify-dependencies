@@ -109,7 +109,7 @@ def validate(manifest: dict, compat: dict) -> int:
 
     core_system = closure("nostrhost-core-system")
     required_core_system = {
-        "nostrhost-core", "nostrhost-control", "nostrhost-catalog",
+        "nostrhost-core", "python3-nostrhost", "nostrhost-control", "nostrhost-catalog",
         "nostrhost-caddy", "nostrhost-security-config",
         "python3-nostrhost-auth", "python3-nostrhost-policy",
     }

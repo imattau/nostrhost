@@ -11,7 +11,8 @@ each built from its own component repo (held here as pinned submodules).
 |---|---|---|
 | `nostrhost` | meta-package: the complete server | core-system + admin + portal + notify |
 | `nostrhost-core-system` | meta-package: minimal headless system | core + control + catalog + caddy + security-config + python libs |
-| `nostrhost-core` | forked YunoHost engine (Stage 1 ships as `yunohost`) | libs, caddy, security-config |
+| `nostrhost-core` | forked YunoHost engine (Stage 1 ships as `yunohost`) | python3-nostrhost, libs, caddy, security-config |
+| `python3-nostrhost` | native moulinette replacement: framework primitives + Typer CLI + Bottle/NIP-98 API | yunohost, typer, bottle, auth |
 | `nostrhost-control` | local khatru control-plane relay | core |
 | `nostrhost-notify` | NIP-17/59 notification daemon | control, core |
 | `nostrhost-catalog` | catalogue resolver/service | control |
