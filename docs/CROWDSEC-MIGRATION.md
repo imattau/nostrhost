@@ -89,8 +89,8 @@ and be surfaced as a NostrHost setting, not silently enabled by the
 | `src/settings.py:349-353` (`reconfigure_ssh_and_fail2ban`) | **Done (P2).** Renamed `reconfigure_ssh_and_crowdsec`; `ssh_port` change regens `["ssh", "crowdsec"]`. sshd acquisition is a journald unit (port-agnostic), so crowdsec regen is a consistency no-op |
 | `conf/yunohost/services.yml` fail2ban entry | **Replace** with `crowdsec` (`cscli version`/`systemctl status crowdsec` as `test_conf` equivalent — CrowdSec has no config-syntax-check CLI equivalent to `fail2ban-server --test`; use `cscli hub list` sanity or a wrapper). The `caddy` entry stays; the retired `nginx` entry is already gone |
 | `helpers/helpers.v1.d/fail2ban`, `helpers.v2.1.d/fail2ban` | **Leave untouched.** Not reimplemented, not extended to target CrowdSec. Stays fail2ban-only, exactly as `RESOURCE-ENGINE-CUTOVER.md` already treats the helper tree — a legacy surface removable only when "no installed or supported package... sources the helper tree." CrowdSec is deliberately *not* added as a second bash-helper backend; see the "App-packaging integration" row in §1 |
-| `src/nostrhost/package_engine.py:349` `PolicyResource.type` | **Extend**: `Literal["fail2ban", "crowdsec", "logrotate"]`. No transition/drop step needed for `"fail2ban"` — it has no live consumer (§2) — but the literal is left in place since removing it is `RESOURCE-ENGINE-CUTOVER.md`'s call, not this plan's |
-| `src/nostrhost/native_providers.py:932` `PolicyProvider` | **Extend** `directories` map with a `crowdsec` entry (parsers/scenarios under `/etc/crowdsec/{parsers,scenarios}/nostrhost-<name>.yaml`, no `.local` suffix convention needed). This is the **only** app-packaging integration point CrowdSec gets — native `package.toml` declares `[[policy]] type = "crowdsec"`; there is no Bash-callable equivalent, matching "There is no Bash or legacy-script capability in this engine" (`RESOURCE-ENGINE.md`) |
+| `src/nostrhost/package_engine.py:349` `PolicyResource.type` | **Done (P3).** Extended to `Literal["fail2ban", "crowdsec", "logrotate"]`. No transition/drop step needed for `"fail2ban"` — it has no live consumer (§2) — but the literal is left in place since removing it is `RESOURCE-ENGINE-CUTOVER.md`'s call, not this plan's |
+| `src/nostrhost/native_providers.py:932` `PolicyProvider` | **Done (P3).** `directories` gains a `crowdsec` entry (`/etc/crowdsec/scenarios/`); `_suffix()` maps `fail2ban`→`.local`, `crowdsec`→`.yaml`, `logrotate`→`""`; apply/remove render `/etc/crowdsec/scenarios/nostrhost-<name>.yaml` + `systemctl reload crowdsec` + a state snapshot (`state/security/intrusion-protection.toml`). This is the **only** app-packaging integration point CrowdSec gets — native `package.toml` declares `[policies.<name>] type = "crowdsec"`; there is no Bash-callable equivalent, matching "There is no Bash or legacy-script capability in this engine" (`RESOURCE-ENGINE.md`) |
 | `src/utils/app_utils.py:1359` service-wait list | **Update** to `["caddy", "crowdsec"]` — nginx is already retired, so this folds in the Caddy-side leftover in the same change |
 | `debian/control:26,49` | **Replace** `fail2ban` dependency with `crowdsec`, `crowdsec-firewall-bouncer` (source: official CrowdSec apt repo — see §1 package-source decision) |
 | `docs/NOTIFICATION-SERVICE.md`, `docs/ROADMAP.md` §18.5 | **Update** "fail2ban/CrowdSec → structured event" language once CrowdSec is the sole source; wire the security projector to CrowdSec's decision/alert API (`cscli alerts list -o json` or LAPI websocket) instead of fail2ban's log/`fail2ban-client` polling |
@@ -204,33 +204,52 @@ its phase gate" pattern.
   for the soak period, with an acceptable (documented) false-positive delta.
 
 ### P3 — Native policy resource (no Bash helper)
-- Extend `PolicyResource.type` (`package_engine.py:349`) with `"crowdsec"`,
-  taking a parser/scenario `content` payload (mirroring the existing
-  `content: str` field used for fail2ban jail text).
-- Extend `PolicyProvider.directories` (`native_providers.py:932`) with a
-  `crowdsec` entry; `inspect`/`plan`/`apply`/`remove` render/remove
-  `/etc/crowdsec/{parsers,scenarios}/nostrhost-<name>.yaml` and trigger a
-  `cscli` hub refresh + `crowdsec` reload, following the same
-  inspect→plan→apply→verify shape as the other native providers (no shell
-  helper indirection).
-- A `crowdsec` policy apply/remove must also **snapshot state**: enabling or
-  disabling the policy resource updates
-  `state/security/intrusion-protection.toml` through `StateRecorder`, tying
-  the resource engine to the state system (not just the file render) — see
-  P5.
-- Update `packages/nostrhost-native-example/package.toml` (or a new example
-  package) to declare `[[policy]] type = "crowdsec"` as the reference usage,
-  since §2 confirmed no package exercises the `PolicyResource` type today.
+- **Done:** `PolicyResource.type` (`package_engine.py:349`) extended with
+  `"crowdsec"`, taking a scenario `content` payload (mirroring the existing
+  `content: str` field used for fail2ban jail text). Note: CrowdSec uses a
+  **single** `scenarios` directory (`/etc/crowdsec/scenarios/`), so a policy
+  resource declares exactly one scenario — the plan's earlier "parsers +
+  scenarios" split did not materialize (local parsers don't load, §8.6), and
+  the ported detection lives entirely at the scenario level.
+- **Done:** `PolicyProvider` (`native_providers.py`) extended for CrowdSec:
+  - `directories` gains `"crowdsec": /etc/crowdsec/scenarios`.
+  - `_suffix(type_)` maps `fail2ban` → `.local`, `crowdsec` → `.yaml`,
+    `logrotate` → `""` (no suffix); the target file is always
+    `nostrhost-<name><suffix>`.
+  - `__init__` now takes `command` (for `systemctl`) and `state_dir`
+    (defaulting to `/var/lib/nostrhost/state` for `root=/`, else
+    `<root>/var/lib/nostrhost/state`).
+  - `_reload(type_)` runs `systemctl reload crowdsec` for `crowdsec`
+    resources (local scenarios load on daemon reload — validated in P2);
+    no network-dependent `cscli hub update`. fail2ban/logrotate apply with
+    no reload command.
+  - `apply`/`remove` write/remove the scenario file, then reload + snapshot.
+  - **Snapshot:** after apply/remove the provider writes
+    `state/security/intrusion-protection.toml` listing the currently-enabled
+    `nostrhost-*.yaml` scenario stems, via `toml.dumps` (atomic
+    tmp+replace). This is a lightweight direct write by the provider; wiring
+    it through `StateRecorder`/`Backend.security()` (the full P5 semantic
+    tree) is deferred to P5.
+- **Done:** `native_providers()` factory wires
+  `PolicyProvider(root=..., command=command, state_dir=<root or />/var/lib/nostrhost/state)`.
+- **Done:** `packages/nostrhost-native-example/package.toml` declares two
+  `[policies.<name>]` tables (`example-auth-bf`, `example-login-bf`) with
+  `type = "crowdsec"` and inline scenario `content` as the reference usage.
+  (Dict-shaped TOML, not `[[policy]]` array-of-tables — `policies` is
+  `dict[str, PolicyResource]` keyed by name, so each table carries `type`,
+  `name`, and `content`.)
+- **Done:** Gate — `tests_nostr/test_crowdsec.py` (8 tests) covers the
+  `crowdsec` literal, `.yaml` render + `systemctl reload crowdsec` on
+  apply/remove, no-reload for non-crowdsec types, suffix selection, the
+  state snapshot, a full `package.plan` → reconcile round-trip, and type
+  rejection. Passes alongside the pre-existing 81 provider/engine tests
+  (`test_native_providers.py`, `test_package_engine.py`).
 - **Explicitly no work on `helpers/helpers.v1.d/fail2ban` or
   `helpers.v2.1.d/fail2ban`.** They keep targeting fail2ban unmodified. Any
   legacy (non-native) package that needs CrowdSec-backed protection must be
   converted to a native `package.toml` — the same path `CADDY-MIGRATION.md`
   P4 already takes for `nostrhost-test`'s web routes — not served through a
   new bash entry point.
-- Gate: the reference native package's `crowdsec` policy resource
-  round-trips through `package.plan`/`package.reconcile` (install, verify,
-  remove) with a real parser/scenario file, exercised by
-  `tests_nostr/test_crowdsec_*.py`.
 
 ### P4 — Bouncer cutover
 - Enable `crowdsec-firewall-bouncer` for real, owning its own nftables set
