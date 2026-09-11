@@ -34,7 +34,7 @@ status); those gates still apply.
 | Config regeneration | `regenconf` `nginx` category | `src/regenconf.py`, `hooks/conf_regen/15-nginx` |
 | App routing | `ynh_add_nginx_config` → `/etc/nginx/conf.d/<domain>.d/<app>.conf` | `helpers/helpers.v1.d/nginx`, `helpers/helpers.v2.1.d/nginx` |
 | Service health | `nginx -t` as `test_conf` | `conf/yunohost/services.yml:17`, `src/service.py:259-295`, `494-496` |
-| Security/logs | `more_set_headers`, fail2ban nginx jails | `conf/nginx/security.conf.inc`, `conf/fail2ban/yunohost-jails.conf` |
+| Security/logs | base security headers + SSO CSP on Caddy sites; CrowdSec parses the Caddy JSON access log | `conf/caddy/` site snippets; CrowdSec acquisition → `crowdsecurity/caddy-logs` (see [CROWDSEC-MIGRATION.md](CROWDSEC-MIGRATION.md)) |
 | Cert consumers | nginx **and** slapd (LDAP); postfix/dovecot retired | `conf/slapd/config.ldif:53-54` |
 | Admin/API/portal/OIDC | nginx `location` blocks | `conf/nginx/yunohost_admin.conf.inc`, `yunohost_api.conf.inc`, `yunohost_sso.conf.inc` |
 | TLS passthrough | nginx `stream` + `ssl_preread` | `conf/nginx/tls_passthrough.conf`, `tls_passthrough_server.conf` |
@@ -76,7 +76,7 @@ The semantic state model already reserves the relevant sections
 | `native_providers.CaddyProvider` | **Rewire**: real admin client + `@id` incremental routes (no whole-`/load`) |
 | `conf/nginx/nostrhost_auth_request_params` | **Replace** with a Caddy `forward_auth`/`header_up` snippet |
 | `conf/yunohost/services.yml`, `service.py` `nginx -t` | → `caddy` + `caddy validate` |
-| `conf/fail2ban/yunohost-jails.conf` | → Caddy log-format filters (or CrowdSec, see §18.7) |
+| `conf/fail2ban/yunohost-jails.conf` | **Retired** (P6 of [CROWDSEC-MIGRATION.md](CROWDSEC-MIGRATION.md)): the nginx jails are gone with fail2ban. Intrusion detection reads Caddy's JSON `access.log` via the `crowdsecurity/caddy-logs` parser → CrowdSec scenarios (`yunohost-auth-bf`), enforced by the nftables bouncer |
 | `debian/control` nginx deps, migrations, admin critical-services/i18n | → caddy |
 | `tls_passthrough` | → `caddy-l4` layer4 app |
 | `helpers/*/nginx` | native `web.route` only |
@@ -196,11 +196,15 @@ Each phase has a gate. nginx keeps the public ports until Phase 6.
   admin CSP is a follow-up (needs SPA testing).
 - **Deferred to follow-ups**: nginx force-clear hack removal + `domain.py`
   wiring; TLS passthrough via `caddy-l4`; HTTP/3 + firewall `443/udp`; admin
-  `criticalServices`/i18n strings. fail2ban→CrowdSec is owned by the
-  concurrent `feat/fail2ban2crowdsec` branch.
-- Gate: `yunohost diagnosis` clean; fail2ban bans work — partially met (site
-  check proven; full diagnosis run and fail2ban/CrowdSec land with the
-  deferred items).
+  `criticalServices`/i18n strings.
+- **Security/logs**: fail2ban→CrowdSec landed on
+  `feat/fail2ban2crowdsec` (P4–P6 of [CROWDSEC-MIGRATION.md](CROWDSEC-MIGRATION.md)):
+  the `crowdsecurity/caddy-logs` parser reads the Caddy JSON `access.log`,
+  `yunohost-auth-bf` fires on `POST /yunohost/api/login` 401s, and the
+  nftables bouncer enforces bans; fail2ban (incl. its nginx jails) is retired.
+- Gate: `yunohost diagnosis` clean; CrowdSec bans proven end to end (login
+  brute force from a foreign source → ban → kind-2213 `security` event on the
+  local relay) — see CROWDSEC-MIGRATION §8.9/§8.10.
 
 ### P6 — Retire nginx
 - Status: **operational teardown done on the VM; test-suite updates pending** —

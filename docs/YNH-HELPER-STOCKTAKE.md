@@ -27,7 +27,7 @@ providers; helper names are an input catalogue, not the target API.
 | Sources | 1 | streaming download, hash, archive, cache and provenance provider |
 | Node/Go/Ruby/Composer | 8 | runtime providers with pinned versions and isolated prefixes |
 | PHP/FPM | 2 | runtime/pool resource, likely systemd/socket integration |
-| Fail2ban/logrotate | 4 | host policy resources or system-level platform providers |
+| Logrotate/CrowdSec | 4 | host policy resources or system-level platform providers (fail2ban helpers retired in CROWDSEC-MIGRATION P6) |
 | Multimedia/Redis/Getopts | 6 | specialised capability providers or platform services |
 
 The counts are exported function counts, not complexity counts. Several
@@ -141,7 +141,7 @@ not `os.system` or unrestricted subprocess access.
 | file checksum/backup helpers | backup registration + semantic state/Restic linkage |
 | Node/Go/Ruby/Composer/PHP | runtime providers with isolated prefixes |
 | permissions and SSO paths | access resource and policy projection |
-| logrotate/fail2ban | system policy providers |
+| logrotate / crowdsec policy | system policy providers (fail2ban retired — CROWDSEC-MIGRATION P6) |
 | error/progress/rollback behavior | structured operation results and state snapshots |
 
 Port helpers are a special case: they should not reserve ports through a

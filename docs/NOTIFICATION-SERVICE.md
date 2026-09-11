@@ -92,7 +92,7 @@ only to *consume* them:
 | health alert | diagnosis / health-check projector | — |
 | approval required | operation-request event (kind 2200) awaiting kind 2201 | — |
 | operation result | operation-execution/result events (kinds 2203/2204) | — |
-| security event | security projector (roadmap §18.5, fail2ban/CrowdSec → structured event) | — |
+| security event | security projector (roadmap §18.5; **CrowdSec** → structured event — fail2ban retired in `CROWDSEC-MIGRATION.md` P6) | — |
 | update available | package/catalogue update check | — |
 | recovery result | state/recovery executor (`STATELAYER.md`) | — |
 
@@ -208,7 +208,7 @@ service). It must exist and be operational before Phase 2 of that document
 | Notice class/severity/summary convention on kinds 2210-2213 | ✓ implemented — `nostrhost-control` `EVENT-PROTOCOL.md` §2.3, `eventmodel.Notice`/`Validate` |
 | Notification service implementation | ✓ `nostrhost-notify` binary (`nostrhost-control` repo, branch `claude/mail-stack-removal-notify-service`) — subscribes to the operation chain + notices, matches policy, delivers via NIP-17/59 |
 | Wired to certificate/backup/cron sources (Mail phase 2) | ⏳ blocked on those subsystems actually publishing 2210-2213 events; the service itself is ready to consume them |
-| Wired to a security-event source | ⏳ the **security projector** is the first real producer for kind 2213 — scheduled in `CROWDSEC-MIGRATION.md` P5 (CrowdSec LAPI → `publish_notice(kind=2213, class="security")` → this service). Until then no subsystem publishes 2213. |
+| Wired to a security-event source | ✓ the **security projector** (`nostrhost-securityd`, `forks/yunohost` `src/nostr_security.py`) is live: CrowdSec alert → kind-2213 `class="security"` published on the local relay, verified via NIP-42 REQ (incl. the recurring-source `critical` escalation, `CROWDSEC-MIGRATION.md` §8.9/§8.10). Delivery of those events as encrypted DMs to the admin still rides on the unmerged `claude/mail-stack-removal-notify-service` branch. |
 
 No new kind numbers were needed: `update available`, `recovery result`,
 `certificate event` and `system/cron notice` all ride on the existing

@@ -76,13 +76,18 @@ domains → True, unknown domain → False.
 - TLS passthrough via `caddy-l4`.
 - HTTP/3 + firewall `443/udp`.
 - Stricter admin CSP + `criticalServices`/i18n strings.
-- fail2ban→CrowdSec — owned by the concurrent `feat/fail2ban2crowdsec`.
+- fail2ban→CrowdSec — owned by the concurrent `feat/fail2ban2crowdsec`
+  (landed: P4–P6 of [CROWDSEC-MIGRATION.md](CROWDSEC-MIGRATION.md); the
+  `crowdsecurity/caddy-logs` parser reads the Caddy JSON access log and
+  fail2ban is retired).
 
 ## Gate
 
 - `yunohost diagnosis` clean: partially met — the site check is proven; a full
   diagnosis run lands with the deferred `domain.py`/i18n items.
-- fail2ban bans work: deferred (concurrent branch).
+- fail2ban bans work: deferred (concurrent branch). → **Resolved** by CrowdSec:
+  login-401 brute force bans proven end to end on the VM (CROWDSEC-MIGRATION
+  §8.9/§8.10).
 
 ## Tests
 

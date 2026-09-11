@@ -179,7 +179,9 @@ signed 2204:
 - YunoHost nftables (fail2ban `f2b-table`/`addr-set-sshd`) rejects the host IP
   after repeated failed SSH; unban with
   `nft delete element inet f2b-table addr-set-sshd { <host-ip> }` from the
-  console.
+  console. (Moot on the current testbed — fail2ban was retired in
+  CROWDSEC-MIGRATION P6; the CrowdSec bouncer uses its own `crowdsec` nftables
+  table/ipset instead, and the relaxed whitelist exempts the host.)
 - `yunohost tools postinstall` prompts interactively even with `--ignore-dyndns`
   (ToS + admin full name): pass `--i-have-read-terms-of-services --fullname …`
   and drive any residual prompt via `expect` over a pty.

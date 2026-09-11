@@ -1099,32 +1099,34 @@ NostrHost policy/control -> firewall management -> nftables
 ```
 
 Do not replace a mature kernel firewall with a Nostr-specific implementation.
-Reassess the inherited fail2ban layer separately. CrowdSec is the preferred
-candidate for evaluation because it can provide behaviour-based detection and
-shared threat intelligence while still integrating with the host firewall.
+The inherited fail2ban layer was evaluated against CrowdSec and **retired in
+favour of CrowdSec** (P4–P6 of `docs/CROWDSEC-MIGRATION.md`): behaviour-based
+detection plus shared threat intelligence (CAPI) while still integrating with
+the host firewall.
 
-Target evaluation:
+Adopted architecture:
 
 ```text
-Current:    logs -> fail2ban -> nftables
-Candidate:  journald / service logs -> CrowdSec -> local decisions -> nftables
+Current (retired):  logs -> fail2ban -> nftables
+Adopted:            service logs / journald -> CrowdSec -> local decisions -> nftables (bouncer-nftables)
 ```
 
-CrowdSec adoption is conditional rather than mandatory. Evaluate: memory
-footprint, CPU footprint, dependency footprint, offline behaviour, privacy
-implications, external threat-intelligence dependency, nftables integration,
-false-positive behaviour, IPv4/IPv6 handling, NostrHost event integration, and
-upgrade/maintenance burden. If CrowdSec does not materially improve the
-security/operational model, retain fail2ban rather than replacing it merely
-for modernisation.
+The decision followed the evaluation criteria in this section: memory/CPU
+footprint, dependency footprint, offline behaviour, privacy, external
+threat-intelligence dependency, nftables integration, false-positive
+behaviour, IPv4/IPv6 handling, NostrHost event integration, and
+upgrade/maintenance burden. CrowdSec materially improved the
+security/operational model (structured events + Nostr-native integration over
+fail2ban's ban-only model), so it replaced fail2ban rather than sitting
+alongside it.
 
 ## 18.5 Integrate security events with the Nostr control plane
 
-Regardless of whether fail2ban or CrowdSec is used, security detection should
+CrowdSec (the adopted intrusion-protection layer, fail2ban retired) should
 feed the NostrHost control plane:
 
 ```text
-CrowdSec / fail2ban / nftables
+CrowdSec -> nftables
              |
              v
       security projector
@@ -1202,9 +1204,9 @@ remove default mail-server stack
       |
 security event integration
       |
-evaluate CrowdSec against fail2ban
+✓ evaluate CrowdSec against fail2ban
       |
-adopt winner with nftables backend
+✓ adopt winner with nftables backend
       |
 distribution hardening
 ```
@@ -1424,9 +1426,9 @@ The first release of this layer stops short of fully automatic reconciliation.
 ⏳ native notification service (encrypted Nostr messaging for alerts/approvals/results)
 ⏳ mail-server installation optional rather than default
 ⏳ new users do not require a local mailbox
-⏳ CrowdSec vs fail2ban evaluated; winner integrated with nftables
-⏳ security events feed the control plane and generate Nostr notifications
-⏳ notification/security/mail-integration state participates in nostrhost-state
+✓ CrowdSec adopted (fail2ban retired); bouncer-nftables integrated — CROWDSEC-MIGRATION P4–P6
+◑ security events feed the control plane (kind-2213 live from the security projector, recurring-critical proven); encrypted-DM notification generation gated on the notify-service merge
+◑ security state participates in nostrhost-state (intrusion-protection.toml + security.json); notifications/recipients policy wiring and mail-integration state still open
 ```
 
 See §18 for the full design.
