@@ -1,24 +1,42 @@
-# Nostr-Native YunoHost Derivative
-## Fork-to-Implementation Roadmap
+# NostrHost
+## Platform Roadmap
 
 ### Objective
 
-Build a Nostr-native YunoHost derivative that keeps YunoHost's mature server-management engine, but replaces or reworks the identity, catalogue, authorisation, administration and remote-control layers around it.
+> **NostrHost is a Debian-based self-hosting platform derived from YunoHost.
+> Nostr provides its native identity, authority, control, software-trust and
+> audit layers. Applications are managed through declarative resources and
+> bounded execution, Caddy provides the web and TLS layer, CrowdSec provides
+> intrusion detection, and ngit plus Restic provide state and data recovery.
+> YunoHost compatibility is retained temporarily for existing applications
+> and selected mature Linux-management functionality.**
 
-The target is not a complete rewrite of YunoHost. The aim is to retain the proven machinery for:
+The early framing — "a Nostr-native YunoHost derivative: keep the proven
+machinery, replace the layers around it" — is now largely realised. The
+replacement work is mostly done or under way (native package lifecycle,
+Caddy, Caddy automatic TLS, native state + Restic, CrowdSec). The goal is
+therefore **no longer "replace YunoHost"**. It is to close NostrHost's own
+platform loops — native bootstrap, package migration, DNS, secrets and
+release/update — so that YunoHost becomes purely a compatibility and
+migration source.
 
-- application installation, removal and upgrades
+NostrHost retains selected mature YunoHost Linux-management functionality:
+
 - domains
-- Nginx configuration
-- certificates
-- backups
 - services
-- firewall
+- firewall (nftables)
 - diagnosis
 - Debian packaging
-- user/group compatibility
+- user/group compatibility (temporary, projected via LDAP)
 
-while making Nostr the primary control-plane technology for:
+The layers formerly inherited are now native:
+
+- application installation / removal / upgrades → native package lifecycle (§21)
+- Nginx configuration → Caddy (§12)
+- certificates → Caddy automatic TLS (§12)
+- backups → native state + Restic (§7, §9)
+
+Nostr is the primary control-plane technology for:
 
 - identity
 - authentication
@@ -426,7 +444,7 @@ enforced on the protected control kinds.
 
 ---
 
-# 7. Introduce `nostrhost-state` with ngit / NIP-34 — ◑ (Stage A proven)
+# 7. Introduce `nostrhost-state` with ngit / NIP-34 — ◑ (Stage A + B complete; C, D remain)
 
 This is the correct point to introduce durable configuration-state management.
 Identity, policy and execution semantics (§4–§6) now exist, so state history
@@ -437,8 +455,8 @@ semantic export (domains/apps/services/identities/packages/capabilities),
 the git-backed state repository (server-pubkey identity), automatic pre/post
 snapshots linked to operation event ids, known-good markers, semantic diffs,
 and the NIP-34 kind-30617 repository announcement discoverable as
-`nostr://<server-npub>/nostrhost-state`. Restic snapshot *linkage* machinery
-is in place; the Restic client and assisted rollback are Stage B.
+`nostr://<server-npub>/nostrhost-state`. Restic client + assisted rollback
+(Stage B) are complete (§9).
 
 The state layer uses **ngit / NIP-34 as the Nostr-aligned repository model**,
 with normal Git objects underneath. Plain Git remains the storage engine, but
@@ -506,8 +524,8 @@ state/
 └── package-versions/
 ```
 
-The repository describes intent (`nginx should be enabled`), not runtime
-observation (`nginx is running`). Runtime truth belongs to Linux/systemd.
+The repository describes intent (`caddy should serve this domain`), not
+runtime observation (`caddy is running`). Runtime truth belongs to Linux/systemd.
 Secrets must not be stored in plaintext: reference secret identifiers backed
 by systemd credentials, age/SOPS or another dedicated encrypted secret store.
 
@@ -816,6 +834,40 @@ Codex
 Functionality currently handled through configuration files or MCP CLI
 commands should progressively gain native UI.
 
+## First-class views
+
+As the backend capabilities grow (§11–§27), make these first-class Admin
+views rather than CLI-only:
+
+```text
+Identities · Agents · Delegations · Pending approvals
+
+Apps
+├── native
+├── legacy
+└── migration status
+
+Operation plans
+├── resources affected
+├── risk
+├── rollback availability
+└── approval state
+
+Restore points
+
+Security
+├── CrowdSec alerts
+├── current decisions
+└── security events
+
+State
+├── current revision
+├── known-good
+└── drift
+
+System health
+```
+
 ---
 
 # 11. Make Nostr Catalog Native — ✓
@@ -870,15 +922,18 @@ control-plane policy spec for the exact schema).
 
 ---
 
-# 12. SSO Simplification — ⏳
+# 12. Web-Layer Authentication: Caddy forward_auth — ✓ (SSOwat retired)
 
-Do not attempt this early. Once identity and policy are stable, move
-authentication enforcement towards:
+The authentication enforcement point is now **Caddy `forward_auth` → the
+Python auth daemon**, not nginx/SSOwat. This supersedes the earlier
+"NGINX → auth_request → nostrhost-authd" plan and the "reduce SSOwat"
+goal: SSOwat has been **retired** (deleted) — see
+`docs/CADDY-MIGRATION.md` P3/P6 and §18.4.
 
 ```text
-NGINX
+Caddy
   ↓
-auth_request
+forward_auth
   ↓
 nostrhost-authd (auth daemon)
   ↓
@@ -889,11 +944,16 @@ policy
 
 The authentication daemon returns compatibility headers such as
 `X-Remote-User`, `X-Remote-Email`, `X-Nostr-Pubkey`, `X-Nostr-Npub` so existing
-YunoHost applications continue receiving the headers they expect.
+YunoHost applications continue receiving the headers they expect (the authd
+always emits the full header set, empty when unknown, and overwrites
+client-supplied copies).
 
-Long-term goal: reduce `nostrhost-ssowat` to primarily NGINX configuration,
-session validation, auth_request integration and compatibility headers rather
-than maintaining a substantial Lua-based authentication implementation.
+SSOwat is not reduced — it is removed. The Python auth daemon performs the
+URL→permission matching (ported from `access.lua`), reads a native permission
+projection (`/etc/nostrhost/permissions.json` generated by
+`nostrhost.permissions`), and Caddy owns session validation and compatibility
+header injection. Remaining work is residual-reference cleanup only (see §20,
+Caddy P7).
 
 ---
 
@@ -991,6 +1051,36 @@ legacy password login
 ```
 
 Password login should remain available initially as a recovery path.
+
+## 17.1 Native self-update
+
+The platform itself should update through the same architecture it provides:
+signed release → catalogue/release metadata → verify publisher + artifact →
+state S1 + recovery snapshot → system upgrade plan → approval → apt/dpkg →
+reboot if needed → health validation → state S2 known-good. This reuses the
+native state, recovery and policy layers rather than a bespoke updater:
+
+```text
+signed NostrHost release
+   ↓
+Nostr catalogue / release metadata
+   ↓
+verify publisher + artifact
+   ↓
+state S1 + recovery snapshot
+   ↓
+system upgrade plan
+   ↓
+approval
+   ↓
+apt/dpkg
+   ↓
+reboot if needed
+   ↓
+health validation
+   ↓
+state S2 known-good
+```
 
 ---
 
@@ -1097,6 +1187,23 @@ exist where required by Unix accounts or legacy applications. Email becomes
 optional profile/contact metadata rather than an architectural identity
 requirement. LDAP compatibility projections must therefore not require
 creation of a functioning mailbox for every Nostr identity.
+
+The final model:
+
+```text
+Nostr messaging = native platform communication
+Email          = optional application/integration
+```
+
+The mail retirement is far along, but the identity/UI consequences remain:
+
+```text
+remove mandatory mailbox from user creation
+remove email-reset / email-login assumptions
+remove remaining mail Admin UI
+ensure DNS no longer assumes MX / SPF / DMARC by default
+represent optional mail integration in semantic state (§18.6)
+```
 
 ## 18.4 Modernise host intrusion protection
 
@@ -1269,11 +1376,11 @@ NostrHost
                 |                       |
              Executor                 Restic
                 |
-       +--------+---------+----------------+
-       |                  |                |
-    systemd             NGINX          nftables
-       |                                   |
- optional apps                       intrusion
++--------+---------+----------------+
+        |                  |                |
+     systemd             CADDY          nftables
+        |                  |                |
+  optional apps       web / TLS      intrusion
                                      protection
 
                     Notification Service
@@ -1298,6 +1405,263 @@ more consistent with its Nostr-native identity and control architecture.
 
 ---
 
+# 19. Native Bootstrap / Postinstall — ⏳
+
+The biggest missing platform-level piece. A clean install must no longer
+bootstrap through the old YunoHost admin/password assumptions. Today
+`nostrhost-bootstrap` already provisions the three hardened roles
+(`server_sk` / `operator_sk` / `admins` / `notice_sk`) root-only (§4), but the
+path from Debian to a ready NostrHost node is still assembled piecemeal.
+Make it a single declarative postinstall:
+
+```text
+Debian
+   ↓
+NostrHost packages
+   ↓
+nostrhost-bootstrap
+   ↓
+domain / network
+   ↓
+server identity
+   ↓
+owner npub proof
+   ↓
+initial capabilities
+   ↓
+private relay
+   ↓
+Caddy
+   ↓
+Portal/Admin
+   ↓
+state S0
+   ↓
+READY
+```
+
+Support two entry points:
+
+```bash
+nostrhost postinstall --new
+nostrhost postinstall --restore
+```
+
+`--new` provisions a fresh node. `--restore` reconstructs the machine from
+server/owner identity + NIP-34 state + Restic (§7.6, §15): install NostrHost →
+restore/authorise server identity → discover the state repository → retrieve
+known-good state + linked Restic snapshot → install apps → restore data →
+reconcile → validate. Restore is the disaster-recovery path, made a
+first-class install mode rather than a manual procedure.
+
+---
+
+# 20. Web Cutover Completion (Caddy P7) — ⏳
+
+The Caddy migration is far along (P0–P6 passed on the VM: Caddy serves
+80/443, SSOwat deleted, the Python auth daemon owns authorisation, Caddy owns
+automatic TLS, nginx removed from core dependencies/templates). Finish the
+P7 tail before declaring the web transition complete — see
+`docs/CADDY-MIGRATION.md` §5 P7:
+
+```text
+Caddy storage in backup/restore   (include /var/lib/caddy alongside the
+                                   exported /etc/yunohost/certs)
+certificate state in semantic state (record certificates/, services/)
+remove remaining nginx helpers     (helpers/*/nginx, ynh_add_nginx_config)
+remove residual nginx migrations/references
+update ROADMAP terminology        (this document, §12, §18.8, End State)
+```
+
+P6 also noted `scripts/verify-clean.sh` no longer pins ssowat and the
+six nginx-referencing test files now assert the Caddy model; confirm those
+are green at the P7 gate.
+
+---
+
+# 21. End-to-End Native App Lifecycle — ⏳
+
+The declarative resource engine is broad enough; stop adding resource types
+temporarily and prove one substantial real application completely through the
+vertical loop. The resource-engine machinery is in place (`package.toml`,
+plan/reconcile model, native providers, native Caddy routes, databases,
+runtimes, permissions, secrets/settings, backup declarations). What is missing
+is proof of the whole, trusted, signed loop on a real app:
+
+```text
+Nostr Catalog
+   ↓
+trusted package.toml
+   ↓
+package.plan
+   ↓
+plan digest
+   ↓
+signed request
+   ↓
+policy
+   ↓
+approval
+   ↓
+Restic + pre-state
+   ↓
+reconcile
+   ↓
+health verification
+   ↓
+post-state
+   ↓
+Admin result
+```
+
+Once this works reliably, the architecture is proven as a whole — including
+the native Caddy route path (P4) and the catalog→policy trust integration
+(§11).
+
+---
+
+# 22. YNH Package Migration Analyser — ⏳
+
+The current migration command (`nostrhost/package_engine.py`
+`migrate_manifest_file`) handles declarative v2 resources but rejects
+packages with imperative lifecycle scripts. The next version should analyse
+them rather than refuse:
+
+```text
+YNH repository
+   ↓
+manifest parser + Bash AST analyser
+   ↓
+helper recogniser
+   ↓
+semantic resource graph
+   ↓
+deterministic migration
+   ↓
+unresolved behaviour
+   ↓
+optional AI
+   ↓
+native package.toml
+   ↓
+VM validation
+```
+
+Crucially: a known `ynh_*` helper maps deterministically; only unknown or
+custom Bash is AI-assisted — AI must not rewrite the whole package blindly.
+This is the path from the §24 "legacy packages 100% → 0%" metric.
+
+---
+
+# 23. Behavioural Equivalence Testing — ⏳
+
+Automated migration is credible only with behavioural comparison between the
+original and the migrated package:
+
+```text
+VM A  original YunoHost package
+VM B  migrated NostrHost package
+        ↓
+   compare
+ service status · HTTP behaviour · ports · database · permissions ·
+ data directories · install · upgrade · backup · restore · remove
+```
+
+A migration should get an actual confidence score / attestation.
+
+---
+
+# 24. Native vs Compatibility Boundary — ⏳
+
+Make the boundary explicit and measurable:
+
+```text
+NostrHost Native
+├── package.toml
+├── resource engine
+├── Caddy
+├── Nostr auth
+├── CrowdSec
+├── native state
+└── signed lifecycle
+
+YunoHost Compatibility
+├── legacy manifest
+├── Bash lifecycle
+├── remaining LDAP projection
+└── temporary helper compatibility
+```
+
+Then make compatibility shrink measurably:
+
+```text
+Legacy dependency count:  122 helpers → 87 → 41 → 0
+Legacy packages:          100%       → 70% → 25% → 0%
+```
+
+---
+
+# 25. LDAP Dependency Inventory / Reduction — ⏳
+
+With SSOwat gone, LDAP's purpose is shrinking. Do not rip it out immediately;
+first inventory what genuinely still needs it:
+
+```text
+Unix account projection?
+legacy applications?
+group compatibility?
+slapd itself?
+old admin APIs?
+```
+
+The eventual target:
+
+```text
+Nostr identity
+   ↓
+local account/group projection
+
+LDAP = optional compatibility provider (not a default platform service)
+```
+
+---
+
+# 26. Native DNS Management — ⏳
+
+Caddy solves certificate issuance, but DNS still matters for domain
+provisioning, NIP-05, application subdomains, IPv4/IPv6 changes and dynamic
+DNS (DNS-01 later). A typed `DnsResource` with provider adapters fits the
+resource-engine architecture:
+
+```toml
+[dns.records.app]
+type = "A"
+name = "photos"
+target = "$server_ipv4"
+```
+
+Provider APIs replace Bash helpers. DNS participates in semantic state
+(`state/network/`, `state/dns/` — §7.2 already reserves `dns/`).
+
+---
+
+# 27. Secrets / Key Lifecycle — ⏳
+
+NostrHost holds increasingly valuable keys: server nsec, operator nsec,
+notification key, Restic credentials, database secrets, external relay
+credentials, DNS provider credentials, Caddy-related secrets, agent keys.
+Formalise the lifecycle as first-class design:
+
+```text
+generation · storage · access · rotation · backup · recovery · revocation
+```
+
+systemd credentials are a useful storage primitive, but the overall
+key-management policy needs explicit architecture. Secrets are referenced by
+identifier in ngit state, never stored in plaintext (§7.2).
+
+---
+
 # Recommended Implementation Order
 
 The order matters. The internal relay + event model (§3) was the
@@ -1317,21 +1681,43 @@ on identity, policy and execution semantics, which now exist.
 8.  Restic linkage + known-good + assisted rollback (Stage B) ✅  (registry-bounded execution, chain-gated, testbed-validated)
 9.  Admin interface                                         ⏳
 10. Native catalogue (sync + trust events)                  ✓ (trusted projection, relay sync, attestations, and YunoHost integration)
-11. SSO simplification                                      ⏳
+11. Web-layer auth: Caddy forward_auth, SSOwat retired      ✓ (P0–P6 of CADDY-MIGRATION on the VM; §12, §20 P7 residual cleanup remains)
 12. MCP adapter                                             ✅
 13. OIDC                                                    ⏳
 14. ngit replication / disaster recovery (Stage C)          ◑ (multi-relay NIP-34 announcement publication landed; repository/object replication remains)
 15. Declarative reconciliation (Stage D)                    ✓ (risk-classified plans + approval-gated bounded apply)
 16. Distribution release                                    ⏳
-17. Platform simplification (native messaging, mail          ⏳
+17. Platform simplification (native messaging, mail          ◑ (§18; mail identity/UI cleanup and security-state remain)
     retirement, host security)
 ```
 
-Do not begin by rewriting SSOwat or rebuilding the admin interface. Stand up
-the control plane and get identity events + projection working first — done —
-then prove execution (§5–§6, done), then build the state-history layer (§7)
-before the portal. Portal authentication follows on top of identity events
-and native session creation.
+## Phase 2 — Platform consolidation and cutover
+
+The core architecture is now largely complete. The next phase stops adding
+subsystems and instead closes NostrHost's own platform loops so YunoHost
+becomes purely a compatibility/migration source (§19–§27):
+
+```text
+18. Caddy P7 cleanup + residual nginx/SSO reference removal  ⏳ (§20)
+19. Native postinstall/bootstrap (--new / --restore)         ⏳ (§19)
+20. Mail identity/UI cleanup (user creation, DNS, Admin UI)  ⏳ (§18)
+21. End-to-end real native app lifecycle                     ⏳ (§21)
+22. YNH package migration analyser (+ AI repair loop)        ⏳ (§22)
+23. Behavioural equivalence testing for migrated packages    ⏳ (§23)
+24. Admin UI first-class views (identities, plans, security) ⏳ (§10)
+25. Native vs compatibility boundary (measurable shrink)     ⏳ (§24)
+26. LDAP dependency inventory / reduction                   ⏳ (§25)
+27. Native DNS resource + provider adapters                  ⏳ (§26)
+28. Secrets / key lifecycle architecture                    ⏳ (§27)
+29. Native NostrHost release/update process                 ⏳ (§17)
+30. Gradual YunoHost compatibility retirement               ⏳ (§24)
+```
+
+Do not begin by rewriting SSOwat (retired — §12) or rebuilding the admin
+interface (still on the list). Stand up the control plane and get identity
+events + projection working first — done — then prove execution (§5–§6, done),
+then build the state-history layer (§7) before the portal. Portal
+authentication follows on top of identity events and native session creation.
 
 ---
 
@@ -1404,13 +1790,15 @@ The first release of this layer stops short of fully automatic reconciliation.
 ⏳ application discovery over relays
 ```
 
-## 0.5 - SSO and Application Compatibility
+## 0.5 - Web Auth and Application Compatibility
 
 ```text
-◑ NGINX auth_request compatibility endpoint (internal subrequest wiring, reusable app include, portal session validation, and identity headers landed; generated server-level routing is required before per-app adoption)
-◑ reduced/simplified SSOwat (guarded identity mode and per-permission migration contract exist; disabled until an application opts in with matching NGINX routing)
-◑ compatibility headers (X-Remote-* and linked X-Nostr-* headers available from auth-request; X-Remote-* also passed by legacy SSOwat when `auth_header` is enabled)
+✓ Caddy forward_auth → authd enforcement (SSOwat and nginx retired; §12,
+  CADDY-MIGRATION P0–P6 on the VM)
+✓ compatibility headers (X-Remote-* and linked X-Nostr-* headers emitted by
+  the authd for Caddy-protected routes)
 ◑ OIDC provider (discovery/JWKS/authorization-code bridge and userinfo are live and VM-proven; client-management and signing-key rotation deferred)
+◑ residual nginx/SSO reference cleanup (Caddy P7 — §20)
 ```
 
 ## 1.0 - Native Distribution
@@ -1479,12 +1867,12 @@ See §18 for the full design.
      executor │ Restic │ outbound publisher ──► external Nostr relays
 ```
 
-NGINX becomes primarily an enforcement point (see `CONTROL-PLANE.md` §5):
-session + identity state is *projected from relay events* before policy
-evaluation allows or denies the application request.
+Caddy is the web/TLS enforcement point (see `CADDY-MIGRATION.md`, and
+`CONTROL-PLANE.md` §5): session + identity state is *projected from relay
+events* before policy evaluation allows or denies the application request.
 
 ```text
-request → NGINX → auth_request → identityd → policy engine → ALLOW / DENY
+request → Caddy → forward_auth → authd → policy engine → ALLOW / DENY
                                                                    ↓
                                                              application
 ```
@@ -1493,7 +1881,8 @@ request → NGINX → auth_request → identityd → policy engine → ALLOW / D
 
 # Key Architectural Principles
 
-1. **Keep YunoHost's proven server-management engine.**
+1. **Keep YunoHost's mature server-management functionality; YunoHost itself
+   becomes a compatibility and migration source, not the platform goal.**
 2. **Make the local Nostr relay the control-plane bus.** The event schema is
    the internal control-plane API: identity, delegation, approval, execution,
    catalogue and audit state flow as signed events; interfaces are relay
@@ -1530,6 +1919,15 @@ request → NGINX → auth_request → identityd → policy engine → ALLOW / D
     outbound to multiple external relays.**
 18. **Delay full declarative reconciliation until identity, policy, execution
     and state history have been proven.**
+19. **Caddy is the web/TLS layer and the authentication enforcement point** —
+    nginx and SSOwat are retired, not reduced (§12, §20).
+20. **Bootstrap and restore are first-class install modes** — `--new` and
+    `--restore` reconstruct the machine from identity + ngit state + Restic
+    (§19).
+21. **Make the native/compatibility boundary explicit and shrink it
+    measurably**, with behavioural equivalence as the migration gate (§22–§24).
+22. **DNS, secrets and the platform's own update are first-class native
+    resources**, not Bash helpers (§17.1, §26, §27).
 
 ---
 
@@ -1539,7 +1937,13 @@ The target is not "YunoHost with Nostr added".
 
 It is:
 
-> A Nostr-native self-hosting platform built on YunoHost's mature server-management engine.
+> A Nostr-native Debian-based self-hosting platform derived from YunoHost.
+> Nostr provides its native identity, authority, control, software-trust and
+> audit layers. Applications are managed through declarative resources and
+> bounded execution, Caddy provides the web and TLS layer, CrowdSec provides
+> intrusion detection, and ngit plus Restic provide state and data recovery.
+> YunoHost compatibility is retained temporarily for existing applications
+> and selected mature Linux-management functionality.
 
 Nostr provides:
 
@@ -1557,17 +1961,25 @@ repository identity and state provenance through ngit / NIP-34
 outbound publication to external relays
 ```
 
-YunoHost continues to provide:
+NostrHost natively provides:
 
 ```text
-application lifecycle
+application lifecycle (declarative package.toml resources + bounded execution)
 domains
-certificates
-backups
+web serving + automatic TLS (Caddy)
+CrowdSec intrusion detection + security events
+configuration state (ngit / NIP-34) + data recovery (Restic)
 services
-Nginx
 system administration
 Debian integration
+```
+
+YunoHost compatibility is retained temporarily for:
+
+```text
+legacy manifests and Bash lifecycle scripts
+remaining LDAP projection
+selected mature Linux-management functionality
 ```
 
 The existing `yunohost-nostr-auth`, Nostr Catalog and `yunohost-mcp` projects
