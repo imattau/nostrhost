@@ -1431,12 +1431,12 @@ The first release of this layer stops short of fully automatic reconciliation.
 ◑ security state participates in nostrhost-state (intrusion-protection.toml + security.json); notifications/recipients state wiring still open
 ```
 
-**Follow-ups** (tracked, not blockers):
+**Follow-ups** (2026-09-11 — all four landed, verified on the testbed):
 
-- **State wiring (§18.6):** make `nostrhost-notify` read `state/notifications/{policy,recipients}.toml` through `nostrhost-state` instead of plain local files (it already expects the §18.6 layout).
-- **Mail phase 2 sources:** certificate / backup / cron subsystems start publishing their 2210–2212 events — `nostrhost-notify` is ready to consume them (it subscribes to 2210–2213 today).
-- **Operation-chain notifications:** add an `approval`/`operation` policy class for kind-2200/2204 so approval requests and operation results reach the admin (the classifier already emits them).
-- **Real outbound relays:** point `outbound_relays` at relays the admin's client can actually reach (public or NIP-65), replacing the testbed loopback DM relay.
+- ✅ **State wiring (§18.6):** `state/notifications/{policy,recipients}.toml` now renders into `nostrhost-state` via `export_state` (`Backend.notifications()`, raw TOML preserved verbatim so go-toml keeps parsing the `[[recipient]]`/`[[rule]]` arrays) and is committed to the state repo (git history, backups, restore).
+- ✅ **Mail phase 2 sources:** certificate (`certificate.py`) and diagnosis (`diagnosis.py`, the auto-diagnosis cron) already publish kind-2210 notices; backup/cron outcomes are covered through the operation chain (kind-2204, class `operation`) once the policy declares it. The notify policy now declares all classes.
+- ✅ **Operation-chain notifications:** `approval` (kind-2200) and `operation` (kind-2204) classes added to the policy; verified live — a 2200 produced `[approval/warning] approval required: system.upgrade` and a failed 2204 produced `[operation/warning] operation failed`, both delivered as NIP-17 DMs.
+- ✅ **Real outbound relays:** `outbound_relays` now includes `wss://nos.lol` (a NIP-17-friendly relay that indexes gift-wraps by `p` tag) alongside the testbed loopback relay; a live security DM was delivered to nos.lol and unwrapped with the operator key. Note: `relay.damus.io` accepts kind-1059 events but does not index/return them via `#p` — not NIP-17-usable for DM discovery.
 
 See §18 for the full design.
 

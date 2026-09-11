@@ -215,15 +215,19 @@ No new kind numbers were needed: `update available`, `recovery result`,
 `2210` (system) / `2211` (service) kinds, distinguished by the `class` field
 in content, per `NIP-MAPPING.md`'s "minimal custom kind surface" principle.
 
-Open follow-ups, tracked in `nostrhost-control` and `docs/ROADMAP.md` §1.1:
+Open follow-ups, tracked in `docs/ROADMAP.md` §1.1:
 
-- Wire `recipients.toml`/`policy.toml` through `nostrhost-state` (§18.6)
-  instead of being read as plain local files.
-- Add `approval`/`operation` policy classes so kind-2200 requests and
-  kind-2204 results notify the admin (the classifier already emits them).
 - Decide the default digest cadence and whether `security` needs a lower
   default `severity_min` than other classes (§7 above).
-- Point `outbound_relays` at real relays the admin's client can reach.
+- Deploy the state-wired `nostr_state.py` into the installed package on a
+  clean VM rebuild (the §18.6 notifications section is committed and
+  tested; the current testbed has it copied in-place).
+
+Done (2026-09-11): `state/notifications/*` wired through `nostrhost-state`
+(§18.6); `approval`/`operation` policy classes live (kind-2200/2204 DMs
+verified); real outbound relays — `wss://nos.lol` delivers the security DM
+(NIP-17-friendly; `relay.damus.io` accepts kind-1059 but does not index/return
+it via `#p`, so it is not usable for DM discovery).
 
 Done during deployment (2026-09-11): integration test against a live relay —
 `internal/notify/service_integration_test.go` boots the real relay and proves
