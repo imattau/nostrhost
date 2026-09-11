@@ -787,3 +787,30 @@ of NOTIFICATION-SERVICE.md).
 **Testbed wiring (not committed):** `nostr-securityd.service` (systemd) on
 the VM; `/etc/nostrhost/security.toml` optional; the relay `allowed_kinds`
 already carries 2210-2213 via the bootstrap `RELAY_KINDS` change.
+
+### 8.10 P6 fail2ban retirement validation (rebuilt VM, 2026-09-11)
+
+Fail2ban was removed from the fork and proven absent on the testbed VM, with
+CrowdSec alone enforcing protection end to end.
+
+| Step | Result |
+|---|---|
+| Pre-condition (packaging) | `tools/legacy_inventory.py`: `nostrhost-test` (sole legacy fixture) never calls `ynh_config_add_fail2ban`; no supported package sources the helper → helper-tree removal is safe for this slice |
+| Fork removals | `conf/fail2ban/` deleted; `helpers.v1.d/fail2ban` + `helpers.v2.1.d/fail2ban` deleted; `PolicyResource.type` now `Literal["logrotate","crowdsec"]`; `PolicyProvider.directories`/`_suffix` no longer map `/etc/fail2ban/jail.d` or `.local` (the `52-fail2ban` hook, `debian/control` dep, `services.yml` entry, and `app_utils` wait-list entry were already gone with the P4 cutover) |
+| Tests | `test_crowdsec.py` + `test_native_providers.py` non-crowdsec policy cases switched to the `logrotate` type; 114 host tests green |
+| VM: purge | `dpkg --purge --force-depends fail2ban` (the installed `yunohost` package still carries the old dep — the removal ships inside the yunohost upgrade); 0 fail2ban units, `/etc/fail2ban` removed |
+| VM: YunoHost services | `crowdsec` + `crowdsec-firewall-bouncer` both `configuration: valid` / `status: running`; no fail2ban service anywhere |
+| VM e2e: fresh ban | decision deleted → 15× `POST /yunohost/api/login` 401 from `.175` (must hit the site via `--resolve …:192.168.122.175`, not loopback, or the source is `127.0.0.1`) → CrowdSec re-bans: new decision + alerts 7/8 (nostrhost-auth-bf + LePresidente) |
+| VM e2e: projector | new kind-2213 published, **severity `critical`** (recurring source — the P5 `.175` entry was still in `security.json`), summary coalesced both scenarios, `last_alert_id 8` |
+| Relay | NIP-42 REQ for kind 2213 shows the new `critical` event + prior events, server-signed (`1fbf6abd…`) |
+
+**Recurrence escalation is now proven live, not just unit-tested:** a source
+already recorded in `security.json` re-offending produces `critical` instead
+of the first-seen `warning`.
+
+**Note on the purge mechanics:** a real deployment removes fail2ban via the
+normal `apt` path once the yunohost package carrying the P6 `debian/control`
+change is installed; on the testbed the installed package's metadata still
+declared the dep (it predates P6), so the removal used `dpkg --force-depends`
+to reach the same end state. The gate evidence above is against that end
+state.
