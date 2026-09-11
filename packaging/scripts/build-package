@@ -35,7 +35,13 @@ UMBRELLA = Path(__file__).resolve().parents[2]  # repo root
 
 
 def run(cmd: list[str], cwd: Path, **kw) -> str:
-    return subprocess.run(cmd, cwd=cwd, check=True, capture_output=True, text=True, **kw).stdout
+    p = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, **kw)
+    if p.returncode != 0:
+        raise SystemExit(
+            f"{' '.join(cmd)} failed (rc={p.returncode})\n--- stdout ---\n{p.stdout}"
+            f"\n--- stderr ---\n{p.stderr}"
+        )
+    return p.stdout
 
 
 def deb_build(staging: Path, out: Path) -> None:
@@ -205,10 +211,9 @@ def build_caddy(pkg: dict, version: str, outdir: Path) -> Path:
                              "github.com/caddyserver/xcaddy/cmd/xcaddy@latest)")
         bindir = staging / "usr" / "bin"
         bindir.mkdir(parents=True)
-        module_args = [m for m in pkg["source"].get("xcaddy_modules", [])]
         cmd = [xcaddy, "build", "--output", str(bindir / "caddy")]
-        if module_args:
-            cmd += module_args
+        for m in pkg["source"].get("xcaddy_modules", []):
+            cmd += ["--with", m]
         run(cmd, UMBRELLA)
         write_control(staging, name, version, arch, pkg.get("summary", ""),
                       pkg.get("depends", []), pkg.get("provides", []),
