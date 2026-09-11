@@ -11,7 +11,8 @@ each built from its own component repo (held here as pinned submodules).
 |---|---|---|
 | `nostrhost` | meta-package: the complete server | core-system + admin + portal + notify |
 | `nostrhost-core-system` | meta-package: minimal headless system | core + control + catalog + caddy + security-config + python libs |
-| `nostrhost-core` | forked YunoHost engine (Stage 1 ships as `yunohost`) | python3-nostrhost, libs, caddy, security-config |
+| `nostrhost-core` | NostrHost server-management engine (renamed from `yunohost`, Stage 2) | python3-nostrhost, libs, caddy, security-config |
+| `yunohost` | transitional package depending on nostrhost-core (rename shim) | nostrhost-core |
 | `python3-nostrhost` | native moulinette replacement: framework primitives + Typer CLI + Bottle/NIP-98 API | yunohost, typer, bottle, auth |
 | `nostrhost-control` | local khatru control-plane relay | core |
 | `nostrhost-notify` | NIP-17/59 notification daemon | control, core |
@@ -66,7 +67,8 @@ external Debian packages: crowdsec · crowdsec-firewall-bouncer
 
 - `packages.yml` — the APT release BOM (package → source repo, kind, deps).
 - `compatibility.yml` — version constraints; conservative `>=`, `Breaks` only
-  on real protocol/ABI incompatibilities; the Stage 1→2 core-rename plan.
+  on real protocol/ABI incompatibilities; the completed core rename
+  (yunohost → nostrhost-core).
 - `scripts/verify-dependencies` — validates the manifest graph (every
   depends resolves, no cycles, meta closure, provides/replaces coherence).
 - `scripts/generate-meta-package` — emits the meta `.deb`s.

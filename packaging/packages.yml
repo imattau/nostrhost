@@ -62,17 +62,17 @@ packages:
       - python3-nostrhost-policy
 
   # ------------------------------------------------------------- core ------
-  # Stage 1 keeps the `yunohost` binary package name (built from the fork's
-  # debian/ tree) so existing `Depends: yunohost (>= 12.1)` continue to
-  # resolve. Stage 2 renames to nostrhost-core with Provides/Replaces/Conflicts
-  # against yunohost. See packaging/docs note in compatibility.yml.
+  # The fork's debian/ tree ships the engine as `nostrhost-core` (Stage 2 of
+  # the core rename — see compatibility.yml core_rename). It Provides/
+  # Replaces/Conflicts the historical `yunohost` name; a transitional empty
+  # `yunohost` package depends on it so existing installs keep resolving.
   - name: nostrhost-core
     kind: debian-source
     source:
       repo: imattau/nostrhost-yunohost
       submodule: forks/yunohost
-      binary_package: yunohost            # Stage 1: shipped as `yunohost`
-    summary: Forked YunoHost Python server-management engine
+      binary_package: nostrhost-core     # Stage 2: renamed from `yunohost`
+    summary: NostrHost server-management engine (renamed from yunohost)
     depends:
       - python3-nostrhost
       - python3-nostrhost-auth
@@ -81,9 +81,33 @@ packages:
       - nostrhost-security-config
       - nftables
       - slapd
+    provides:
+      - yunohost
+    conflicts:
+      - yunohost (<< 12.1.41.5)
+    replaces:
+      - yunohost (<< 12.1.41.5)
     recommends:
       - nostrhost-admin
       - nostrhost-portal
+
+  # Transitional package for the yunohost -> nostrhost-core rename: depends on
+  # the new core so old references to `yunohost` keep resolving. Ships from
+  # the same debian/ tree as nostrhost-core.
+  - name: yunohost
+    kind: debian-source
+    source:
+      repo: imattau/nostrhost-yunohost
+      submodule: forks/yunohost
+      binary_package: yunohost
+    built_with: nostrhost-core       # excluded from the build matrix
+    summary: Transitional package (core renamed to nostrhost-core)
+    depends:
+      - nostrhost-core (>= 12.1.41.5)
+    provides: []
+    conflicts: []
+    replaces: []
+    breaks: []
 
   # python3-nostrhost — the native moulinette replacement (framework + CLI +
   # API), built from the same debian/ tree as nostrhost-core. Not a separate

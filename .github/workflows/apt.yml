@@ -100,18 +100,18 @@ jobs:
             yarn "$cmd"
           )
 
-      - name: Build nostrhost-core (debian-source, ships `yunohost` + `python3-nostrhost`)
+      - name: Build nostrhost-core (debian-source, ships `nostrhost-core` + `python3-nostrhost` + transitional `yunohost`)
         if: matrix.name == 'nostrhost-core'
         working-directory: forks/yunohost
         run: |
-          # Build the fork's own debian/ tree. The result is the `yunohost`
-          # binary package (Stage 1 — see compatibility.yml core_rename) plus
-          # `python3-nostrhost` (the moulinette replacement) from the same
-          # source.
+          # Build the fork's own debian/ tree. The result is `nostrhost-core`
+          # (Stage 2 core rename), `python3-nostrhost` (the moulinette
+          # replacement) and the transitional empty `yunohost` package, all
+          # from the same source.
           sudo apt-get build-dep -y .
           dpkg-buildpackage -b -us -uc -d
           mkdir -p ../../packaging/build
-          cp ../nostrhost-*.deb ../python3-nostrhost_*.deb ../yunohost_*.deb ../../packaging/build/ 2>/dev/null || true
+          cp ../nostrhost-core_*.deb ../python3-nostrhost_*.deb ../yunohost_*.deb ../../packaging/build/ 2>/dev/null || true
           ls -la ../../packaging/build/
 
       - name: Build non-core package

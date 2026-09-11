@@ -43,24 +43,24 @@ interfaces:
 # breaks against the installing package's counterpart.
 breaks: {}
 
-# Core rename plan (Stage 1 → Stage 2).
+# Core rename plan (Stage 1 → Stage 2) — COMPLETE.
 #
-# Stage 1 (current): the fork's debian/ tree ships the binary package
-# `yunohost`, so every existing `Depends: yunohost (>= 12.1)` keeps resolving.
-# Stage 2 (when the derivative is independent): the same source ships
-# `nostrhost-core` with:
+# Stage 1: the fork's debian/ tree shipped the binary package `yunohost`, so
+# every existing `Depends: yunohost (>= 12.1)` kept resolving.
+# Stage 2 (done): the same source ships `nostrhost-core` with:
 #
 #     Package: nostrhost-core
 #     Provides: yunohost
-#     Conflicts: yunohost
-#     Replaces: yunohost
+#     Conflicts: yunohost (<< 12.1.41.5)
+#     Replaces: yunohost (<< 12.1.41.5)
 #
-# plus a transitional empty `yunohost` package where needed. Do not rename
-# prematurely; the roadmap §24 native/compat boundary gates it.
+# plus a transitional empty `yunohost` package (Depends: nostrhost-core) so
+# old references keep resolving and upgrades move cleanly. The versioned
+# Conflicts/Replaces let the transitional package coexist.
 core_rename:
-  stage: 1
-  provides_yunohost: false   # Stage 2: true
-  transitional_package: false
+  stage: 2
+  provides_yunohost: true   # nostrhost-core Provides: yunohost
+  transitional_package: true
 
 # Components whose upstream ships their own Debian packages and are therefore
 # ordinary external dependencies (never repackaged here). Matches the
