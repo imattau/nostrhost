@@ -23,6 +23,8 @@ auth = "nostrhost"
 https = "automatic"
 
 [permissions.main]
-url = "/nostrhost-test"
+# Relative to the app's [web] path (permission_create prepends
+# domain + web.path); "/" -> nostrhost.test/nostrhost-test
+url = "/"
 allowed = ["all_users"]
 auth_request = true
