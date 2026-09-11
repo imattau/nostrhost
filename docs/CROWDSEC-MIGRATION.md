@@ -257,33 +257,47 @@ its phase gate" pattern.
     entry with `crowdsec` + `crowdsec-firewall-bouncer` (both bookworm main).
   - New `conf/crowdsec-firewall-bouncer/crowdsec-firewall-bouncer.yaml`
     template: nftables mode, local LAPI (`127.0.0.1:8080`), `__API_KEY__`
-    placeholder substituted at install.
+    placeholder substituted at install. Schema matches the Debian 0.0.25
+    package's nested `nftables: {ipv4, ipv6}` blocks.
   - `debian/postinst` `provision_crowdsec()` (idempotent, runs on fresh
-    install and upgrade): (1) ships the `# no thanks` CAPI opt-out without
-    ever clobbering an existing `online_api_credentials.yaml`; (2) installs
-    the base hub collections (`crowdsecurity/caddy`, `/sshd`, `/postfix`,
-    `/linux`) from the vendored offline hub; (3) registers the firewall
-    bouncer against the local LAPI (`cscli bouncers add`, token written to
-    the rendered bouncer config, 0600); (4) enables + restarts
-    `crowdsec-firewall-bouncer`.
+    install and upgrade): (1) ships the `# no thanks` CAPI opt-out — on
+    **fresh install** it *forces* it and purges the ~15k CAPI community
+    decisions the crowdsec package's auto-registration already pulled
+    (§8.8); (2) installs the base hub collections (`crowdsecurity/caddy`,
+    `/sshd`, `/postfix`, `/linux`) from the vendored offline hub via
+    `cscli collections install` (1.4.x has no `cscli hub install`); (3)
+    renders the bouncer config, reusing the Debian package's auto-registered
+    `.local` API key when present (else registers its own bouncer) and drops
+    the `.local` override so the rendered config is authoritative; (4)
+    enables + restarts `crowdsec-firewall-bouncer`.
   - `conf/yunohost/services.yml`: fail2ban entry replaced with `crowdsec`
     (`test_conf: cscli config show >/dev/null 2>&1`) and
     `crowdsec-firewall-bouncer` (`test_conf: test -f <bouncer config>`).
   - `src/utils/app_utils.py:1359` service-wait list → `["caddy", "crowdsec"]`.
+  - `hooks/conf_regen/15-caddy` fixed (it was a silent no-op: missing the
+    `do_$1_regen` dispatch, missing `do_post_regen`, and rendering in a
+    `do_regen` function regenconf never calls — rendering now happens in
+    `do_pre_regen`, mirroring 40-nftables/52-crowdsec). The base Caddyfile
+    with the access-log directive therefore never rendered before this fix.
+  - `conf/caddy/caddy_domain.conf` gains `reverse_proxy` for `/yunohost/api`
+    (6787) and `/yunohost/portalapi` (6788), mirroring the retired nginx
+    `location` blocks.
+  - `conf/crowdsec/acquis.yaml`: the journald `ssh.service` source was
+    dropped — `/var/log/auth.log` already carries every sshd line (any port),
+    and acquiring both double-counted failures (§8.8).
   - `debian/postinst` fresh-install init list: `15-nginx` → `15-caddy` (a
     Caddy-migration leftover; nginx's regen hook was retired).
-- **Pending (VM-validated, §8.8):** enable `crowdsec-firewall-bouncer` for
-  real, owning its own nftables set (`crowdsec-blacklists`) referenced from
-  the existing `inet filter / input` chain (`conf/nftables/nftables.d/
-  yunohost-firewall.tpl.conf`) — additive, not a replacement of YunoHost's
-  firewall management. `firewall_reload`/`firewall_list`
-  (`src/firewall.py`) must keep working unmodified; the bouncer set is
-  orthogonal to the port-based rules YunoHost manages. Disable fail2ban's
-  `nftables-*` ban actions (or stop the fail2ban service entirely) once the
-  bouncer is confirmed enforcing.
-- Gate: a live ban test (deliberate repeated auth failure from a test source)
-  is blocked by nftables via the CrowdSec path with fail2ban's ban action
-  disabled; `yunohost diagnosis` clean.
+- **Done (validated, §8.8):** bouncer enforced live on the fresh testbed VM
+  in nftables mode, owning its own `crowdsec`/`crowdsec6` tables +
+  `crowdsec-blacklists` sets hooked via `crowdsec-chain` (set-only: false).
+  It is additive — it never touches YunoHost's `inet filter` table, and
+  `firewall_reload`/`firewall_list` + a full `regen-conf nftables` leave it
+  (and its enforced set) intact. fail2ban is stopped + disabled.
+- Gate (§8.8): a live ban test (12× `POST /yunohost/api/login` 401 from a
+  test source) fired `nostrhost/yunohost-auth-bf`, the bouncer added the
+  source to the nftables set, and traffic from it was dropped — with the
+  management host untouched. `yunohost diagnosis` clean of any
+  CrowdSec-related issue.
 
 ### P5 — Security event integration (roadmap §18.5)
 This is the concrete replacement of the mail-based security notifications:
@@ -664,3 +678,79 @@ produced:
 
 All `nostrhost/*` scenarios listed as `enabled,local`; the `crowdsecurity/caddy`
 collection (and its `caddy-logs` parser) is installed alongside.
+
+### 8.8 P4 bouncer cutover validation (fresh VM, 2026-09-11)
+
+Validated on a **freshly rebuilt** testbed VM (the previous `nostrhost-vm`
+disk lived in `/tmp/opencode`, which was cleared — a rebuild was required;
+the disk now lives in the repo at `testbed/vm/`, gitignored). Debian 12
+bookworm + stock YunoHost 12.1.41.2 postinstall (`nostrhost.test`, admin
+`ynhadmin`) with the derivative fork overlaid, Caddy 2.6.2 (Debian) owning
+80/443 (nginx stopped+disabled), CrowdSec 1.4.6 + bouncer 0.0.25 (both
+bookworm main).
+
+**Packaging findings fixed during validation:**
+
+1. **CAPI auto-registration.** The Debian `crowdsec` package's postinst
+   auto-registers with CAPI (writes a real `online_api_credentials.yaml`)
+   *before* yunohost's postinst runs — and pulls ~15k community decisions
+   into LAPI. `provision_crowdsec force` (fresh install) therefore now
+   *forces* the `# no thanks` opt-out and purges those decisions; the
+   upgrade path still leaves an existing file (a deliberate opt-in) alone.
+2. **`cscli hub install` does not exist in 1.4.6.** It silently failed in
+   the first provisioning draft; collections install under
+   `cscli collections install`. Fixed.
+3. **Bouncer config schema + `.local` convention.** The Debian bouncer ships
+   `crowdsec-firewall-bouncer.yaml` (a template with `${BACKEND}`/`${API_KEY}`
+   placeholders) plus a `.local` override carrying the key it auto-registered.
+   Provisioning now reuses that key and drops the `.local` so the rendered
+   config is authoritative; the template matches the package's nested
+   `nftables: {ipv4, ipv6}` schema.
+4. **`15-caddy` regen hook was a silent no-op** — no dispatch line, no
+   `do_post_regen`, and the render code sat in a `do_regen` function
+   regenconf never invokes (regenconf drives hooks with `pre`/`post` only).
+   Without it, the base Caddyfile (with the access-log directive) never
+   rendered. Fixed to render in `do_pre_regen`; `regen-conf caddy` now
+   produces `/etc/caddy/Caddyfile` + `/etc/caddy/conf.d/nostrhost.test.conf`.
+5. **sshd double-counting.** The acquis acquired sshd via *both* the journald
+   `ssh.service` unit and `/var/log/auth.log`; the same sshd failure counted
+   twice (3 real failures → 6 events), tripping `ssh-bf` (capacity 5) early
+   and **banning the LAN management host** once the private-IP whitelist was
+   relaxed. Dropped the journald `ssh.service` source (auth.log carries every
+   sshd line on any port).
+
+**The live ban test (the §5 P4 gate):**
+
+Test source = the VM's own IP `192.168.122.175` (chosen so the block can be
+demonstrated without locking out the management host `192.168.122.1`); the
+whitelist was adjusted to keep `10.0.0.0/8` + `172.16.0.0/12` + the
+management host, removing only `192.168.0.0/16`.
+
+| Step | Result |
+|---|---|
+| 12× `POST /yunohost/api/login` 401 (bad `credentials`) from `.175` via Caddy | `nostrhost/yunohost-auth-bf` fired; **ban** decision for `.175` in LAPI |
+| Bouncer sync | `192.168.122.175` in `table ip crowdsec` `set crowdsec-blacklists` (nftables) |
+| Post-ban probe from `.175` (curl to own IP) | **connection dropped** (`BLOCKED`) |
+| Management SSH from host `.1` | unaffected |
+| `yunohost firewall reload` + `firewall_list` | work unmodified; crowdsec table + enforced set survive; bouncer re-syncs if ever flushed |
+| `regen-conf nftables --force` (full ruleset regen) | crowdsec table survives; set restored; block still enforced |
+| fail2ban | stopped + disabled (CrowdSec is the enforcement path) |
+| `yunohost diagnosis` | no CrowdSec-related issues (only testbed-environment warnings: no public IP/port exposure, no reverse DNS, nginx-retired diagnostic leftover) |
+
+**nftables integration (risk #4) confirmed additive:** the bouncer creates
+its own `table ip crowdsec` + `table ip6 crowdsec6` with base chains
+(`crowdsec-chain`, hook input) that drop `ip saddr @crowdsec-blacklists`; it
+never edits YunoHost's `inet filter` table, and it does not use an
+`/etc/nftables.d/*.conf` include, so there is no include-ordering collision
+with `conf/nftables/nftables.conf`. `firewall_reload` and a full nftables
+regen leave the enforcement intact (the bouncer's update loop re-syncs the
+sets).
+
+**Caveats / follow-ups (testbed-specific, not committed):** the testbed
+site block carries `tls internal` (rendered `/etc/caddy/conf.d/
+nostrhost.test.conf`, so the gate ran over HTTPS without ACME); the
+whitelist adjustment and fail2ban disable are VM state, not packaging. The
+CAPI purge is bounded to the fresh-install path so an upgrade never removes
+decisions belonging to a deliberate opt-in. The `15-caddy` hook fix and the
+`caddy_domain.conf` API/portal proxies are fork changes (part of the P4
+commit); a real deployment uses ACME for the site certs.
