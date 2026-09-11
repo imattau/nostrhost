@@ -3,13 +3,14 @@ name: apt
 # Build every package declared in packaging/packages.yml from its pinned
 # submodule source and publish the resulting APT repository to GitHub Pages.
 #
-# Serving: the assembled repo (dists/ + pool/) is committed to the `gh-pages`
-# branch under `debian/`, so the sources line is:
+# Serving: the assembled repo (dists/ + pool/) is deployed to GitHub Pages
+# under `debian/`, so the sources line is:
 #
 #     deb [signed-by=/etc/apt/keyrings/nostrhost.asc] \
 #         https://imattau.github.io/nostrhost/debian/ bookworm main
 #
-# Set the Pages source to "Deploy from a branch" -> gh-pages / (root).
+# Configure Pages source to "GitHub Actions" (Settings -> Pages) — the
+# deploy-pages step below publishes the packaging/pages artifact.
 #
 # Signing: add the apt signing key id + armor to the APT_GPG_KEYID and
 # APT_GPG_KEY secrets. Without them the repo is published unsigned (clients
@@ -202,52 +203,3 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
-
-  gh-pages-branch:
-    # Companion deployment that commits the repo to the `gh-pages` branch for
-    # admins who host Pages from a branch rather than Actions. Only runs for
-    # tag releases to avoid churn on every push.
-    name: Commit repo to gh-pages branch
-    runs-on: ubuntu-latest
-    needs: [build, meta, verify]
-    if: startsWith(github.ref, 'refs/tags/')
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: recursive
-      - name: Install tooling
-        run: sudo apt-get update && sudo apt-get install -y python3-yaml dpkg-dev apt-utils gnupg
-      - name: Download all built .debs
-        uses: actions/download-artifact@v4
-        with:
-          path: packaging/build
-          merge-multiple: true
-      - name: Assemble repo
-        run: |
-          set -euo pipefail
-          debs=( packaging/build/*.deb )
-          packaging/scripts/publish-deb --repo packaging/repository "${debs[@]}"
-          mkdir -p packaging/pages/debian
-          cp -r packaging/repository/dists packaging/repository/pool packaging/pages/debian/
-      - name: Commit to gh-pages
-        run: |
-          set -euo pipefail
-          git config user.name "nostrhost CI"
-          git config user.email "ci@nostrhost.org"
-          git fetch origin gh-pages:gh-pages --depth 1 2>/dev/null || true
-          if git rev-parse --verify gh-pages >/dev/null 2>&1; then
-            git checkout gh-pages
-          else
-            git checkout --orphan gh-pages
-            git rm -rfq . || true
-          fi
-          rm -rf debian
-          mkdir -p debian
-          cp -r packaging/pages/debian/. debian/
-          git add debian
-          if git diff --cached --quiet; then
-            echo "no repo changes to publish"
-          else
-            git commit -m "apt repo: publish $GITHUB_SHA ($(date -u +%Y-%m-%dT%H:%M:%SZ))"
-            git push origin gh-pages:gh-pages
-          fi
