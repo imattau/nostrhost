@@ -199,6 +199,90 @@ def build_config(pkg: dict, version: str, outdir: Path) -> Path:
         shutil.rmtree(staging, ignore_errors=True)
 
 
+# Private runtime venv: created with --system-site-packages so the dist-packages
+# debs (nostrhost, nostrhost_auth, nostrhost_policy, yunohost, typer, bottle,
+# ...) stay visible; the bundled wheels layer the pip-only deps on top. Daemons
+# and units run on /opt/nostrhost/venv/bin/python (see docs/ALPHA-PLAN.md §W1).
+RUNTIME_POSTINST = """#!/bin/sh
+set -e
+
+VENV=/opt/nostrhost/venv
+WHEELS=/usr/share/nostrhost/wheels
+REQS=/usr/share/nostrhost/runtime-requirements.txt
+
+case "$1" in
+  configure)
+    if [ ! -x "$VENV/bin/python" ]; then
+      rm -rf "$VENV"
+      python3 -m venv --system-site-packages "$VENV"
+    fi
+    "$VENV/bin/pip" install --no-index \\
+      --find-links="$WHEELS" \\
+      --disable-pip-version-check \\
+      -r "$REQS"
+    ;;
+  abort-upgrade|abort-remove|abort-deconfigure|'')
+    ;;
+esac
+exit 0
+"""
+
+RUNTIME_POSTRM = """#!/bin/sh
+set -e
+
+VENV=/opt/nostrhost/venv
+
+case "$1" in
+  purge)
+    rm -rf "$VENV"
+    ;;
+esac
+exit 0
+"""
+
+
+def build_runtime(pkg: dict, version: str, outdir: Path) -> Path:
+    """Bundle pinned manylinux cp311 wheels; postinst builds /opt/nostrhost/venv.
+
+    Wheels are downloaded at build time (reproducible, offline install), not
+    checked into the umbrella. The `runtime` kind has no submodule: its source
+    is the pinned requirements file declared under source.requirements.
+    """
+    name = pkg["name"]
+    arch = "amd64"          # wheels are built for x86_64; repo arch is amd64
+    staging = Path(tempfile.mkdtemp(prefix="nostrhost-runtime-"))
+    try:
+        reqfile = UMBRELLA / pkg["source"]["requirements"]
+        if not reqfile.exists():
+            raise SystemExit(f"build-package: runtime requirements not found: {reqfile}")
+        share = staging / "usr" / "share" / "nostrhost"
+        wheels_dir = share / "wheels"
+        wheels_dir.mkdir(parents=True)
+        run(
+            ["python3", "-m", "pip", "download",
+             "--only-binary=:all:",
+             "--dest", str(wheels_dir),
+             "--platform", "manylinux_2_17_x86_64",
+             "--python-version", "3.11",
+             "--implementation", "cp",
+             "--abi", "cp311",
+             "-r", str(reqfile)],
+            UMBRELLA,
+        )
+        shutil.copy2(reqfile, share / "runtime-requirements.txt")
+        write_control(staging, name, version, arch, pkg.get("summary", ""),
+                      pkg.get("depends", []), [], [], [])
+        (staging / "DEBIAN" / "postinst").write_text(RUNTIME_POSTINST, encoding="utf-8")
+        (staging / "DEBIAN" / "postinst").chmod(0o755)
+        (staging / "DEBIAN" / "postrm").write_text(RUNTIME_POSTRM, encoding="utf-8")
+        (staging / "DEBIAN" / "postrm").chmod(0o755)
+        out = outdir / f"{name}_{version}_{arch}.deb"
+        deb_build(staging, out)
+        return out
+    finally:
+        shutil.rmtree(staging, ignore_errors=True)
+
+
 def build_caddy(pkg: dict, version: str, outdir: Path) -> Path:
     """xcaddy build of stock Caddy + nostrhost modules."""
     name = pkg["name"]
@@ -231,6 +315,7 @@ BUILDERS = {
     "spa": build_spa,
     "config": build_config,
     "caddy": build_caddy,
+    "runtime": build_runtime,
 }
 
 

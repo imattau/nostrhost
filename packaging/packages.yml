@@ -60,6 +60,7 @@ packages:
       - nostrhost-security-config
       - python3-nostrhost-auth
       - python3-nostrhost-policy
+      - nostrhost-runtime
 
   # ------------------------------------------------------------- core ------
   # The fork's debian/ tree ships the engine as `nostrhost-core` (Stage 2 of
@@ -130,6 +131,25 @@ packages:
       - python3-bottle
       - python3-requests
       - python3-nostrhost-auth
+
+  # ------------------------------------------------------------ runtime ----
+  # Private Python runtime venv (/opt/nostrhost/venv, --system-site-packages).
+  # Bundles pinned manylinux cp311 wheels for the pip-only deps (nostr-sdk,
+  # bech32, coincurve, pydantic v2 — none in bookworm, or only as v1) and
+  # installs them offline via postinst. Daemons/units run on the venv python.
+  # The wheel set is downloaded at build time (not committed); when
+  # packaging/runtime/requirements.txt changes, bump the version here.
+  - name: nostrhost-runtime
+    kind: runtime
+    version: "0.1.0"
+    summary: NostrHost Python runtime venv (bundled manylinux cp311 wheels)
+    depends:
+      - python3-venv
+      - python3-pip
+    source:
+      requirements: packaging/runtime/requirements.txt
+    provides: []
+    breaks: []
 
   # ------------------------------------------------------------ control ----
   # Two independently-versioned binaries from one Git repo. The release flow
@@ -279,6 +299,8 @@ external_deps:
   - python3-typer
   - python3-bottle
   - python3-requests
+  - python3-venv
+  - python3-pip
   - crowdsec
   - crowdsec-firewall-bouncer
   - nftables

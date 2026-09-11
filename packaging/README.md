@@ -23,15 +23,26 @@ each built from its own component repo (held here as pinned submodules).
 | `nostrhost-portal` | built portal SPA assets | core |
 | `nostrhost-caddy` | Caddy + `caddy-l4` | — |
 | `nostrhost-security-config` | CrowdSec acquisition/scenarios/bouncer config | crowdsec, crowdsec-firewall-bouncer |
+| `nostrhost-runtime` | private venv `/opt/nostrhost/venv` + bundled wheels | python3-venv, python3-pip |
 
 `crowdsec`, `nftables`, `slapd` and normal Python/system
 libraries stay ordinary external Debian packages — never repackaged here.
 
-Some python runtime deps are not available in Debian bookworm and are
-provisioned from PyPI at deploy time (not apt): `nostr-sdk` (for
-`python3-nostrhost-auth`), and `bech32`, `coincurve`, `pydantic>=2` (for
-`python3-nostrhost-policy`; bookworm only ships pydantic 1.x). Install them
-with e.g. `pip install nostr-sdk bech32 coincurve 'pydantic>=2'`.
+Some Python runtime deps are **not in Debian bookworm** (or only in an
+incompatible version): `nostr-sdk` (for `python3-nostrhost-auth`), and
+`bech32`, `coincurve`, `pydantic>=2` (for `python3-nostrhost-policy`; bookworm
+only ships pydantic 1.x). They are bundled into `nostrhost-runtime` as pinned
+manylinux cp311 wheels (downloaded at build time from `packaging/runtime/
+requirements.txt`) and installed **offline** into a private venv:
+
+- `postinst` creates `/opt/nostrhost/venv` with `--system-site-packages`, so
+  the dist-packages debs (`nostrhost`, `nostrhost_auth`, `nostrhost_policy`,
+  `yunohost`, typer, bottle, …) stay visible and the wheels layer the
+  pip-only deps on top.
+- Daemons and units run on `/opt/nostrhost/venv/bin/python`.
+- No manual `pip` on the target. When the pins in
+  `packaging/runtime/requirements.txt` change, bump the `nostrhost-runtime`
+  version in `packages.yml` (apt does not upgrade a same-version rebuild).
 
 Control and notify are two **independently-versioned** binary packages even
 though they share the `nostrhost-control` source repo: the release flow tags
@@ -55,6 +66,7 @@ them separately (`control/v*`, `notify/v*`).
        ├──── python3-nostrhost-auth
        ├──── python3-nostrhost-policy
        ├──── nostrhost-security-config
+       ├──── nostrhost-runtime
        │
        ├──── Recommends: nostrhost-admin
        └──── Recommends: nostrhost-portal
@@ -69,12 +81,14 @@ external Debian packages: crowdsec · crowdsec-firewall-bouncer
 - `compatibility.yml` — version constraints; conservative `>=`, `Breaks` only
   on real protocol/ABI incompatibilities; the completed core rename
   (yunohost → nostrhost-core).
+- `runtime/requirements.txt` — pinned Python deps bundled into
+  `nostrhost-runtime` (see the package model above).
 - `scripts/verify-dependencies` — validates the manifest graph (every
   depends resolves, no cycles, meta closure, provides/replaces coherence).
 - `scripts/generate-meta-package` — emits the meta `.deb`s.
 - `scripts/build-package` — builds one non-meta package from its pinned
-  submodule (golang/python/spa/config/caddy kinds). `nostrhost-core` is built
-  with `dpkg-buildpackage` in its own debian/ tree by the workflow.
+  submodule (golang/python/spa/config/caddy/runtime kinds). `nostrhost-core`
+  is built with `dpkg-buildpackage` in its own debian/ tree by the workflow.
 - `scripts/publish-deb` — stages `.deb`s into a pool and regenerates the
   index (`Packages`, `Packages.gz`, `Release`, optional `InRelease`).
 - `.github/workflows/apt.yml` — builds everything, verifies the graph,
