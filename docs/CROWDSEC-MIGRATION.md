@@ -85,14 +85,14 @@ and be surfaced as a NostrHost setting, not silently enabled by the
 | `yunohost.conf` / `yunohost-portal.conf` filters | **Done (P1).** Ported to **scenario-level path filters** (`nostrhost-yunohost-auth-bf.yaml`, `nostrhost-yunohost-portal-auth-bf.yaml`) — not custom parsers (local parsers don't load, §8.6). Same detection logic, rewritten for Caddy's log output via the `caddy-logs` metas |
 | `postfix-sasl.conf` | **Done (P1).** `nostrhost-postfix-sasl-bf.yaml` reuses the `crowdsecurity/postfix` collection's `postfix-logs` parser; narrows with `log_type_enh == 'spam-attempt' && evt.Parsed.message_failure != ''` (no parser override needed) |
 | `hooks/conf_regen/52-fail2ban` | **Done (P2).** Replaced with `hooks/conf_regen/52-crowdsec` rendering `acquis.yaml` + installing local scenarios + reloading `crowdsec` (bouncer config deferred to P4) |
-| `conf/fail2ban/systemd-override-bind-nftables.conf` | **Replace**: `crowdsec-firewall-bouncer` ships its own nftables binding; verify ordering against `nftables.service` the same way |
+| `conf/fail2ban/systemd-override-bind-nftables.conf` | **Replace**: `crowdsec-firewall-bouncer` ships its own nftables binding; verify ordering against `nftables.service` the same way (P4 — nftables set/rule layout validated in §8.8) |
 | `src/settings.py:349-353` (`reconfigure_ssh_and_fail2ban`) | **Done (P2).** Renamed `reconfigure_ssh_and_crowdsec`; `ssh_port` change regens `["ssh", "crowdsec"]`. sshd acquisition is a journald unit (port-agnostic), so crowdsec regen is a consistency no-op |
-| `conf/yunohost/services.yml` fail2ban entry | **Replace** with `crowdsec` (`cscli version`/`systemctl status crowdsec` as `test_conf` equivalent — CrowdSec has no config-syntax-check CLI equivalent to `fail2ban-server --test`; use `cscli hub list` sanity or a wrapper). The `caddy` entry stays; the retired `nginx` entry is already gone |
+| `conf/yunohost/services.yml` fail2ban entry | **Done (P4).** Replaced with `crowdsec` + `crowdsec-firewall-bouncer` entries. `test_conf` substitute decision (risk #6): `cscli config show >/dev/null 2>&1` for the daemon (validates the config file parses; CrowdSec has no `fail2ban-server --test` equivalent) and a config-file-exists check for the bouncer. The `caddy` entry stays; the retired `nginx` entry is already gone |
 | `helpers/helpers.v1.d/fail2ban`, `helpers.v2.1.d/fail2ban` | **Leave untouched.** Not reimplemented, not extended to target CrowdSec. Stays fail2ban-only, exactly as `RESOURCE-ENGINE-CUTOVER.md` already treats the helper tree — a legacy surface removable only when "no installed or supported package... sources the helper tree." CrowdSec is deliberately *not* added as a second bash-helper backend; see the "App-packaging integration" row in §1 |
 | `src/nostrhost/package_engine.py:349` `PolicyResource.type` | **Done (P3).** Extended to `Literal["fail2ban", "crowdsec", "logrotate"]`. No transition/drop step needed for `"fail2ban"` — it has no live consumer (§2) — but the literal is left in place since removing it is `RESOURCE-ENGINE-CUTOVER.md`'s call, not this plan's |
 | `src/nostrhost/native_providers.py:932` `PolicyProvider` | **Done (P3).** `directories` gains a `crowdsec` entry (`/etc/crowdsec/scenarios/`); `_suffix()` maps `fail2ban`→`.local`, `crowdsec`→`.yaml`, `logrotate`→`""`; apply/remove render `/etc/crowdsec/scenarios/nostrhost-<name>.yaml` + `systemctl reload crowdsec` + a state snapshot (`state/security/intrusion-protection.toml`). This is the **only** app-packaging integration point CrowdSec gets — native `package.toml` declares `[policies.<name>] type = "crowdsec"`; there is no Bash-callable equivalent, matching "There is no Bash or legacy-script capability in this engine" (`RESOURCE-ENGINE.md`) |
-| `src/utils/app_utils.py:1359` service-wait list | **Update** to `["caddy", "crowdsec"]` — nginx is already retired, so this folds in the Caddy-side leftover in the same change |
-| `debian/control:26,49` | **Replace** `fail2ban` dependency with `crowdsec`, `crowdsec-firewall-bouncer` (source: official CrowdSec apt repo — see §1 package-source decision) |
+| `src/utils/app_utils.py:1359` service-wait list | **Done (P4).** Updated to `["caddy", "crowdsec"]` — nginx is already retired, so this folds in the Caddy-side leftover in the same change |
+| `debian/control:26,49` | **Done (P4).** `fail2ban` dependency and the `fail2ban (>= 1.1)` Conflicts entry replaced with `crowdsec`, `crowdsec-firewall-bouncer` (source: Debian repo — §1 package-source decision; both are bookworm main). Note the §4 reference to "official CrowdSec apt repo" predates the §1 Debian-source decision and is superseded by it |
 | `docs/NOTIFICATION-SERVICE.md`, `docs/ROADMAP.md` §18.5 | **Update** "fail2ban/CrowdSec → structured event" language once CrowdSec is the sole source; wire the security projector to CrowdSec's decision/alert API (`cscli alerts list -o json` or LAPI websocket) instead of fail2ban's log/`fail2ban-client` polling |
 
 ## 5. Phased plan
@@ -252,17 +252,35 @@ its phase gate" pattern.
   new bash entry point.
 
 ### P4 — Bouncer cutover
-- Enable `crowdsec-firewall-bouncer` for real, owning its own nftables set
-  (`crowdsec-blacklists`) referenced from the existing `inet filter / input`
-  chain (`conf/nftables/nftables.d/yunohost-firewall.tpl.conf`) — additive,
-  not a replacement of YunoHost's firewall management.
-  `firewall_reload`/`firewall_list` (`src/firewall.py`) must keep working
-  unmodified; the bouncer set is orthogonal to the port-based rules YunoHost
-  manages.
-- Disable fail2ban's `nftables-*` ban actions (or stop the fail2ban service
-  entirely) once the bouncer is confirmed enforcing.
-- `conf/yunohost/services.yml`: add `crowdsec` (and `crowdsec-firewall-bouncer`
-  if run as a separate unit) with a working `test_conf` equivalent.
+- **Done (packaging + config):**
+  - `debian/control` replaces the `fail2ban` dependency and its Conflicts
+    entry with `crowdsec` + `crowdsec-firewall-bouncer` (both bookworm main).
+  - New `conf/crowdsec-firewall-bouncer/crowdsec-firewall-bouncer.yaml`
+    template: nftables mode, local LAPI (`127.0.0.1:8080`), `__API_KEY__`
+    placeholder substituted at install.
+  - `debian/postinst` `provision_crowdsec()` (idempotent, runs on fresh
+    install and upgrade): (1) ships the `# no thanks` CAPI opt-out without
+    ever clobbering an existing `online_api_credentials.yaml`; (2) installs
+    the base hub collections (`crowdsecurity/caddy`, `/sshd`, `/postfix`,
+    `/linux`) from the vendored offline hub; (3) registers the firewall
+    bouncer against the local LAPI (`cscli bouncers add`, token written to
+    the rendered bouncer config, 0600); (4) enables + restarts
+    `crowdsec-firewall-bouncer`.
+  - `conf/yunohost/services.yml`: fail2ban entry replaced with `crowdsec`
+    (`test_conf: cscli config show >/dev/null 2>&1`) and
+    `crowdsec-firewall-bouncer` (`test_conf: test -f <bouncer config>`).
+  - `src/utils/app_utils.py:1359` service-wait list → `["caddy", "crowdsec"]`.
+  - `debian/postinst` fresh-install init list: `15-nginx` → `15-caddy` (a
+    Caddy-migration leftover; nginx's regen hook was retired).
+- **Pending (VM-validated, §8.8):** enable `crowdsec-firewall-bouncer` for
+  real, owning its own nftables set (`crowdsec-blacklists`) referenced from
+  the existing `inet filter / input` chain (`conf/nftables/nftables.d/
+  yunohost-firewall.tpl.conf`) — additive, not a replacement of YunoHost's
+  firewall management. `firewall_reload`/`firewall_list`
+  (`src/firewall.py`) must keep working unmodified; the bouncer set is
+  orthogonal to the port-based rules YunoHost manages. Disable fail2ban's
+  `nftables-*` ban actions (or stop the fail2ban service entirely) once the
+  bouncer is confirmed enforcing.
 - Gate: a live ban test (deliberate repeated auth failure from a test source)
   is blocked by nftables via the CrowdSec path with fail2ban's ban action
   disabled; `yunohost diagnosis` clean.
@@ -354,6 +372,7 @@ notice pipeline, so P5 proves the mail-stack removal end to end. There is
 | `forks/yunohost/conf/crowdsec/scenarios/nostrhost-yunohost-portal-auth-bf.yaml` | Port of `yunohost-portal.conf` filter (capacity 20 / leakspeed 30s) |
 | `forks/yunohost/conf/crowdsec/scenarios/nostrhost-postfix-sasl-bf.yaml` | Port of `postfix-sasl.conf` (`[sasl]` jail) — reuses `postfix-logs` parser; capacity 5 / leakspeed 120s |
 | `forks/yunohost/conf/crowdsec/scenarios/*.yaml` (further ports) | Any remaining jail-semantics ports |
+| `forks/yunohost/conf/crowdsec-firewall-bouncer/crowdsec-firewall-bouncer.yaml` | Bouncer config template (nftables mode, local LAPI); `__API_KEY__` substituted by `debian/postinst` on install |
 | `forks/yunohost/hooks/conf_regen/52-crowdsec` | CrowdSec regen category (replaces `52-fail2ban`) |
 | `forks/yunohost/tests_nostr/test_crowdsec_*.py` | Provider/parser/regen tests, mirroring the resource-engine test conventions |
 | `packages/nostrhost-native-example/package.toml` (extended) or a new example package | Reference `[[policy]] type = "crowdsec"` declaration exercising the new `PolicyProvider` path |
