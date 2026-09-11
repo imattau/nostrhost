@@ -305,42 +305,47 @@ the security event class is the *first* real producer for the `2210-2213`
 notice pipeline, so P5 proves the mail-stack removal end to end. There is
 **no dual mail+nostr path** for security events.
 
-- **Producer = `publish_notice()` on kind 2213.** A `security_projector`
-  consumes CrowdSec alerts/decisions from **LAPI** and emits via the existing
+- **Done — producer = `publish_notice()` on kind 2213.** New
+  `src/nostr_security.py` `SecurityProjector` consumes CrowdSec
+  alerts/decisions from **LAPI** (`cscli alerts list -o json`, polling — no
+  LAPI websocket yet) and emits via the existing
   `nostr_notify.publish_notice(class_="security", severity=...,
-  summary=..., kind=KIND_SECURITY_EVENT)` path
-  (`forks/yunohost/src/nostr_notify.py:46`). Content `{class, severity,
+  summary=..., kind=KIND_SECURITY_EVENT)` path. Content `{class, severity,
   summary}` already matches `EVENT-PROTOCOL.md` §2.3; kind 2213 is
   validated, NIP-42-protected on the control relay, and consumed by
   `nostrhost-notify` unchanged. Server-signed (`server_sk`) like the
-  existing `certificate`/`diagnosis` notices.
-  - **Consumption mode (default: polling).** Poll `cscli alerts list -o
-    json` on a short interval, tracking seen alert IDs; this matches how the
-    notify service already consumes the control plane and needs no new LAPI
-    client. A push-based LAPI websocket is a later optimization, not P5.
-- **Coalesce CrowdSec's duplicate decisions.** P0 showed CrowdSec can emit
-  overlapping decisions for one IP (e.g. `ssh-bf` *and* `ssh-slow-bf` for
-  the same source). The projector must fold a ban's multiple decisions into
-  **one** alert (source IP + merged scenario reasons) so a single ban yields
-  a single DM — otherwise every ban double-notifies.
-- **Severity mapping.** Default a `ban` decision to `SEVERITY_WARNING`
-  (matching `policy.toml`'s default `severity_min = "warning"`, so a first
-  ban notifies). A recurring source (an IP already banned that triggers
-  again after expiry) escalates to `SEVERITY_CRITICAL`. Expose the mapping
-  as config so the notify `policy.toml` `severity_min` can tune it (§4 of
-  NOTIFICATION-SERVICE.md).
-- **State record.** Extend `nostr_state.export_state()`
-  (`nostr_state.py:342`) with a `security` section (add a
-  `Backend.security()` accessor) rendering
-  `state/security/intrusion-protection.toml`: collections enabled, CAPI
-  opt-in state, bantime policy, and last-alert bookkeeping. Committed
-  through the existing `StateRecorder` pre/post lifecycle on config
-  change/`package.reconcile` — no new machinery. Reconciliation of this
-  section stays report-only (`_reconciliation_tool` treats non-services/apps
-  sections as high risk); document that.
-- Gate: a triggered ban produces exactly one kind-2213 audit event, a
-  `state/security/intrusion-protection.toml` record, and (if the policy
-  allows) one encrypted Nostr DM to the admin npub.
+  existing `certificate`/`diagnosis` notices. Daemon entry `bin/
+  nostr-securityd` (systemd `nostr-securityd.service` on the testbed).
+- **Done — coalescing.** A poll's new alerts are grouped by source value and
+  the scenario reasons + decisions merged, so one ban (even with overlapping
+  decisions, e.g. `ssh-bf` + `ssh-slow-bf`, or the Caddy 401 scenarios)
+  yields exactly one kind-2213 notice. Bookkeeping
+  (`/var/lib/nostrhost/security.json`, 0600) tracks `last_alert_id` +
+  sources already seen + the last emitted event, surviving daemon restarts.
+- **Done — severity mapping.** First ban for a source defaults to
+  `SEVERITY_WARNING` (matches `policy.toml`'s default `severity_min =
+  "warning"`); a source already seen re-banning escalates to
+  `SEVERITY_CRITICAL`. Overridable via `/etc/nostrhost/security.toml`
+  (`severity_default`, `severity_recurring`, `interval`, `max_alerts`).
+- **Done — state record.** `nostr_state.export_state()` gains a `security`
+  section (`Backend.security()` accessor, interface + `YunohostBackend`)
+  rendering `state/security/intrusion-protection.toml`: the P3 PolicyProvider
+  scenario snapshot merged with live facts — enabled hub collections,
+  CAPI opt-in state (off when `online_api_credentials.yaml` is the `# no
+  thanks` opt-out or absent), the default ban duration (profiles.yaml,
+  parsed as YAML), and the projector's last-alert bookkeeping. Committed
+  through the existing `StateRecorder` pre/post lifecycle — no new
+  machinery. Reconciliation of this section stays report-only.
+- **Done — relay kind allowlist.** `nostrhost-bootstrap` `RELAY_KINDS` now
+  includes 2210-2213 (system/service/backup/security notices are stored).
+- **Gate (§8.9):** a triggered ban produces exactly one kind-2213 audit
+  event (server-signed, coalesced) and a `state/security/
+  intrusion-protection.toml` record. The encrypted Nostr DM to the admin
+  npub is delivered by `nostrhost-notify`, whose implementation lives on the
+  unmerged `nostrhost-control` branch
+  `claude/mail-stack-removal-notify-service` (§4 of NOTIFICATION-SERVICE.md)
+  — P5's producer + state record are proven; DM delivery lands with that
+  service.
 
 ### P6 — Retire fail2ban
 - **Pre-condition, not just a nice-to-have:** confirm via
@@ -754,3 +759,31 @@ CAPI purge is bounded to the fresh-install path so an upgrade never removes
 decisions belonging to a deliberate opt-in. The `15-caddy` hook fix and the
 `caddy_domain.conf` API/portal proxies are fork changes (part of the P4
 commit); a real deployment uses ACME for the site certs.
+
+### 8.9 P5 security-event projector validation (rebuilt VM, 2026-09-11)
+
+Validated live on the reconstructed testbed VM (same host as §8.8; the
+control plane + portal + `nostrhost-test` app were redeployed to the
+pre-reset state first). `nostr-securityd` runs as a systemd service polling
+the local LAPI every 30s.
+
+| Step | Result |
+|---|---|
+| Clean slate: `cscli decisions delete --all` + `cscli alerts delete --all` + fresh `/var/lib/nostrhost/security.json` | projector restarted at last_alert_id 0 |
+| 12× `POST /yunohost/api/login` 401 from `.175` | **two** overlapping alerts fired for the same IP: `nostrhost/yunohost-auth-bf` **and** `LePresidente/http-generic-401-bf` |
+| Projector poll | **one** kind-2213 notice: `intrusion detected from 192.168.122.175: LePresidente/http-generic-401-bf, nostrhost/yunohost-auth-bf` — scenarios coalesced, severity `warning`, server-signed (`1fbf6abd…`) |
+| Relay verification | NIP-42-authed REQ for kind 2213 returns exactly one `.175` notice; `security.json` records `last_alert_id 6`, source added, `published: true` |
+| Semantic state | `nostrhost-state export` `security/intrusion-protection.toml`: scenarios from the P3 snapshot, `collections` (8, incl. caddy/sshd/postfix), `capi.enabled=false` (`# no thanks`), `bantime="4h"` (profiles.yaml, parsed as YAML), `last_alert` bookkeeping |
+| Recurrence escalation | a source already in `security.json` re-banning maps to `severity_recurring` (default `critical`) — unit-tested |
+| Unit tests | `test_nostr_security.py` (6) + updated state/web-route tests green on host |
+
+**DM delivery is out of scope for this run:** the encrypted Nostr DM to the
+admin npub is sent by `nostrhost-notify`, whose implementation lives on the
+unmerged `nostrhost-control` branch
+`claude/mail-stack-removal-notify-service` — the P5 producer (kind 2213) and
+the state record are proven; DM delivery lands with that service (§5 P5 / §4
+of NOTIFICATION-SERVICE.md).
+
+**Testbed wiring (not committed):** `nostr-securityd.service` (systemd) on
+the VM; `/etc/nostrhost/security.toml` optional; the relay `allowed_kinds`
+already carries 2210-2213 via the bootstrap `RELAY_KINDS` change.
