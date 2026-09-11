@@ -38,7 +38,7 @@ forks:
     branch: dev               # Nostr (NIP-07) login page + Tailwind/shadcn-vue redesign (PR #1)
     derivative: true
     pin: debian/12.1.2
-    pin_commit: 1776ea4e72ad4141b4b4f737d281f69c91c89df1
+    pin_commit: 28ec6c3272583ea0c51c0b579e8f7116d4a0eeeb
     live_server: 12.1.2
 
   - component: admin           # Vue/Vite/TypeScript admin interface
@@ -49,7 +49,7 @@ forks:
     branch: dev               # Tailwind/shadcn-vue redesign (app shell, PR #1)
     derivative: true
     pin: debian/12.1.15
-    pin_commit: 1776ea4e72ad4141b4b4f737d281f69c91c89df1
+    pin_commit: 12bdb10d3cde3144d637a1cac1af223d2e1390e4
     live_server: 12.1.15
 
 # Upstream dependencies pinned by the same stable tags, but NOT forked in
@@ -65,27 +65,27 @@ libraries:
     repo: imattau/nostrhost-auth
     path: libs/nostrhost-auth
     branch: main
-    pin_commit: 1776ea4e72ad4141b4b4f737d281f69c91c89df1
+    pin_commit: 633e743a9d98b1fa1bb7881dd1225292f49c1f6b
     extracted_from: imattau/yunohost-nostr-auth
 
   - component: policy          # roles/scopes/NIP-98/delegation/approvals/owner/audit
     repo: imattau/nostrhost-policy
     path: libs/nostrhost-policy
     branch: main
-    pin_commit: 1776ea4e72ad4141b4b4f737d281f69c91c89df1
+    pin_commit: faa1f9991845f44832a8643b4c5cebb388b3ea8d
     extracted_from: imattau/yunohost-mcp
 
   - component: catalog         # catalogue event schema/relay/publisher/attestation/trust/repository
     repo: imattau/nostrhost-catalog
     path: libs/nostrhost-catalog
     branch: main
-    pin_commit: 1776ea4e72ad4141b4b4f737d281f69c91c89df1
+    pin_commit: 45351cb9dc44abd9c691de836ff48482d83fba3b
 
   - component: control         # control plane: local relay + event model (Phase 2)
     repo: imattau/nostrhost-control
     path: libs/nostrhost-control
     branch: main
-    pin_commit: 1776ea4e72ad4141b4b4f737d281f69c91c89df1
+    pin_commit: afc80f496287fdfd23aef7ff0593a7e58cb6221c
     stack: khatru-based Go relay (NIP-11/42/77/86/98)
     event_protocol: libs/nostrhost-control/EVENT-PROTOCOL.md
     selection: docs/RELAY-SELECTION.md
