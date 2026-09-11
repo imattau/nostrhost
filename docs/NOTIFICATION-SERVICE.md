@@ -215,12 +215,18 @@ No new kind numbers were needed: `update available`, `recovery result`,
 `2210` (system) / `2211` (service) kinds, distinguished by the `class` field
 in content, per `NIP-MAPPING.md`'s "minimal custom kind surface" principle.
 
-Open follow-ups, tracked in `nostrhost-control`:
+Open follow-ups, tracked in `nostrhost-control` and `docs/ROADMAP.md` §1.1:
 
 - Wire `recipients.toml`/`policy.toml` through `nostrhost-state` (§18.6)
   instead of being read as plain local files.
-- Integration test against a live relay (unit tests cover policy matching,
-  classification and digest batching; the NIP-17 wire path itself is
-  exercised only by go-nostr's own tests today).
+- Add `approval`/`operation` policy classes so kind-2200 requests and
+  kind-2204 results notify the admin (the classifier already emits them).
 - Decide the default digest cadence and whether `security` needs a lower
   default `severity_min` than other classes (§7 above).
+- Point `outbound_relays` at real relays the admin's client can reach.
+
+Done during deployment (2026-09-11): integration test against a live relay —
+`internal/notify/service_integration_test.go` boots the real relay and proves
+the authenticated subscription reads a protected kind-2213, and the deployed
+service was verified end to end (ban → 2213 → NIP-17/NIP-59 DM, unwrapped
+with the operator key).

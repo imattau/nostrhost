@@ -1423,13 +1423,20 @@ The first release of this layer stops short of fully automatic reconciliation.
 ## 1.1 - Platform Simplification (Native Messaging, Mail Retirement, Host Security)
 
 ```text
-⏳ native notification service (encrypted Nostr messaging for alerts/approvals/results)
+✓ native notification service (encrypted Nostr messaging for alerts/approvals/results) — nostrhost-notify merged to nostrhost-control main, deployed, e2e verified (login-401 ban → critical 2213 → NIP-17/NIP-59 DM)
 ⏳ mail-server installation optional rather than default
 ⏳ new users do not require a local mailbox
 ✓ CrowdSec adopted (fail2ban retired); bouncer-nftables integrated — CROWDSEC-MIGRATION P4–P6
-◑ security events feed the control plane (kind-2213 live from the security projector, recurring-critical proven); encrypted-DM notification generation gated on the notify-service merge
-◑ security state participates in nostrhost-state (intrusion-protection.toml + security.json); notifications/recipients policy wiring and mail-integration state still open
+✓ security events feed the control plane and generate encrypted Nostr DMs (kind-2213 → nostrhost-notify → NIP-17/NIP-59, recurring-critical proven)
+◑ security state participates in nostrhost-state (intrusion-protection.toml + security.json); notifications/recipients state wiring still open
 ```
+
+**Follow-ups** (tracked, not blockers):
+
+- **State wiring (§18.6):** make `nostrhost-notify` read `state/notifications/{policy,recipients}.toml` through `nostrhost-state` instead of plain local files (it already expects the §18.6 layout).
+- **Mail phase 2 sources:** certificate / backup / cron subsystems start publishing their 2210–2212 events — `nostrhost-notify` is ready to consume them (it subscribes to 2210–2213 today).
+- **Operation-chain notifications:** add an `approval`/`operation` policy class for kind-2200/2204 so approval requests and operation results reach the admin (the classifier already emits them).
+- **Real outbound relays:** point `outbound_relays` at relays the admin's client can actually reach (public or NIP-65), replacing the testbed loopback DM relay.
 
 See §18 for the full design.
 
