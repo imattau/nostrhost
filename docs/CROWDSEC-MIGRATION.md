@@ -1,7 +1,8 @@
 # fail2ban → CrowdSec Migration Plan
 
-Status: proposed. Branch: `feat/fail2ban2crowdsec` (rebased onto `main`
-after the nginx→Caddy migration merged — Caddy owns 80/443, nginx is retired).
+Status: **complete** (P0–P7 landed; P1–P7 gates passed in §8.5–§8.10).
+Branch: `feat/fail2ban2crowdsec` (rebased onto `main` after the nginx→Caddy
+migration merged — Caddy owns 80/443, nginx is retired).
 
 Replace fail2ban with CrowdSec as NostrHost's host intrusion-protection layer,
 keeping **nftables** as the enforcement backend (roadmap §18.4 — nftables is
@@ -81,19 +82,19 @@ and be surfaced as a NostrHost setting, not silently enabled by the
 
 | Component | Action |
 |---|---|
-| `forks/yunohost/conf/fail2ban/*` | **Retire** once cutover completes; content ported to CrowdSec `acquis.yaml` + parsers/scenarios below |
+| `forks/yunohost/conf/fail2ban/*` | **Done (P6).** Deleted (content had been ported to CrowdSec `acquis.yaml` + parsers/scenarios in P1/P2) |
 | `yunohost.conf` / `yunohost-portal.conf` filters | **Done (P1).** Ported to **scenario-level path filters** (`nostrhost-yunohost-auth-bf.yaml`, `nostrhost-yunohost-portal-auth-bf.yaml`) — not custom parsers (local parsers don't load, §8.6). Same detection logic, rewritten for Caddy's log output via the `caddy-logs` metas |
 | `postfix-sasl.conf` | **Done (P1).** `nostrhost-postfix-sasl-bf.yaml` reuses the `crowdsecurity/postfix` collection's `postfix-logs` parser; narrows with `log_type_enh == 'spam-attempt' && evt.Parsed.message_failure != ''` (no parser override needed) |
 | `hooks/conf_regen/52-fail2ban` | **Done (P2).** Replaced with `hooks/conf_regen/52-crowdsec` rendering `acquis.yaml` + installing local scenarios + reloading `crowdsec` (bouncer config deferred to P4) |
-| `conf/fail2ban/systemd-override-bind-nftables.conf` | **Replace**: `crowdsec-firewall-bouncer` ships its own nftables binding; verify ordering against `nftables.service` the same way (P4 — nftables set/rule layout validated in §8.8) |
+| `conf/fail2ban/systemd-override-bind-nftables.conf` | **Done (P4/P6).** `crowdsec-firewall-bouncer` ships its own nftables binding (ordering vs `nftables.service` validated in §8.8); the fail2ban override file is gone with the P6 `conf/fail2ban/` removal |
 | `src/settings.py:349-353` (`reconfigure_ssh_and_fail2ban`) | **Done (P2).** Renamed `reconfigure_ssh_and_crowdsec`; `ssh_port` change regens `["ssh", "crowdsec"]`. sshd acquisition is a journald unit (port-agnostic), so crowdsec regen is a consistency no-op |
 | `conf/yunohost/services.yml` fail2ban entry | **Done (P4).** Replaced with `crowdsec` + `crowdsec-firewall-bouncer` entries. `test_conf` substitute decision (risk #6): `cscli config show >/dev/null 2>&1` for the daemon (validates the config file parses; CrowdSec has no `fail2ban-server --test` equivalent) and a config-file-exists check for the bouncer. The `caddy` entry stays; the retired `nginx` entry is already gone |
-| `helpers/helpers.v1.d/fail2ban`, `helpers.v2.1.d/fail2ban` | **Leave untouched.** Not reimplemented, not extended to target CrowdSec. Stays fail2ban-only, exactly as `RESOURCE-ENGINE-CUTOVER.md` already treats the helper tree — a legacy surface removable only when "no installed or supported package... sources the helper tree." CrowdSec is deliberately *not* added as a second bash-helper backend; see the "App-packaging integration" row in §1 |
-| `src/nostrhost/package_engine.py:349` `PolicyResource.type` | **Done (P3).** Extended to `Literal["fail2ban", "crowdsec", "logrotate"]`. No transition/drop step needed for `"fail2ban"` — it has no live consumer (§2) — but the literal is left in place since removing it is `RESOURCE-ENGINE-CUTOVER.md`'s call, not this plan's |
+| `helpers/helpers.v1.d/fail2ban`, `helpers.v2.1.d/fail2ban` | **Done (P6).** Deleted after the P6 pre-condition confirmed no supported package sources them (legacy surface removable once "no installed or supported package... sources the helper tree"; `RESOURCE-ENGINE-CUTOVER.md`'s gate met for this slice). CrowdSec was deliberately *not* added as a second bash-helper backend; see the "App-packaging integration" row in §1 |
+| `src/nostrhost/package_engine.py:349` `PolicyResource.type` | **Done (P3/P6).** Extended to `Literal["fail2ban", "crowdsec", "logrotate"]` (P3), then narrowed to `Literal["crowdsec", "logrotate"]` (P6) once the fail2ban helper tree was confirmed un-sourced |
 | `src/nostrhost/native_providers.py:932` `PolicyProvider` | **Done (P3).** `directories` gains a `crowdsec` entry (`/etc/crowdsec/scenarios/`); `_suffix()` maps `fail2ban`→`.local`, `crowdsec`→`.yaml`, `logrotate`→`""`; apply/remove render `/etc/crowdsec/scenarios/nostrhost-<name>.yaml` + `systemctl reload crowdsec` + a state snapshot (`state/security/intrusion-protection.toml`). This is the **only** app-packaging integration point CrowdSec gets — native `package.toml` declares `[policies.<name>] type = "crowdsec"`; there is no Bash-callable equivalent, matching "There is no Bash or legacy-script capability in this engine" (`RESOURCE-ENGINE.md`) |
 | `src/utils/app_utils.py:1359` service-wait list | **Done (P4).** Updated to `["caddy", "crowdsec"]` — nginx is already retired, so this folds in the Caddy-side leftover in the same change |
 | `debian/control:26,49` | **Done (P4).** `fail2ban` dependency and the `fail2ban (>= 1.1)` Conflicts entry replaced with `crowdsec`, `crowdsec-firewall-bouncer` (source: Debian repo — §1 package-source decision; both are bookworm main). Note the §4 reference to "official CrowdSec apt repo" predates the §1 Debian-source decision and is superseded by it |
-| `docs/NOTIFICATION-SERVICE.md`, `docs/ROADMAP.md` §18.5 | **Update** "fail2ban/CrowdSec → structured event" language once CrowdSec is the sole source; wire the security projector to CrowdSec's decision/alert API (`cscli alerts list -o json` or LAPI websocket) instead of fail2ban's log/`fail2ban-client` polling |
+| `docs/NOTIFICATION-SERVICE.md`, `docs/ROADMAP.md` §18.5 | **Done (P7).** "fail2ban/CrowdSec → structured event" language replaced with CrowdSec-only framing; the security projector consumes CrowdSec's decision/alert API (`cscli alerts list -o json`) as implemented in P5 |
 
 ## 5. Phased plan
 
@@ -348,7 +349,7 @@ notice pipeline, so P5 proves the mail-stack removal end to end. There is
   service.
 
 ### P6 — Retire fail2ban
-- **Pre-condition, not just a nice-to-have:** confirm via
+- **Done — pre-condition, not just a nice-to-have:** confirmed via
   `tools/legacy_inventory.py` (or its successor) that no supported package
   still sources `helpers/helpers.v1.d/fail2ban` / `helpers.v2.1.d/fail2ban`.
   Per `LEGACY-INVENTORY.md`, `nostrhost-test` is currently the sole legacy
@@ -357,29 +358,40 @@ notice pipeline, so P5 proves the mail-stack removal end to end. There is
   from P3 first, or explicitly accept it loses intrusion-protection coverage
   — do not silently strand a package calling a helper that now targets a
   removed daemon.
-- Stop/disable/remove the fail2ban service and package.
-- Remove `forks/yunohost/conf/fail2ban/`, `hooks/conf_regen/52-fail2ban`,
-  the `fail2ban` entry from `services.yml`, `debian/control` dependency, and
-  (once the pre-condition above holds) the `helpers.v1.d/fail2ban` /
-  `helpers.v2.1.d/fail2ban` files and the `PolicyResource.type` literal
-  `"fail2ban"`. Helper-tree removal still follows
-  `RESOURCE-ENGINE-CUTOVER.md`'s general gate — this phase only removes the
-  fail2ban-specific slice of it, once that gate is met for this slice.
-- Update `src/utils/app_utils.py:1359` service-wait list.
-- Update tests referencing fail2ban (`test_regenconf.py`, `test_service.py`,
-  `test_settings.py` if `reconfigure_ssh_and_fail2ban` is renamed).
-- Gate: `scripts/verify-clean.sh` green, VM e2e passes with fail2ban absent
-  from the system.
+- **Done — stop/disable/remove the fail2ban service and package.** On the
+  testbed: `dpkg --purge --force-depends fail2ban` (the *installed* `yunohost`
+  package still declared the old dependency; the removal itself ships inside
+  the yunohost package upgrade), 0 fail2ban units, `/etc/fail2ban` removed.
+- **Done — fork removal.** `forks/yunohost/conf/fail2ban/`,
+  `helpers.v1.d/fail2ban`, `helpers.v2.1.d/fail2ban` deleted and the
+  `PolicyResource.type` literal `"fail2ban"` dropped (fork `401c376bb`); the
+  `52-fail2ban` hook, `services.yml` entry, `debian/control` dependency, and
+  `app_utils` wait-list entry were already gone with the P4 cutover. Helper
+  removal follows `RESOURCE-ENGINE-CUTOVER.md`'s general gate — this phase
+  removed the fail2ban-specific slice.
+- **Done — `src/utils/app_utils.py:1359` service-wait list** → `["caddy",
+  "crowdsec"]`.
+- **Done — tests referencing fail2ban updated** (`test_regenconf.py`,
+  `test_service.py`, `test_settings.py` if `reconfigure_ssh_and_fail2ban` is
+  renamed — it was, in P2): the non-crowdsec policy cases in
+  `test_crowdsec.py`/`test_native_providers.py` moved to the `logrotate`
+  type; 114 host tests green.
+- **Gate (§8.10) — PASS:** `scripts/verify-clean.sh` green, VM e2e passes
+  with fail2ban absent from the system (fresh ban from `.175` + recurring
+  `critical` kind-2213).
 
 ### P7 — Docs
-- Update `docs/ROADMAP.md` §18.4/§18.7/§18.8 milestone checkboxes with the
-  evaluation outcome and adoption status.
-- Update `docs/NOTIFICATION-SERVICE.md` security-event row to name CrowdSec
-  specifically (drop the "fail2ban/CrowdSec" either-or framing).
-- Cross-link from `docs/CADDY-MIGRATION.md` §5 P5 to this document (that
-  plan already names this branch as the owner of fail2ban→CrowdSec; the
-  remaining work is pointing its P5 line at this doc). Caddy has landed, so
-  this plan's P1 parser work targets Caddy's actual log format per the spike
+- **Done — `docs/ROADMAP.md` §18.4/§18.7/§18.8 milestone checkboxes updated**
+  with the evaluation outcome and adoption status (CrowdSec adopted, fail2ban
+  retired; §18.8's security rows were already checked).
+- **Done — `docs/NOTIFICATION-SERVICE.md` security-event row now names
+  CrowdSec** specifically (fail2ban/CrowdSec either-or framing dropped); the
+  "wired to a security-event source" status row is now ✓ with the live
+  projector.
+- **Done — cross-link from `docs/CADDY-MIGRATION.md` to this document**
+  (`conf/fail2ban/yunohost-jails.conf` row, §2 security/logs row, and the P5
+  status note all point at `CROWDSEC-MIGRATION.md`). Caddy has landed, so
+  this plan's P1 parser work targeted Caddy's actual log format per the spike
   — no out-of-order reconciliation left.
 
 ## 6. New artifacts
