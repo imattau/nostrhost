@@ -1428,7 +1428,7 @@ The first release of this layer stops short of fully automatic reconciliation.
 ⏳ new users do not require a local mailbox
 ✓ CrowdSec adopted (fail2ban retired); bouncer-nftables integrated — CROWDSEC-MIGRATION P4–P6
 ✓ security events feed the control plane and generate encrypted Nostr DMs (kind-2213 → nostrhost-notify → NIP-17/NIP-59, recurring-critical proven)
-◑ security state participates in nostrhost-state (intrusion-protection.toml + security.json); notifications/recipients state wiring still open
+◑ security state participates in nostrhost-state (intrusion-protection.toml + security.json); notification policy/recipients state wiring landed (§18.6 follow-up ✅); digest-cadence default decision open
 ```
 
 **Follow-ups** (2026-09-11 — all four landed, verified on the testbed):
