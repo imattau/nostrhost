@@ -74,12 +74,31 @@ jobs:
           sudo apt-get install -y dpkg-dev python3-yaml python3-build python3-pip \
             golang-go curl
           go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest
+          # put go-installed tools (xcaddy) on PATH for later steps
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
 
       - name: SPA toolchain (portal / admin)
         if: matrix.name == 'nostrhost-portal' || matrix.name == 'nostrhost-admin'
         run: |
           corepack enable
           corepack prepare yarn@1.22.22 --activate
+
+      - name: Build SPA (admin / portal)
+        if: matrix.name == 'nostrhost-portal' || matrix.name == 'nostrhost-admin'
+        run: |
+          set -euo pipefail
+          if [ "${{ matrix.name }}" = "nostrhost-admin" ]; then
+            dir=forks/admin/app
+            cmd=build
+          else
+            dir=forks/portal
+            cmd=generate
+          fi
+          (
+            cd "$dir"
+            yarn install --frozen-lockfile
+            yarn "$cmd"
+          )
 
       - name: Build nostrhost-core (debian-source, ships `yunohost` + `python3-nostrhost`)
         if: matrix.name == 'nostrhost-core'
