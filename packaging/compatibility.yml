@@ -66,7 +66,6 @@ core_rename:
 # ordinary external dependencies (never repackaged here). Matches the
 # `external_deps` list in packages.yml; kept here as the semantic contract.
 external:
-  moulinette: ">= 12.1.4"    # python API layer yunohost depends on
   crowdsec: ">= 1.5"          # IDS engine (external)
   crowdsec-firewall-bouncer: ">= 0.0.13"  # nftables enforcement (external)
   nftables: ">= 1.0"

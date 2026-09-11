@@ -11,7 +11,7 @@ each built from its own component repo (held here as pinned submodules).
 |---|---|---|
 | `nostrhost` | meta-package: the complete server | core-system + admin + portal + notify |
 | `nostrhost-core-system` | meta-package: minimal headless system | core + control + catalog + caddy + security-config + python libs |
-| `nostrhost-core` | forked YunoHost engine (Stage 1 ships as `yunohost`) | moulinette, libs, caddy, security-config |
+| `nostrhost-core` | forked YunoHost engine (Stage 1 ships as `yunohost`) | libs, caddy, security-config |
 | `nostrhost-control` | local khatru control-plane relay | core |
 | `nostrhost-notify` | NIP-17/59 notification daemon | control, core |
 | `nostrhost-catalog` | catalogue resolver/service | control |
@@ -22,7 +22,7 @@ each built from its own component repo (held here as pinned submodules).
 | `nostrhost-caddy` | Caddy + `caddy-l4` | — |
 | `nostrhost-security-config` | CrowdSec acquisition/scenarios/bouncer config | crowdsec, crowdsec-firewall-bouncer |
 
-`moulinette`, `crowdsec`, `nftables`, `slapd` and normal Python/system
+`crowdsec`, `nftables`, `slapd` and normal Python/system
 libraries stay ordinary external Debian packages — never repackaged here.
 
 Control and notify are two **independently-versioned** binary packages even
@@ -51,7 +51,7 @@ them separately (`control/v*`, `notify/v*`).
        ├──── Recommends: nostrhost-admin
        └──── Recommends: nostrhost-portal
 
-external Debian packages: moulinette · crowdsec · crowdsec-firewall-bouncer
+external Debian packages: crowdsec · crowdsec-firewall-bouncer
                           · nftables · slapd · Python/system deps
 ```
 

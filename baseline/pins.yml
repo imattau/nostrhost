@@ -27,7 +27,7 @@ forks:
     branch: nostrhost          # derivative branch (first fork modification, Phase 3)
     derivative: true
     pin: debian/12.1.41.2      # upstream baseline the branch was cut from
-    pin_commit: 0a4a99021fedc1374e62918fc569c854760193e4
+    pin_commit: 238072670cef42ce93827f0ddc795a4b8227ab37
     live_server: 12.1.41.2
 
   - component: portal          # Nuxt/Vue/TypeScript user portal
@@ -54,12 +54,7 @@ forks:
 
 # Upstream dependencies pinned by the same stable tags, but NOT forked in
 # Stage 1 (the derivative builds against upstream versions of these).
-dependencies:
-  - component: moulinette      # python API layer yunohost depends on
-    upstream_repo: YunoHost/moulinette
-    upstream_branch: dev
-    pin: debian/12.1.4
-    live_server: 12.1.4
+dependencies: []
 
 # Reusable component libraries (Stage 2: extracted from the reference
 # implementations, which remain operational on stock YunoHost during the

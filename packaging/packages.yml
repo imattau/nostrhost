@@ -18,7 +18,7 @@
 #     on a known protocol/ABI incompatibility (see compatibility.yml).
 #   - `nostrhost` and `nostrhost-core-system` are meta-packages (kind: meta);
 #     they are generated, not built from source.
-#   - Components with their own upstream Debian packages (moulinette, crowdsec,
+#   - Components with their own upstream Debian packages (crowdsec,
 #     nftables, slapd, Python system libs, ...) are external Depends, never
 #     repackaged here.
 
@@ -73,7 +73,6 @@ packages:
       binary_package: yunohost            # Stage 1: shipped as `yunohost`
     summary: Forked YunoHost Python server-management engine
     depends:
-      - moulinette (>= 12.1.4)
       - python3-nostrhost-auth
       - python3-nostrhost-policy
       - nostrhost-caddy
@@ -228,7 +227,6 @@ packages:
 # External Debian packages these entries depend on, so verify-dependencies can
 # distinguish "our" packages from upstream ones. Only used for validation.
 external_deps:
-  - moulinette
   - python3-nostr-sdk
   - python3-bech32
   - python3-coincurve
