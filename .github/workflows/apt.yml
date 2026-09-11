@@ -1,0 +1,248 @@
+name: apt
+
+# Build every package declared in packaging/packages.yml from its pinned
+# submodule source and publish the resulting APT repository to GitHub Pages.
+#
+# Serving: the assembled repo (dists/ + pool/) is committed to the `gh-pages`
+# branch under `debian/`, so the sources line is:
+#
+#     deb [signed-by=/etc/apt/keyrings/nostrhost.asc] \
+#         https://imattau.github.io/nostrhost/debian/ bookworm main
+#
+# Set the Pages source to "Deploy from a branch" -> gh-pages / (root).
+#
+# Signing: add the apt signing key id + armor to the APT_GPG_KEYID and
+# APT_GPG_KEY secrets. Without them the repo is published unsigned (clients
+# must add `[trusted=yes]`), which is fine for a testbed but not a release.
+
+on:
+  push:
+    branches: [main]
+    tags: ["*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  matrix:
+    name: Resolve package build matrix
+    runs-on: ubuntu-latest
+    outputs:
+      names: ${{ steps.resolve.outputs.names }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - id: resolve
+        name: Parse packages.yml into a build matrix
+        run: |
+          set -euo pipefail
+          python3 - "$GITHUB_OUTPUT" <<'PY'
+          import json, sys, yaml
+          out = sys.argv[1]
+          with open("packaging/packages.yml") as fh:
+              manifest = yaml.safe_load(fh)
+          # Everything buildable: all non-meta entries (meta generated separately).
+          names = [p["name"] for p in manifest["packages"] if p.get("kind") != "meta"]
+          with open(out, "a") as fh:
+              fh.write(f"names={json.dumps(names)}\n")
+          PY
+
+  build:
+    name: Build ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    needs: matrix
+    strategy:
+      fail-fast: false
+      matrix:
+        name: ${{ fromJson(needs.matrix.outputs.names) }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install build tooling
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y dpkg-dev python3-yaml python3-build python3-pip \
+            golang-go curl
+          go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest
+
+      - name: SPA toolchain (portal / admin)
+        if: matrix.name == 'nostrhost-portal' || matrix.name == 'nostrhost-admin'
+        run: |
+          corepack enable
+          corepack prepare yarn@1.22.22 --activate
+
+      - name: Build nostrhost-core (debian-source, ships `yunohost`)
+        if: matrix.name == 'nostrhost-core'
+        working-directory: forks/yunohost
+        run: |
+          # Build the fork's own debian/ tree. The result is the `yunohost`
+          # binary package (Stage 1 — see compatibility.yml core_rename).
+          sudo apt-get build-dep -y .
+          dpkg-buildpackage -b -us -uc -d
+          mkdir -p ../../packaging/build
+          cp ../nostrhost-*.deb ../yunohost_*.deb ../../packaging/build/ 2>/dev/null || true
+          ls -la ../../packaging/build/
+
+      - name: Build non-core package
+        if: matrix.name != 'nostrhost-core'
+        run: |
+          packaging/scripts/build-package --name "${{ matrix.name }}" \
+            --outdir packaging/build
+
+      - name: Upload .deb
+        uses: actions/upload-artifact@v4
+        with:
+          name: deb-${{ matrix.name }}
+          path: packaging/build/*.deb
+          if-no-files-found: error
+
+  meta:
+    name: Generate meta-packages
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Install tooling
+        run: sudo apt-get install -y dpkg-dev python3-yaml
+      - name: Generate meta packages
+        run: packaging/scripts/generate-meta-package -o packaging/build
+      - name: Upload meta .debs
+        uses: actions/upload-artifact@v4
+        with:
+          name: deb-meta
+          path: packaging/build/*.deb
+          if-no-files-found: error
+
+  verify:
+    name: Verify dependency graph
+    runs-on: ubuntu-latest
+    needs: [matrix]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Install tooling
+        run: sudo apt-get install -y python3-yaml
+      - name: Run verify-dependencies
+        run: packaging/scripts/verify-dependencies
+
+  publish:
+    name: Assemble repo and publish to GitHub Pages
+    runs-on: ubuntu-latest
+    needs: [build, meta, verify]
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install tooling
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y dpkg-dev python3-yaml apt-utils gnupg
+
+      - name: Download all built .debs
+        uses: actions/download-artifact@v4
+        with:
+          path: packaging/build
+          merge-multiple: true
+
+      - name: Assemble APT repository
+        env:
+          APT_GPG_KEYID: ${{ secrets.APT_GPG_KEYID }}
+          APT_GPG_KEY: ${{ secrets.APT_GPG_KEY }}
+        run: |
+          set -euo pipefail
+          debs=( packaging/build/*.deb )
+          if [ ${#debs[@]} -eq 0 ]; then
+            echo "no .debs produced" >&2; exit 1
+          fi
+          ls -lh "${debs[@]}"
+          if [ -n "${APT_GPG_KEY:-}" ]; then
+            umask 077
+            mkdir -p .gnupg && chmod 700 .gnupg
+            echo "$APT_GPG_KEY" | gpg --homedir .gnupg --import --batch --yes
+            packaging/scripts/publish-deb --repo packaging/repository \
+              --gpg-gnupghome "$(pwd)/.gnupg" --gpg-keyid "$APT_GPG_KEYID" \
+              "${debs[@]}"
+          else
+            echo "::warning::no APT_GPG_KEY secret — publishing unsigned repo"
+            packaging/scripts/publish-deb --repo packaging/repository "${debs[@]}"
+          fi
+
+      - name: Stage repo under debian/ for Pages
+        run: |
+          set -euo pipefail
+          mkdir -p packaging/pages/debian
+          cp -r packaging/repository/dists packaging/repository/pool packaging/pages/debian/
+          find packaging/pages -type f | sort | head -40
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: packaging/pages
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+  gh-pages-branch:
+    # Companion deployment that commits the repo to the `gh-pages` branch for
+    # admins who host Pages from a branch rather than Actions. Only runs for
+    # tag releases to avoid churn on every push.
+    name: Commit repo to gh-pages branch
+    runs-on: ubuntu-latest
+    needs: [build, meta, verify]
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Install tooling
+        run: sudo apt-get update && sudo apt-get install -y python3-yaml dpkg-dev apt-utils gnupg
+      - name: Download all built .debs
+        uses: actions/download-artifact@v4
+        with:
+          path: packaging/build
+          merge-multiple: true
+      - name: Assemble repo
+        run: |
+          set -euo pipefail
+          debs=( packaging/build/*.deb )
+          packaging/scripts/publish-deb --repo packaging/repository "${debs[@]}"
+          mkdir -p packaging/pages/debian
+          cp -r packaging/repository/dists packaging/repository/pool packaging/pages/debian/
+      - name: Commit to gh-pages
+        run: |
+          set -euo pipefail
+          git config user.name "nostrhost CI"
+          git config user.email "ci@nostrhost.org"
+          git fetch origin gh-pages:gh-pages --depth 1 2>/dev/null || true
+          if git rev-parse --verify gh-pages >/dev/null 2>&1; then
+            git checkout gh-pages
+          else
+            git checkout --orphan gh-pages
+            git rm -rfq . || true
+          fi
+          rm -rf debian
+          mkdir -p debian
+          cp -r packaging/pages/debian/. debian/
+          git add debian
+          if git diff --cached --quiet; then
+            echo "no repo changes to publish"
+          else
+            git commit -m "apt repo: publish $GITHUB_SHA ($(date -u +%Y-%m-%dT%H:%M:%SZ))"
+            git push origin gh-pages:gh-pages
+          fi

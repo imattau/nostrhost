@@ -1,0 +1,121 @@
+#!/usr/bin/env python3
+"""generate-meta-package — build nostrhost meta-packages from packages.yml.
+
+Meta-packages (kind: meta) are near-empty .debs whose only job is to pull in a
+coherent set of real packages. Debian supports this pattern natively. This
+script reads the APT release BOM (packaging/packages.yml) and emits one .deb
+per meta entry into the given output directory.
+
+Usage:
+    generate-meta-package [--packages packaging/packages.yml] [-o outdir]
+
+The version is taken from the `meta_version` key, overridable via the
+META_VERSION environment variable (the release workflow sets it from the
+release tag).
+"""
+
+from __future__ import annotations
+
+import argparse
+import hashlib
+import os
+import shutil
+import subprocess
+import sys
+import tempfile
+from pathlib import Path
+
+try:
+    import yaml
+except ImportError:  # pragma: no cover
+    sys.exit("generate-meta-package: PyYAML is required (python3-yaml)")
+
+
+def package_relations(names: list[str]) -> str:
+    """Render a Depends/Recommends field body from a list of names.
+
+    Continuation lines in a Debian control file must start with whitespace.
+    """
+    if not names:
+        return ""
+    head, *rest = names
+    return head + "".join(f",\n {name}" for name in rest)
+
+
+def build_meta_deb(
+    name: str,
+    summary: str,
+    depends: list[str],
+    version: str,
+    outdir: Path,
+) -> Path:
+    """Build a minimal meta .deb with dpkg-deb --build."""
+    with tempfile.TemporaryDirectory(prefix="nostrhost-meta-") as tmp:
+        root = Path(tmp)
+        ctrl_dir = root / "DEBIAN"
+        ctrl_dir.mkdir(parents=True)
+        control = (
+            f"Package: {name}\n"
+            f"Version: {version}\n"
+            f"Section: metapackages\n"
+            f"Priority: optional\n"
+            f"Architecture: all\n"
+            f"Maintainer: NostrHost <noreply@nostrhost.org>\n"
+            f"Description: {summary}\n"
+        )
+        if depends:
+            control += f"Depends: {package_relations(depends)}\n"
+        (ctrl_dir / "control").write_text(control, encoding="utf-8")
+        (root / "usr/share/doc" / name).mkdir(parents=True)
+        (root / "usr/share/doc" / name / "changelog").write_text(
+            f"nostrhost ({version}) bookworm; urgency=medium\n\n  Generated meta-package.\n\n -- NostrHost <noreply@nostrhost.org>  {__import__('datetime').date.today().isoformat()}\n",
+            encoding="utf-8",
+        )
+        (root / "usr/share/doc" / name / "copyright").write_text(
+            "Copyright (C) NostrHost contributors. AGPL-3.0-or-later.",
+            encoding="utf-8",
+        )
+        out = outdir / f"{name}_{version}_all.deb"
+        subprocess.run(
+            ["dpkg-deb", "--build", "--root-owner-group", str(root), str(out)],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    return out
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--packages", default="packaging/packages.yml")
+    ap.add_argument("-o", "--outdir", default="packaging/build/meta")
+    args = ap.parse_args()
+
+    with open(args.packages, encoding="utf-8") as fh:
+        manifest = yaml.safe_load(fh)
+
+    version = os.environ.get("META_VERSION") or str(manifest.get("meta_version", "0.1.0"))
+    outdir = Path(args.outdir)
+    outdir.mkdir(parents=True, exist_ok=True)
+
+    metas = [p for p in manifest["packages"] if p.get("kind") == "meta"]
+    if not metas:
+        print("generate-meta-package: no meta packages declared")
+        return 0
+
+    for pkg in metas:
+        out = build_meta_deb(
+            pkg["name"],
+            pkg.get("summary", ""),
+            pkg.get("depends", []),
+            version,
+            outdir,
+        )
+        digest = hashlib.sha256(out.read_bytes()).hexdigest()
+        print(f"generated {out.name} (sha256 {digest[:12]}…)")
+
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

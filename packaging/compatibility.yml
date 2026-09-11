@@ -1,0 +1,77 @@
+# compatibility.yml — inter-package version compatibility matrix.
+#
+# Conservative version constraints between nostrhost APT packages. The
+# internal event protocol (EVENT-PROTOCOL.md) is the designed internal API
+# between independently-operating components, so these are expressed as
+# minimum-version requirements plus explicit `Breaks` only where a known
+# protocol/ABI incompatibility actually exists.
+#
+# Rules:
+#   - Prefer `>=` minimums over `=`. Small one-package updates must not force
+#     a coordinated upgrade of the whole stack.
+#   - Add a `Breaks` entry ONLY when a new version of A is incompatible with
+#     an installed version of B (a real protocol or ABI change). Never use it
+#     as a scheduling mechanism.
+#   - `verifies` documents what each package actually enforces at runtime, so a
+#     version bump here without a matching runtime check is a red flag.
+
+version: 1
+
+# Versioned interfaces NostrHost components share.
+interfaces:
+  # The control-plane event protocol (local relay = internal API bus). All
+  # relay clients (control, catalog, notify, core) must speak a protocol
+  # version the control relay supports.
+  event-protocol:
+    # Bumped only on incompatible event-schema / kind-semantics changes.
+    current: 1
+    compat:
+      nostrhost-control: ">= 1"
+      nostrhost-catalog: ">= 1"
+      nostrhost-notify: ">= 1"
+
+  # The portalapi / admin HTTP surface exposed by nostrhost-core to the SPAs.
+  core-api:
+    current: 12.1
+    compat:
+      nostrhost-core: ">= 12.1"
+      nostrhost-admin: ">= 0.1"
+      nostrhost-portal: ">= 0.1"
+
+# Known incompatibilities. Keep this list minimal and evidence-backed.
+# Format: {package: "<constraint>"} describing when THAT package version
+# breaks against the installing package's counterpart.
+breaks: {}
+
+# Core rename plan (Stage 1 → Stage 2).
+#
+# Stage 1 (current): the fork's debian/ tree ships the binary package
+# `yunohost`, so every existing `Depends: yunohost (>= 12.1)` keeps resolving.
+# Stage 2 (when the derivative is independent): the same source ships
+# `nostrhost-core` with:
+#
+#     Package: nostrhost-core
+#     Provides: yunohost
+#     Conflicts: yunohost
+#     Replaces: yunohost
+#
+# plus a transitional empty `yunohost` package where needed. Do not rename
+# prematurely; the roadmap §24 native/compat boundary gates it.
+core_rename:
+  stage: 1
+  provides_yunohost: false   # Stage 2: true
+  transitional_package: false
+
+# Components whose upstream ships their own Debian packages and are therefore
+# ordinary external dependencies (never repackaged here). Matches the
+# `external_deps` list in packages.yml; kept here as the semantic contract.
+external:
+  moulinette: ">= 12.1.4"    # python API layer yunohost depends on
+  crowdsec: ">= 1.5"          # IDS engine (external)
+  crowdsec-firewall-bouncer: ">= 0.0.13"  # nftables enforcement (external)
+  nftables: ">= 1.0"
+  slapd: ">= 2.5"
+  python3-nostr-sdk: ">= 0.45.1"
+  python3-bech32: ">= 1.2.0"
+  python3-coincurve: ">= 21.0.0"
+  python3-pydantic: ">= 2.13.5"

@@ -7,3 +7,9 @@ dist/
 
 # local VM testbed disks/images (large, host-specific)
 testbed/vm/
+
+# APT packaging build/repository artifacts
+packaging/build/
+packaging/repository/
+packaging/pages/
+.gnupg/

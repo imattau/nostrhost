@@ -1,0 +1,223 @@
+#!/usr/bin/env python3
+"""publish-deb — stage .debs into an APT pool and regenerate the repo index.
+
+Takes a set of built .deb files, copies them into a pool layout, and
+regenerates the apt index (Packages, Packages.gz, Release) with
+apt-ftparchive. The resulting tree is the GitHub Pages repository root
+(served at /debian/). Signing is optional: pass a gpg signing keyring + key id
+to produce InRelease; otherwise an unsigned Release is emitted (clients must
+then use `[trusted=yes]`).
+
+Layout (matches the GitHub Pages base_url in packages.yml):
+
+    <repo>/
+    ├── dists/
+    │   └── <codename>/
+    │       ├── Release
+    │       ├── InRelease           (only when signing)
+    │       └── main/
+    │           └── binary-<arch>/
+    │               ├── Packages
+    │               └── Packages.gz
+    └── pool/
+        └── <codename>/
+            └── main/
+                └── <prefix>/<pkg>/
+                    └── <name>_<version>_<arch>.deb
+
+Usage:
+    publish-deb [--codename bookworm] [--arch amd64] [--repo <dir>]
+                [--gpg-keyring <file>] [--gpg-keyid <id>]
+                <deb-file>...
+
+    publish-deb --reindex          # regenerate index from the existing pool
+
+Repeated publishes of the same name/version overwrite in place (idempotent).
+"""
+
+from __future__ import annotations
+
+import argparse
+import gzip
+import os
+import shutil
+import subprocess
+import sys
+import tempfile
+from pathlib import Path
+
+try:
+    import yaml
+except ImportError:  # pragma: no cover
+    sys.exit("publish-deb: PyYAML is required (python3-yaml)")
+
+COMPONENT = "main"
+
+
+def pool_path(name: str) -> str:
+    """Debian pool prefix rule: libs -> lib<first4>, else first letter."""
+    if name.startswith("lib") and len(name) > 4:
+        return f"lib{name[3:7]}"
+    return name[0]
+
+
+def copy_to_pool(deb: Path, repo: Path, codename: str, arch: str) -> Path:
+    """Copy a .deb into the pool, returning its pool path (relative)."""
+    parts = deb.name.rsplit("_", 2)  # <name>_<version>_<arch>.deb
+    if len(parts) != 3 or not parts[2].endswith(".deb"):
+        raise SystemExit(f"publish-deb: unparseable deb filename: {deb.name}")
+    name, version, arch_part = parts
+    target = repo / "pool" / codename / COMPONENT / pool_path(name) / name / deb.name
+    target.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(deb, target)
+    return target
+
+
+def write_config(confdir: Path, repo: Path, codename: str, arch: str) -> None:
+    """Write apt-ftparchive config files.
+
+    Canonical Debian-wiki layout: `Dir::ArchiveDir "."` and `BinDirectory`
+    relative to it, and every apt-ftparchive invocation runs with cwd=repo so
+    the Packages `Filename` entries come out relative to the repo root.
+    """
+    dists = repo / "dists"
+    (confdir / "apt-ftparchive-deb.conf").write_text(
+        f'Dir::ArchiveDir "{repo}";\n'
+        f'Dir::CacheDir "{repo}";\n'
+        f"TreeDefault {{\n"
+        f'  Section "{COMPONENT}";\n'
+        f"  Architectures \"{arch}\";\n"
+        f"}};\n"
+        f"BinDirectory \"pool/{codename}/{COMPONENT}\" {{\n"
+        f"  Packages \"{dists / codename / COMPONENT / f'binary-{arch}' / 'Packages'}\";\n"
+        f"  SrcPackages \"\";\n"
+        f'  Arch "{arch}";\n'
+        f'  Compression "." "gz";\n'
+        f'  BinOverride "";\n'
+        f'  ExtraOverride "";\n'
+        f"}};\n",
+        encoding="utf-8",
+    )
+    (confdir / "apt-ftparchive.conf").write_text(
+        f'Dir::ArchiveDir "{repo}";\n'
+        f'Dir::CacheDir "{repo}";\n'
+        f"TreeDefault {{\n"
+        f'  Section "{COMPONENT}";\n'
+        f"  Architectures \"{arch}\";\n"
+        f"}};\n"
+        f'Tree "dists/{codename}" {{\n'
+        f'  Sections "{COMPONENT}";\n'
+        f"  Architectures \"{arch}\";\n"
+        f"}};\n"
+        f"APT::FTPArchive::Release::Origin \"nostrhost\";\n"
+        f"APT::FTPArchive::Release::Label \"nostrhost\";\n"
+        f'APT::FTPArchive::Release::Suite "{codename}";\n'
+        f'APT::FTPArchive::Release::Codename "{codename}";\n'
+        f'APT::FTPArchive::Release::Architectures "{arch}";\n'
+        f'APT::FTPArchive::Release::Components "{COMPONENT}";\n'
+        f'APT::FTPArchive::Release::Description "NostrHost APT repository";\n',
+        encoding="utf-8",
+    )
+
+
+def regenerate(repo: Path, codename: str, arch: str, gpg_gnupghome: str | None, gpg_keyid: str | None) -> None:
+    """Run apt-ftparchive to regenerate Packages + Release for the repo.
+
+    Signing uses a dedicated GNUPGHOME (the keyring directory) plus the key id;
+    pass those via --gpg-gnupghome/--gpg-keyid. Without them an unsigned
+    Release is emitted (clients must then use `[trusted=yes]`).
+    """
+    # apt-ftparchive needs the target dists/ directories to exist before it
+    # can write Packages (and the Packages.gz sibling).
+    bindir = repo / "dists" / codename / COMPONENT / f"binary-{arch}"
+    bindir.mkdir(parents=True, exist_ok=True)
+
+    with tempfile.TemporaryDirectory(prefix="publish-deb-") as tmp:
+        tmpdir = Path(tmp)
+        write_config(tmpdir, repo, codename, arch)
+
+        # binary packages index (cwd=repo so relative pool/dists paths resolve)
+        subprocess.run(
+            ["apt-ftparchive", "generate", str(tmpdir / "apt-ftparchive-deb.conf")],
+            check=True,
+            capture_output=True,
+            text=True,
+            cwd=repo,
+        )
+
+        # release file (run with cwd=repo so the relative dists/ paths resolve)
+        release = subprocess.run(
+            ["apt-ftparchive", "release", f"dists/{codename}",
+             "-c", str(tmpdir / "apt-ftparchive.conf")],
+            check=True,
+            capture_output=True,
+            text=True,
+            cwd=repo,
+        ).stdout
+
+        release_path = repo / "dists" / codename / "Release"
+        release_path.write_text(release, encoding="utf-8")
+
+        if gpg_gnupghome and gpg_keyid:
+            # sign -> InRelease (clearsigned Release, the apt InRelease format)
+            env = {**os.environ, "GNUPGHOME": str(gpg_gnupghome)}
+            inrelease = subprocess.run(
+                ["gpg", "--batch", "--yes", "--pinentry-mode", "loopback",
+                 "--no-tty", "--clearsign",
+                 "--local-user", gpg_keyid,
+                 "-o", str(repo / "dists" / codename / "InRelease"),
+                 str(release_path)],
+                check=True,
+                capture_output=True,
+                text=True,
+                env=env,
+            )
+            print(f"publish-deb: signed dists/{codename}/InRelease")
+        else:
+            print("publish-deb: no gpg keyring provided — emitting unsigned Release "
+                  "(clients need [trusted=yes])")
+            # remove stale InRelease so apt does not use a superseded signature
+            (repo / "dists" / codename / "InRelease").unlink(missing_ok=True)
+
+    # compress Packages (apt-ftparchive 'gz' compression emits Packages.gz next
+    # to Packages automatically, but ensure both exist and are consistent)
+    packages = repo / "dists" / codename / COMPONENT / f"binary-{arch}" / "Packages"
+    if not packages.exists():
+        raise SystemExit(f"publish-deb: apt-ftparchive produced no Packages at {packages}")
+
+    print(f"publish-deb: index ready — dists/{codename}/Release, "
+          f"main/binary-{arch}/{{Packages,Packages.gz}}")
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("debs", nargs="*", help="built .deb files to publish")
+    ap.add_argument("--codename", default="bookworm")
+    ap.add_argument("--arch", default="amd64")
+    ap.add_argument("--repo", default="packaging/repository")
+    ap.add_argument("--reindex", action="store_true",
+                    help="regenerate index from existing pool only")
+    ap.add_argument("--packages", default="packaging/packages.yml")
+    ap.add_argument("--gpg-gnupghome",
+                    help="directory containing the apt signing keyring (GNUPGHOME)")
+    ap.add_argument("--gpg-keyid")
+    args = ap.parse_args()
+
+    repo = Path(args.repo).resolve()
+
+    if not args.reindex:
+        if not args.debs:
+            ap.error("no .deb files given (or pass --reindex)")
+        for deb_s in args.debs:
+            deb = Path(deb_s)
+            if not deb.is_file():
+                raise SystemExit(f"publish-deb: not a file: {deb}")
+            copy_to_pool(deb, repo, args.codename, args.arch)
+            print(f"publish-deb: staged {deb.name}")
+
+    regenerate(repo, args.codename, args.arch, args.gpg_gnupghome, args.gpg_keyid)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

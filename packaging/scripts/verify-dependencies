@@ -1,0 +1,172 @@
+#!/usr/bin/env python3
+"""verify-dependencies — validate the nostrhost APT dependency graph.
+
+Reads packaging/packages.yml and packaging/compatibility.yml and checks:
+
+  1. Every `depends`/`recommends` entry resolves to a package in the manifest
+     OR a declared external Debian package (never a dangling reference).
+  2. Version constraints on internal packages are consistent with the
+     compatibility matrix (no `Breaks` without a matching evidence entry).
+  3. The internal dependency graph is acyclic and the two meta-packages pull
+     in the intended full set (nostrhost ⊇ core-system ⊇ the headless stack).
+  4. `provides`/`replaces`/`conflicts` entries are coherent (a package that
+     conflicts with `caddy` also provides/replaces it).
+
+Usage:
+    verify-dependencies [--packages packaging/packages.yml] \
+                        [--compat packaging/compatibility.yml]
+
+Exit 0 on success, 1 on any validation failure. Intended to run in CI before
+the repo index is regenerated (see .github/workflows/apt.yml).
+"""
+
+from __future__ import annotations
+
+import argparse
+import re
+import sys
+from pathlib import Path
+
+try:
+    import yaml
+except ImportError:  # pragma: no cover
+    sys.exit("verify-dependencies: PyYAML is required (python3-yaml)")
+
+# A dependency entry is "<name> (>= x)" / "<name> (= x)" / plain "<name>".
+_CONSTRAINT = re.compile(r"^([a-z0-9+.-]+)(?:\s*\(([^)]*)\))?$")
+
+errors: list[str] = []
+
+
+def add_constraint(field: str, entries: list[str], known: set[str]) -> None:
+    """Check a Depends/Recommends field body resolves within `known`."""
+    for entry in entries or []:
+        m = _CONSTRAINT.match(entry.strip())
+        if not m:
+            errors.append(f"  malformed dependency entry: {entry!r}")
+            continue
+        name, _ver = m.groups()
+        if name not in known:
+            errors.append(f"  unresolved dependency: {entry!r}")
+
+
+def validate(manifest: dict, compat: dict) -> int:
+    packages = {p["name"]: p for p in manifest["packages"]}
+    external = set(manifest.get("external_deps", []))
+
+    meta_names = {n for n, p in packages.items() if p.get("kind") == "meta"}
+    if "nostrhost" not in meta_names or "nostrhost-core-system" not in meta_names:
+        errors.append("  both meta-packages (nostrhost, nostrhost-core-system) must exist")
+
+    # 1. All depends/recommends resolve.
+    for name, pkg in packages.items():
+        for field in ("depends", "recommends"):
+            entries = pkg.get(field, [])
+            add_constraint(f"{name}.{field}", entries, set(packages) | external)
+
+    # 2. No Breaks without a compatibility-matrix entry.
+    breaks = compat.get("breaks", {}) or {}
+    for name, pkg in packages.items():
+        for b in pkg.get("breaks", []):
+            if b not in breaks:
+                errors.append(f"  {name} declares Breaks: {b} with no compatibility.yml evidence entry")
+
+    # 3. Acyclic graph + meta closure.
+    graph = {n: set(p.get("depends", [])) for n, p in packages.items()}
+    # strip version constraints to package names
+    for n in graph:
+        graph[n] = {_CONSTRAINT.match(d).group(1) for d in graph[n] if _CONSTRAINT.match(d)}
+        graph[n] = {d for d in graph[n] if d in packages}  # internal edges only
+
+    visiting: set[str] = set()
+    seen: set[str] = set()
+
+    def visit(node: str) -> None:
+        if node in visiting:
+            errors.append(f"  dependency cycle detected at {node}")
+            return
+        if node in seen:
+            return
+        visiting.add(node)
+        for dep in graph.get(node, ()):
+            visit(dep)
+        visiting.discard(node)
+        seen.add(node)
+
+    for node in packages:
+        visit(node)
+
+    # Closure of nostrhost and nostrhost-core-system.
+    def closure(start: str) -> set[str]:
+        out, stack = set(), list(graph.get(start, ()))
+        while stack:
+            n = stack.pop()
+            if n in out:
+                continue
+            out.add(n)
+            stack.extend(graph.get(n, ()))
+        return out
+
+    core_system = closure("nostrhost-core-system")
+    required_core_system = {
+        "nostrhost-core", "nostrhost-control", "nostrhost-catalog",
+        "nostrhost-caddy", "nostrhost-security-config",
+        "python3-nostrhost-auth", "python3-nostrhost-policy",
+    }
+    missing = required_core_system - core_system
+    if missing:
+        errors.append(f"  nostrhost-core-system does not reach: {sorted(missing)}")
+
+    full = closure("nostrhost")
+    required_full = required_core_system | {
+        "nostrhost-admin", "nostrhost-portal", "nostrhost-notify",
+    }
+    missing_full = required_full - full
+    if missing_full:
+        errors.append(f"  nostrhost does not reach: {sorted(missing_full)}")
+
+    # 4. Provides/Replaces/Conflicts coherence.
+    for name, pkg in packages.items():
+        prov = set(pkg.get("provides", []) or [])
+        repl = set(pkg.get("replaces", []) or [])
+        conf = set(pkg.get("conflicts", []) or [])
+        # A package that conflicts with a name should replace it too (clean
+        # upgrade path), except genuine parallel-coexistence conflicts.
+        for c in conf:
+            if c not in repl and c not in prov:
+                errors.append(
+                    f"  {name} conflicts with {c} but neither provides nor replaces it"
+                )
+
+    # compatibility.yml external minimums must be real packages.
+    external_compat = compat.get("external", {}) or {}
+    for name in external_compat:
+        if name not in external:
+            errors.append(f"  compatibility.yml external entry {name} not in packages.yml external_deps")
+
+    return 1 if errors else 0
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--packages", default="packaging/packages.yml")
+    ap.add_argument("--compat", default="packaging/compatibility.yml")
+    args = ap.parse_args()
+
+    with open(args.packages, encoding="utf-8") as fh:
+        manifest = yaml.safe_load(fh)
+    with open(args.compat, encoding="utf-8") as fh:
+        compat = yaml.safe_load(fh)
+
+    rc = validate(manifest, compat)
+    if errors:
+        print("verify-dependencies: FAIL")
+        for line in errors:
+            print(line)
+    else:
+        print("verify-dependencies: PASS")
+    return rc
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

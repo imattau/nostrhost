@@ -1,0 +1,239 @@
+# packages.yml — the nostrhost APT release BOM.
+#
+# This file is the authoritative manifest for the APT packages NostrHost
+# ships. It lives in the umbrella repo because the umbrella owns dependency /
+# version pins and packaging metadata (see baseline/pins.yml). Each entry maps
+# an APT binary package to the Git repository that produces it.
+#
+# The repository is served from GitHub Pages (see .github/workflows/apt.yml):
+#
+#     deb [signed-by=/etc/apt/keyrings/nostrhost.asc] \
+#         https://imattau.github.io/nostrhost/debian/ bookworm main
+#
+# Design rules:
+#   - One binary package per independently-releasable component. Two binaries
+#     sourced from the same Git repo (control/notify) are separate entries and
+#     are versioned independently via their own release tags.
+#   - Version constraints are conservative: prefer `>=` and add a `Breaks` only
+#     on a known protocol/ABI incompatibility (see compatibility.yml).
+#   - `nostrhost` and `nostrhost-core-system` are meta-packages (kind: meta);
+#     they are generated, not built from source.
+#   - Components with their own upstream Debian packages (moulinette, crowdsec,
+#     nftables, slapd, Python system libs, ...) are external Depends, never
+#     repackaged here.
+
+version: 1
+
+# Repository layout served on GitHub Pages.
+repository:
+  codename: bookworm
+  components: [main]
+  architectures: [amd64]
+  origin: nostrhost
+  label: nostrhost
+  base_url: https://imattau.github.io/nostrhost/debian
+
+# Version used for the generated meta-packages until a real release process
+# bumps it (overridable via the META_VERSION env in CI).
+meta_version: "0.1.0"
+
+packages:
+  # ---------------------------------------------------------------- metas ----
+  - name: nostrhost
+    kind: meta
+    summary: NostrHost — complete self-hosting server (meta-package)
+    depends:
+      - nostrhost-core-system
+      - nostrhost-admin
+      - nostrhost-portal
+      - nostrhost-notify
+
+  - name: nostrhost-core-system
+    kind: meta
+    summary: NostrHost — minimal headless system (meta-package)
+    depends:
+      - nostrhost-core
+      - nostrhost-control
+      - nostrhost-catalog
+      - nostrhost-caddy
+      - nostrhost-security-config
+      - python3-nostrhost-auth
+      - python3-nostrhost-policy
+
+  # ------------------------------------------------------------- core ------
+  # Stage 1 keeps the `yunohost` binary package name (built from the fork's
+  # debian/ tree) so existing `Depends: yunohost (>= 12.1)` continue to
+  # resolve. Stage 2 renames to nostrhost-core with Provides/Replaces/Conflicts
+  # against yunohost. See packaging/docs note in compatibility.yml.
+  - name: nostrhost-core
+    kind: debian-source
+    source:
+      repo: imattau/nostrhost-yunohost
+      submodule: forks/yunohost
+      binary_package: yunohost            # Stage 1: shipped as `yunohost`
+    summary: Forked YunoHost Python server-management engine
+    depends:
+      - moulinette (>= 12.1.4)
+      - python3-nostrhost-auth
+      - python3-nostrhost-policy
+      - nostrhost-caddy
+      - nostrhost-security-config
+      - nftables
+      - slapd
+    recommends:
+      - nostrhost-admin
+      - nostrhost-portal
+
+  # ------------------------------------------------------------ control ----
+  # Two independently-versioned binaries from one Git repo. The release flow
+  # tags them separately (control/vX.Y.Z, notify/vX.Y.Z) so APT treats them as
+  # independent packages even though they share a source repository.
+  - name: nostrhost-control
+    kind: golang
+    version: "0.1.0"                     # from tag control/v0.1.0 in CI
+    source:
+      repo: imattau/nostrhost-control
+      submodule: libs/nostrhost-control
+      cmd: ./cmd/nostrhost-control
+      systemd: nostrhost-control.service
+    summary: NostrHost control-plane relay (local khatru relay)
+    depends:
+      - nostrhost-core
+    provides: []
+    breaks: []
+
+  - name: nostrhost-notify
+    kind: golang
+    version: "0.1.0"                     # from tag notify/v0.1.0 in CI
+    source:
+      repo: imattau/nostrhost-control
+      submodule: libs/nostrhost-control
+      cmd: ./cmd/nostrhost-notify
+      systemd: nostrhost-notify.service
+    summary: NostrHost NIP-17/59 notification daemon
+    depends:
+      - nostrhost-control (>= 0.1)
+      - nostrhost-core
+    provides: []
+    breaks: []
+
+  - name: nostrhost-catalog
+    kind: golang
+    version: "0.1.0"
+    source:
+      repo: imattau/nostrhost-catalog
+      submodule: libs/nostrhost-catalog
+      cmd: ./cmd/nostrhost-catalog
+      systemd: nostrhost-catalog.service
+    summary: NostrHost catalogue resolver/service
+    depends:
+      - nostrhost-control (>= 0.1)
+    provides: []
+    breaks: []
+
+  # -------------------------------------------------------- python libs ----
+  - name: python3-nostrhost-auth
+    kind: python
+    version: "0.1.0"
+    source:
+      repo: imattau/nostrhost-auth
+      submodule: libs/nostrhost-auth
+    summary: NostrHost authentication/identity library
+    depends:
+      - python3-nostr-sdk
+    provides: []
+    breaks: []
+
+  - name: python3-nostrhost-policy
+    kind: python
+    version: "0.1.0"
+    source:
+      repo: imattau/nostrhost-policy
+      submodule: libs/nostrhost-policy
+    summary: NostrHost authorisation/policy library
+    depends:
+      - python3-bech32
+      - python3-coincurve
+      - python3-pydantic
+    provides: []
+    breaks: []
+
+  # ------------------------------------------------------------- web SPA ----
+  - name: nostrhost-admin
+    kind: spa
+    version: "0.1.0"
+    source:
+      repo: imattau/nostrhost-admin
+      submodule: forks/admin
+      build_dir: app
+      static_dir: /usr/share/nostrhost/admin
+    summary: NostrHost admin interface (built SPA assets)
+    depends:
+      - nostrhost-core
+    recommends: []
+    breaks: []
+
+  - name: nostrhost-portal
+    kind: spa
+    version: "0.1.0"
+    source:
+      repo: imattau/nostrhost-portal
+      submodule: forks/portal
+      static_dir: /usr/share/nostrhost/portal
+    summary: NostrHost user portal (built SPA assets)
+    depends:
+      - nostrhost-core
+    recommends: []
+    breaks: []
+
+  # -------------------------------------------------------------- caddy ----
+  - name: nostrhost-caddy
+    kind: caddy
+    version: "2.9.1"
+    source:
+      xcaddy_modules:
+        - github.com/mholt/caddy-l4
+      systemd: caddy.service
+    summary: Caddy with NostrHost modules (caddy-l4)
+    depends: []
+    provides:
+      - caddy
+    conflicts:
+      - caddy
+    replaces:
+      - caddy
+    breaks: []
+
+  # ------------------------------------------------------------ security ---
+  # CrowdSec itself is an external package; this ships only NostrHost-specific
+  # acquisition/parser/scenario config on top of it.
+  - name: nostrhost-security-config
+    kind: config
+    version: "0.1.0"
+    summary: NostrHost CrowdSec acquisition/scenarios/bouncer configuration
+    depends:
+      - crowdsec
+      - crowdsec-firewall-bouncer
+    source:
+      submodule: forks/yunohost
+    files:
+      - source: conf/crowdsec/acquis.yaml
+        dest: /etc/crowdsec/acquis.d/nostrhost.yaml
+      - source: conf/crowdsec/scenarios/
+        dest: /etc/crowdsec/scenarios/
+      - source: conf/crowdsec-firewall-bouncer/crowdsec-firewall-bouncer.yaml
+        dest: /etc/crowdsec/crowdsec-firewall-bouncer.yaml
+    breaks: []
+
+# External Debian packages these entries depend on, so verify-dependencies can
+# distinguish "our" packages from upstream ones. Only used for validation.
+external_deps:
+  - moulinette
+  - python3-nostr-sdk
+  - python3-bech32
+  - python3-coincurve
+  - python3-pydantic
+  - crowdsec
+  - crowdsec-firewall-bouncer
+  - nftables
+  - slapd
