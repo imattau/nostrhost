@@ -162,8 +162,9 @@ packages:
       repo: imattau/nostrhost-auth
       submodule: libs/nostrhost-auth
     summary: NostrHost authentication/identity library
-    depends:
-      - python3-nostr-sdk
+    # Runtime python deps (nostr-sdk) are not in Debian bookworm and are
+    # provisioned from PyPI — see packaging/README.md.
+    depends: []
     provides: []
     breaks: []
 
@@ -174,10 +175,10 @@ packages:
       repo: imattau/nostrhost-policy
       submodule: libs/nostrhost-policy
     summary: NostrHost authorisation/policy library
-    depends:
-      - python3-bech32
-      - python3-coincurve
-      - python3-pydantic
+    # Runtime python deps (bech32, coincurve, pydantic v2) are not available
+    # in Debian bookworm (pydantic only ships v1 there) and are provisioned
+    # from PyPI — see packaging/README.md.
+    depends: []
     provides: []
     breaks: []
 
@@ -254,10 +255,6 @@ external_deps:
   - python3-typer
   - python3-bottle
   - python3-requests
-  - python3-nostr-sdk
-  - python3-bech32
-  - python3-coincurve
-  - python3-pydantic
   - crowdsec
   - crowdsec-firewall-bouncer
   - nftables

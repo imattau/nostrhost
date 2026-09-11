@@ -26,6 +26,12 @@ each built from its own component repo (held here as pinned submodules).
 `crowdsec`, `nftables`, `slapd` and normal Python/system
 libraries stay ordinary external Debian packages — never repackaged here.
 
+Some python runtime deps are not available in Debian bookworm and are
+provisioned from PyPI at deploy time (not apt): `nostr-sdk` (for
+`python3-nostrhost-auth`), and `bech32`, `coincurve`, `pydantic>=2` (for
+`python3-nostrhost-policy`; bookworm only ships pydantic 1.x). Install them
+with e.g. `pip install nostr-sdk bech32 coincurve 'pydantic>=2'`.
+
 Control and notify are two **independently-versioned** binary packages even
 though they share the `nostrhost-control` source repo: the release flow tags
 them separately (`control/v*`, `notify/v*`).
