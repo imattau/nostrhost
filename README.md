@@ -1,49 +1,92 @@
 # nostrhost
 
-A Nostr-native YunoHost derivative: YunoHost's mature server-management engine
-(applications, domains, nginx, certificates, backups, services, firewall,
-diagnosis, Debian packaging, user/group compatibility) with Nostr as the
-primary control-plane technology for identity, authentication, delegated
-authority, agent access, approvals, catalogue discovery, publisher trust,
-software attestations, and remote administration.
+A Nostr-native self-hosting platform. YunoHost's mature server-management
+engine remains underneath as a compatibility/migration source, but the platform
+is increasingly native: Nostr identity/authority as the control plane, a
+declarative package/resource engine, Caddy + automatic TLS, CrowdSec security,
+ngit/NIP-34 state with Restic data linkage, and a componentised APT
+distribution.
 
-The core architectural idea is a **local Nostr relay as the control-plane
-bus**: identity, policy, approval, execution, catalogue and audit state flow
-as signed events, projected into YunoHost by small resolvers. The design is
-primitive-first — standard Nostr (NIP-42/44/51/65/66/77/78/86/89/98) is used
-wherever possible and custom kinds are reserved for genuine NostrHost
-semantics. See `docs/CONTROL-PLANE.md`, `docs/NIP-MAPPING.md` and
-`docs/STATELAYER.md` (ngit / NIP-34 configuration-state + Restic data linkage).
+The core architectural idea is a **local Nostr relay as the control-plane bus**:
+identity, policy, approval, execution, catalogue and audit state flow as signed
+events. The design is primitive-first — standard Nostr
+(NIP-42/44/51/65/66/77/78/86/89/98) is used wherever possible and custom kinds
+are reserved for genuine NostrHost semantics. See `docs/CONTROL-PLANE.md`,
+`docs/NIP-MAPPING.md` and `docs/STATELAYER.md` (ngit / NIP-34 configuration-state
++ Restic data linkage).
 
-See `docs/BASELINE.md` for the current stage and `docs/ROADMAP.md` provenance.
+The platform is at the "make it a product" transition: architecture and major
+components exist; the work is integration, dependency cleanup, native
+bootstrap and proving the full install/upgrade/recovery path. See
+`docs/ALPHA-PLAN.md` for the current execution plan and `docs/ROADMAP.md` for
+the full provenance. `docs/BASELINE.md` records the current derivative
+baseline and pins.
 
 ## Layout
 
 ```
 nostrhost/
-├── forks/            # git submodules: source-identical YunoHost component forks
-│   ├── yunohost/     #   imattau/nostrhost-yunohost  (core, python)
+├── forks/            # git submodules: component forks
+│   ├── yunohost/     #   imattau/nostrhost-yunohost  (core engine; derivative
+│   │                 #   branch `nostrhost`, ships as `nostrhost-core`)
 │   ├── portal/       #   imattau/nostrhost-portal    (Nuxt/Vue/TS portal)
-│   ├── admin/        #   imattau/nostrhost-admin     (Vue/Vite/TS admin)
-│   └── ssowat/       #   imattau/nostrhost-ssowat    (NGINX auth)
+│   └── admin/        #   imattau/nostrhost-admin     (Vue/Vite/TS admin)
 ├── libs/             # git submodules: reusable component libraries
 │   ├── nostrhost-auth/     #   identity/challenge/verify/npub/mappings/NIP-05
 │   ├── nostrhost-policy/   #   roles/scopes/NIP-98/delegation/approvals/audit
 │   ├── nostrhost-catalog/  #   catalogue schema/relay/attestation/trust
-│   └── nostrhost-control/  #   control plane: local relay + event model (Phase 2)
+│   └── nostrhost-control/  #   control plane: local relay + event model
+├── packages/         # native package.toml examples / test apps (resource engine)
+├── packaging/        # APT release BOM, scripts, compatibility matrix
 ├── baseline/
 │   └── pins.yml      # authoritative component → fork → pinned ref mapping
-├── scripts/
-│   ├── pin-forks.sh  # sync forks to a pin recorded in pins.yml
-│   └── verify-clean.sh # assert forks == upstream pins (source-identical)
-├── docs/             # baseline, control plane, NIP mapping, extraction,
-│                     # VM testbed, roadmap
-└── .github/workflows/baseline.yml, libraries.yml
+├── scripts/          # pin/verify helpers
+└── docs/             # roadmap, control plane, state layer, resource engine,
+                      # Caddy/CrowdSec migrations, testbed, alpha plan
 ```
+
+## Platform state
+
+| Area | Status |
+|---|---|
+| Nostr identity / auth | Native libraries; NIP-07/46/passkey direction |
+| Policy / delegation / approvals | Native policy layer |
+| Control plane | Local Nostr relay + signed event model |
+| App lifecycle | Declarative `package.toml` resource engine (install proof in progress) |
+| Catalogue / trust | Native catalogue component |
+| Web / TLS | Caddy replacing nginx/SSOwat (SSOwat retired) |
+| Security | CrowdSec + nftables (fail2ban retired) |
+| Notifications | Nostr notification service (NIP-17/59) |
+| State | ngit / NIP-34 semantic configuration state |
+| Backup / recovery | Restic linkage + state orchestration |
+| Debian packaging | Componentised APT repository (GitHub Pages) |
+| Core rename | `yunohost` → `nostrhost-core` (transitional package retained) |
+| Moulinette removal | Native `python3-nostrhost` replaces it (dependency dropped) |
+
+The `nostrhost-core` package Provides/Replaces/Conflicts the historical
+`yunohost` name; a transitional empty `yunohost` package depends on it so old
+references keep resolving.
+
+## Distribution
+
+- `packaging/packages.yml` is the APT release BOM; `packaging/scripts/*`
+  build and publish the repo to GitHub Pages
+  (`deb [signed-by=…] https://imattau.github.io/nostrhost/debian/ bookworm main`).
+- The core engine (`nostrhost-core`) and the native framework/CLI/API
+  (`python3-nostrhost`) come from the fork's own `debian/` tree.
+- `nostrhost` (meta) → `nostrhost-core-system` → `nostrhost-core` +
+  `nostrhost-control` + `nostrhost-catalog` + `nostrhost-caddy` +
+  `nostrhost-security-config` + `python3-nostrhost{-auth,-policy}` +
+  `nostrhost-runtime` (private venv; planned).
+- Some Python runtime deps (`nostr-sdk`, `bech32`, `coincurve`,
+  `pydantic>=2`) are not in Debian bookworm and are provisioned from PyPI
+  during development; the plan moves them into a private venv with bundled
+  wheels (see `docs/ALPHA-PLAN.md` §W1).
 
 ## Umbrella ownership
 
 This repository owns architecture, integration tests, dependency/version pins,
-release tooling, packaging metadata, and derivative documentation. The forks
-under `forks/` are source-identical to upstream at the pinned stable refs and
-must not deviate until the derivative intentionally changes behaviour.
+release tooling, packaging metadata, and derivative documentation. The core
+fork under `forks/yunohost` is a derivative on its `nostrhost` branch; the
+`portal`/`admin` forks are pinned to upstream refs. Pins are recorded in
+`baseline/pins.yml`.

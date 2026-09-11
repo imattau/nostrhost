@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# verify-clean.sh — assert every nostrhost fork is source-identical to the
-# upstream pin recorded in baseline/pins.yml.
+# verify-clean.sh — assert every nostrhost fork is at the pin recorded in
+# baseline/pins.yml (derivative-aware: derivative forks are expected to
+# diverge from their upstream tag; source-identical forks must match it).
 #
 # The primary invariant: each fork's HEAD equals the recorded pin_commit
 # (the upstream "debian/<version>" tag commit at pin time). Tag comparisons

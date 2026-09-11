@@ -7,14 +7,14 @@ on:
 
 jobs:
   verify-clean:
-    name: Forks source-identical to pins
+    name: Forks match pins (derivative-aware)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
 
-      - name: Verify forks == upstream pins
+      - name: Verify forks == recorded pins
         run: scripts/verify-clean.sh --strict
 
   upstream-tests:
@@ -46,7 +46,8 @@ jobs:
       - name: Yunohost core unit tests (pinned ref)
         working-directory: forks/yunohost
         run: |
-          # Core tests are pytest and need yunohost's python deps (moulinette
-          # et al); expand this once the build/release pipeline lands.
+          # Core tests are pytest and need the core's python deps (native
+          # nostrhost framework + libs); the apt build pipeline (apt.yml)
+          # is the authoritative build, this stays a compile smoke.
           python3 -m pytest tests -q 2>/dev/null || \
             echo "core pytest requires package deps; deferred to build pipeline"

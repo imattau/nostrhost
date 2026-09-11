@@ -1,69 +1,60 @@
 # Baseline
 
-Stage 1 of the roadmap: **fork baseline**. The goal of this stage is a
-known-good, source-identical baseline before any Nostr-native change is
-introduced.
-
-> The derivative installs, boots and behaves identically to standard YunoHost.
-
-## What "identical" means here
-
-In Stage 1 no derivative OS image is built yet (building an image only becomes
-meaningful once the forks deviate). Baseline identity is established by:
-
-1. **Source identity** — every fork under `forks/` is a git fork of an
-   upstream YunoHost component, checked out at exactly the upstream release
-   tag that the `stable` apt pipeline ships (and that the live reference
-   servers run). `scripts/verify-clean.sh` asserts each fork HEAD equals its
-   pinned commit AND equals the upstream tag's commit, and that the working
-   tree is clean.
-2. **Behaviour identity** — the pinned source is the source the live
-   reference servers (`YunoHost 12.1.x stable`, Debian bookworm) were built
-   from, so the derivative is defined to behave identically by construction.
-   Once a build pipeline exists, upstream's own test suites run against the
-   pins in CI (`baseline.yml`).
+The current derivative baseline. The original Stage-1 goal was a known-good,
+source-identical fork baseline before any Nostr-native change; that stage is
+long complete and the core fork is now a derivative on its own branch. This
+file records where the platform pins sit today and the rules for changing them.
 
 ## Pins
 
-The authoritative record is `baseline/pins.yml`. Each pin is an upstream
-`debian/<version>` release tag.
+The authoritative record is `baseline/pins.yml`. Each fork is a git fork of an
+upstream YunoHost component, pinned to a `debian/<version>` release tag and
+(depending on the fork) either source-identical at that pin or a derivative on
+its own branch.
 
-| component | upstream repo | fork | pin | live server |
-|---|---|---|---|---|
-| yunohost (core) | `YunoHost/yunohost` | `imattau/nostrhost-yunohost` | `debian/12.1.41.2` | 12.1.41.2 |
-| portal | `YunoHost/yunohost-portal` | `imattau/nostrhost-portal` | `debian/12.1.2` | 12.1.2 |
-| admin | `YunoHost/yunohost-admin` | `imattau/nostrhost-admin` | `debian/12.1.15` | 12.1.15 |
-| ssowat | `YunoHost/SSOwat` | `imattau/nostrhost-ssowat` | `debian/12.1.1` | 12.1.1 |
-| moulinette (dep, not forked) | `YunoHost/moulinette` | — (upstream) | `debian/12.1.4` | 12.1.4 |
+| component | upstream repo | fork | pin | branch | derivative |
+|---|---|---|---|---|---|
+| yunohost (core) | `YunoHost/yunohost` | `imattau/nostrhost-yunohost` | `debian/12.1.41.2` | `nostrhost` | yes (identity layer, packaging, native core) |
+| portal | `YunoHost/yunohost-portal` | `imattau/nostrhost-portal` | `debian/12.1.2` | `dev` | yes (Nostr login + redesign) |
+| admin | `YunoHost/yunohost-admin` | `imattau/nostrhost-admin` | `debian/12.1.15` | `dev` | yes (app-shell redesign) |
 
-`moulinette` is a hard dependency of the yunohost core package. It is pinned
-as an upstream dependency in Stage 1 and forked only when the derivative
-needs to change it.
+The core fork ships as the **`nostrhost-core`** Debian package (renamed from
+`yunohost`; a transitional empty `yunohost` package Depends on it and the core
+`Provides/Replaces/Conflicts` the old name). Moulinette is removed: the native
+`python3-nostrhost` framework replaces it and is no longer a dependency.
+SSOwat is retired (Caddy `forward_auth` replaced it).
 
 ## Dev rules
 
-- **Derivative forks:** when the derivative deliberately changes a fork's
-  behaviour (roadmap Phase 3 onwards), that fork moves onto its own branch
-  (e.g. `nostrhost`), is marked `derivative: true` in `baseline/pins.yml`,
-  and `verify-clean.sh` then reports "expected divergence" for it instead of
-  requiring source-identity. The other forks stay source-identical.
+- **Derivative forks:** a fork that deliberately diverges from upstream moves
+  onto its own branch (e.g. `nostrhost`), is marked `derivative: true` in
+  `baseline/pins.yml`, and `scripts/verify-clean.sh` reports "expected
+  divergence" for it instead of requiring source-identity.
 - Bump a pin deliberately: update `baseline/pins.yml`, re-pin the submodule
   with `scripts/pin-forks.sh`, and re-run `scripts/verify-clean.sh`.
-- `verify-clean.sh --strict` also detects a source-identical fork whose tag
-  has drifted stale relative to upstream (e.g. a republished tag).
+- `verify-clean.sh --strict` also detects a source-identical fork whose tag has
+  drifted stale relative to upstream.
+- Every core-fork commit lands on `nostrhost` (and is mirrored to
+  `moulinette-removal` where applicable); the umbrella records the fork head in
+  `baseline/pins.yml` (`pin_commit`) and as the `forks/yunohost` submodule
+  pointer. The apt pipeline (`apt.yml`) builds from that pinned head and
+  publishes the repo to GitHub Pages.
 
-Status: `yunohost` is now a **derivative fork** on its `nostrhost` branch
-(identity layer, Phase 3); `portal`, `admin` and `ssowat` remain
-source-identical.
+## Status
 
-## How the baseline becomes the derivative
+The core fork is a **derivative** on its `nostrhost` branch. The architectural
+half of the roadmap is largely realised (control plane, identity/policy,
+catalogue, notifications, state layer, Caddy/CrowdSec cutover, native
+packaging). The platform has moved to closing its own loops: native bootstrap,
+DNS, secrets, release/update, and proving the full install/upgrade/recovery
+path — see `docs/ALPHA-PLAN.md` and the Phase-2 section of `docs/ROADMAP.md`.
 
-Later stages introduce, in order: extraction of reusable libraries (identity/
-policy/catalogue) from `yunohost-nostr-auth`, `yunohost-mcp` and
-`nostr-yunohost`; the internal relay + event model (the control plane, roadmap
-§3, `CONTROL-PLANE.md`); identity events + projection; portal Nostr login and
-native session creation; capability/delegation events; approval + execution
-events; admin integration; catalogue sync + trust events; SSO simplification;
-MCP adapter; OIDC; and finally distribution/release tooling (Debian repo,
-installer image, upgrade repo, signing, release manifest). See `ROADMAP.md`
-for the full plan. The fork baseline here is the floor every stage builds on.
+## How the derivative was built
+
+The stages that moved the baseline from source-identical to derivative are
+recorded in `docs/ROADMAP.md`: extraction of the identity/policy/catalogue
+libraries; the internal relay + event model (control plane); identity events +
+projection; capability/delegation events; approval + execution events; the
+ngit/NIP-34 state layer; portal Nostr login; Restic linkage + assisted
+rollback; the native catalogue; Caddy `forward_auth` (SSOwat retired);
+declarative reconciliation; and the componentised Debian distribution.
