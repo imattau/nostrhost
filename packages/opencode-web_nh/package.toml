@@ -1,0 +1,75 @@
+# Native package declaration for the Opencode web interface (W3 real-app port).
+#
+# Opencode (https://github.com/anomalyco/opencode) is the AI coding agent; its
+# CLI ships a web server (`opencode serve`). We package the prebuilt release
+# binary and run it behind the Caddy route with NostrHost auth, a health check
+# and a Restic backup of its data directory. The `_nh` tail marks this as a
+# NostrHost-native package (YunoHost's convention is `_ynh`).
+
+[app]
+id = "opencode-web_nh"
+version = "1.18.30"
+
+[source.app]
+url = "https://github.com/anomalyco/opencode/releases/download/v1.18.30/opencode-linux-x64.tar.gz"
+sha256 = "55007246858165496ff85ba1c2b648f7421e8e2013bf4189a680c9ff8e699d17"
+extract = true
+destination = "/opt/opencode-web"
+
+[directories.install]
+path = "/opt/opencode-web"
+mode = 0o755
+
+[directories.data]
+path = "/var/lib/opencode"
+mode = 0o750
+owner = "opencode"
+group = "opencode"
+backup = true
+
+[user]
+name = "opencode"
+system = true
+
+[config.run]
+destination = "/opt/opencode-web/run.sh"
+mode = 0o755
+content = """#!/bin/sh
+chmod +x /opt/opencode-web/opencode
+export HOME=/var/lib/opencode
+export OPENCODE_CONFIG_DIR=/var/lib/opencode
+exec /opt/opencode-web/opencode serve --hostname 127.0.0.1 --port 35353
+"""
+
+[service]
+name = "opencode-web"
+exec = "/opt/opencode-web/run.sh"
+working_directory = "/var/lib/opencode"
+user = "opencode"
+environment = { OPENCODE_CONFIG_DIR = "/var/lib/opencode" }
+
+[service.security]
+# ProtectSystem=strict is the default; opencode writes its data into
+# /var/lib/opencode, so declare it writable.
+read_write_paths = ["/var/lib/opencode"]
+
+[web]
+domain = "nostrhost.test"
+path = "/opencode/"
+upstream = "127.0.0.1:35353"
+auth = "nostrhost"
+
+[permissions.main]
+url = "/"
+allowed = ["all_users"]
+auth_request = true
+
+[health]
+type = "http"
+path = "/opencode/"
+timeout = 5
+retries = 2
+
+[backup]
+paths = ["/var/lib/opencode"]
+database = false
