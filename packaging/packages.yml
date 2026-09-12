@@ -141,7 +141,7 @@ packages:
   # packaging/runtime/requirements.txt changes, bump the version here.
   - name: nostrhost-runtime
     kind: runtime
-    version: "0.1.0"
+    version: "0.1.1"
     summary: NostrHost Python runtime venv (bundled manylinux cp311 wheels)
     depends:
       - python3-venv
