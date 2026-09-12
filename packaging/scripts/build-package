@@ -217,6 +217,7 @@ case "$1" in
       python3 -m venv --system-site-packages "$VENV"
     fi
     "$VENV/bin/pip" install --no-index \\
+      --ignore-installed \\
       --find-links="$WHEELS" \\
       --disable-pip-version-check \\
       -r "$REQS"
