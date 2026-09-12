@@ -65,6 +65,78 @@ gates are now met on the local testbed.
 
 ---
 
+## Consolidated plan status — what is done, what is left
+
+This document is the **single plan tracker** for the platform. All workstream
+plans are consolidated here: the roadmap sections below, the MCP transition
+(Phases 0–8), the alpha execution plan, the agent distribution plan and the
+resource-engine cutover. The documents under `docs/` referenced throughout are
+the **working specifications**; the plan, its phases and its status live here.
+
+### Master status
+
+| # | Workstream | Status | Remaining |
+|---|---|---|---|
+| §1–§6 | Fork baseline, extraction, control plane, identity, authorisation, operations | ✅ | — |
+| §7 | State history + recovery (ngit/NIP-34, Stages A–D) | ◑ | Stage C (ngit replication/DR, §15), Stage D tail (reconcile auto-apply hardening) |
+| §8 | Portal Nostr authentication | ✓ | real-browser passkey attestation + visual app-grid pass (headless limit only) |
+| §9 | Restic linkage + assisted rollback (Stage B) | ✅ | reverse steps for app reinstall/upgrade stay manual pending install-arg provenance |
+| §10 | Admin interface (native management views) | ⏳ | identities/agents/delegations/approvals/catalogue/trust/audit views |
+| §11 | Native Nostr catalogue | ✓ | native `catalog.*` operation surface ⏳ (see MCP transition backlog) |
+| §12 | Web-layer auth (Caddy `forward_auth`, SSOwat retired) | ✓ | P7 residual-reference cleanup (§20) |
+| §13 | MCP adapter | ✅ | MCP transition Phases 5–8 (below) |
+| §14 | OIDC compatibility | ◑ | client management + signing-key rotation (bridge live/VM-proven) |
+| §15 | ngit replication / DR (Stage C) | ◑ | repository/object replication to external relays |
+| §16 | Declarative reconciliation (Stage D) | ✓ | — |
+| §17 | Distribution + release tooling / native self-update | ⏳ | Debian repo, installer image, signed self-update |
+| §18 | Platform simplification (messaging, mail, security) | ◑ | mail identity/UI cleanup; security-state digest cadence (§18.6) |
+| §19 | Native bootstrap / postinstall | ◑ | alpha W2: CLI implements `postinstall --new/--restore`; blank-VM acceptance loop + legacy postinstall bypass ⏳ |
+| §20 | Web cutover completion (Caddy P7) | ⏳ | Caddy storage in backup, cert state in ngit, residual nginx helpers/migrations |
+| §21 | End-to-end native app lifecycle | ◑ | `package.plan`/`reconcile` proven on nostrhost-test; the §21 vertical loop on one **real** app ⏳ |
+| §22 | YNH package migration analyser | ⏳ | manifest + Bash-AST analyser, deterministic migration, AI repair loop |
+| §23 | Behavioural equivalence testing | ⏳ | VM A/B comparison + confidence attestation |
+| §24 | Native vs compatibility boundary | ⏳ | measurable shrink (122→87→41→0 helpers) |
+| §25 | LDAP dependency inventory / reduction | ⏳ | later phase (alpha) |
+| §26 | Native DNS management | ⏳ | later phase (alpha) |
+| §27 | Secrets / key lifecycle | ⏳ | later phase (alpha) |
+| MCP 0–4 | MCP transition: registry, skeleton, identity, signed mutations, approval flow | ✅ | — |
+| MCP 5 | Resource Engine integration (catalog surface) | ⏳ | `catalog.list/publish/verify` + legacy `package_*` tool mapping + compat path |
+| MCP 6 | Client integrations + packaging | ⏳ | port claude-code/codex/gemini/hermes/openclaw/opencode configs, skill rename, deb + PyPI |
+| MCP 7 | Multi-host / fleet projection | ⏳ | deferred until MCP 1–6 proven |
+| MCP 8 | Retire duplicated `yunohost-mcp` logic | ⏳ | gated on MCP 5–6 |
+| Alpha W0 | Documentation truth | ✅ | — |
+| Alpha W1 | `nostrhost-runtime` deb (private venv, bundled wheels) | ✅ | in `packaging/packages.yml`; verify clean-VM install |
+| Alpha W2 | Native bootstrap / postinstall | ◑ | CLI implements `--new/--restore`; blank-VM acceptance loop + legacy postinstall bypass |
+| Alpha W3 | End-to-end native app lifecycle | ⏳ | `app install <coordinate>` CLI + native backup/restore + real-app proof |
+| Agent 1–2 | Agent daemon packaging (optional APT, disabled by default) | ⏳ | systemd unit, first-run, secret handoff, VM acceptance |
+| Agent 3–4 | Model artifacts on Hugging Face + evaluation Space | ⏳ | blocked on a candidate passing the training-regime gates |
+| Cutover 1–6 | Resource engine cutover / plane integration | ◑ | step 3 tail (Restic snapshot into native plan result); steps 4–6 (Admin/catalog wiring, package migration) |
+| Notify | Native notification service (§18.1) | ✅ | — |
+| Mail | Mail-stack retirement | ◑ | §18.7/18.8 identity + UI consequences |
+| CrowdSec | Intrusion protection migration | ✅ | — |
+| Caddy | Web/TLS migration (P0–P6) | ✅ | P7 (§20) |
+
+### The focused remaining work
+
+The near-term path to a shippable 0.1 alpha is the **alpha plan** (docs truth →
+runtime deb → native bootstrap → end-to-end native app lifecycle), then the
+**MCP transition tail** (catalog surface, client integrations), then the
+**platform-close** items (§19–§27) that turn YunoHost into a pure
+compatibility/migration source:
+
+```text
+1.  Alpha W2  native postinstall --new / --restore          (§19)
+2.  Alpha W3  end-to-end native app lifecycle               (§21)
+3.  MCP 5     catalog.list / catalog.publish / catalog.verify + package_* mapping
+4.  MCP 6     client integrations (configs, skill rename, deb + PyPI)
+5.  §20       Caddy P7 residual cleanup
+6.  §17/§19   distribution + native self-update
+7.  §22–§24   package migration analyser + behavioural equivalence + boundary shrink
+8.  §25–§27   LDAP demotion, native DNS, secrets lifecycle   (later phase)
+```
+
+---
+
 ## Architectural Control and State Layers
 
 NostrHost separates control, configuration state, data recovery and runtime truth.
@@ -444,7 +516,7 @@ enforced on the protected control kinds.
 
 ---
 
-# 7. Introduce `nostrhost-state` with ngit / NIP-34 — ◑ (Stage A + B complete; C, D remain)
+# 7. Introduce `nostrhost-state` with ngit / NIP-34 — ◑ (Stage A + B complete; Stage C ◑, Stage D ✓ §16)
 
 This is the correct point to introduce durable configuration-state management.
 Identity, policy and execution semantics (§4–§6) now exist, so state history
@@ -980,7 +1052,77 @@ equivalent native APIs are introduced.
 
 ---
 
-# 14. OIDC Compatibility — ⏳
+# MCP Transition Plan (nostrhost-mcp)
+
+The goal is not "port the MCP server". It is:
+
+> **Preserve the useful client integrations and tool surface, but move
+> authority, policy, approvals, execution and state into NostrHost itself.**
+
+The architectural rule kept throughout:
+
+> **MCP is an interface, not an authority boundary.**
+
+`nostrhost-mcp` is a thin protocol adapter over the installed fork's operation
+model. The fork `ToolSpec` registry (`src/nostr_operations.py` +
+`src/nostrhost/native_ops.py`, 43 ops) is the single source of truth;
+`operation_catalog()` drives generated MCP tools, CLI, API and Admin forms.
+The protocol-neutral `NostrMCPAdapter` submits signed kind-2200 requests and
+correlates 2201/2203/2204/2205. The reference implementation
+(`libs/yunohost-mcp`, frozen) holds the feature inventory; its duplicated
+modules are retired as native equivalents land. Full detail:
+`docs/MCP-TRANSITION.md`.
+
+## Phase plan and status
+
+| Phase | Scope | Status |
+|---|---|---|
+| **0** | Registry hardening + full native surface (scopes aligned to policy enum, Pydantic input/result models, risk/reversibility, `operation_catalog()`) | ✅ |
+| **1** | `nostrhost-mcp` skeleton — tools generated from the catalog, reads stream to 2204, writes return `approval_required` + `operation_id`, `op_status` helper, NIP-98 HTTP on loopback, unprivileged deploy unit | ✅ (VM: 44 tools) |
+| **2** | Native identity + capabilities — client npub rides as the operation `actor`; agents are native 31100/27236 capabilities; the daemon authorizes the actor, not the signing key | ✅ |
+| **3** | Signed mutations + streaming — service/backup/dns/credential/domain/app/package/state/rollback mutations VM-proven; strict input models; redaction container fix | ✅ |
+| **4** | Approval flow (out of MCP) — control-plane 2201/NIP-46; `op_status` surfaces `approval_required`/`REJECTED`/result; owner co-signature + rejection proven; operationsd keepalive (1011) debt resolved | ✅ (gate `PHASE4-PROOF-OK`) |
+| **5** | Resource Engine integration — `package.plan`/`package.reconcile` native and proven; remaining: native **catalog surface** + map legacy `package_*` test tools + explicit legacy compat path | ⏳ |
+| **6** | Client integrations — port claude-code/codex/gemini/hermes/openclaw/opencode configs to `nostrhost-mcp`; rename the `yunohost-mcp-operations` skill; OpenCode Web → loopback streamable HTTP; package + publish (`python3-nostrhost-mcp` deb + PyPI) | ⏳ |
+| **7** | Multi-host / fleet projection (per-node adapter; client → node relay mapping) | ⏳ deferred |
+| **8** | Retire duplicated `yunohost-mcp` logic (kept: protocol, schema/tool exposure, client setup, redaction, result translation, transport) | ⏳ gated on 5–6 |
+
+## Phase 5 backlog — the missing native operation surface
+
+Read ops first (immediate, un-gated), then the write ops with their policy
+gates:
+
+| Op group | Missing native ops |
+|---|---|
+| catalog | `catalog.list`, `catalog.publish`, `catalog.verify` |
+| audit | `audit.list`, `audit.get` (owner co-signature per call) |
+| system | `updates.check`, `updates.refresh`, `system.migrations`, `system.migrate` |
+| services | `service.history` |
+| logs | `logs.read`, `logs.web` |
+| backups | `backup.delete` |
+| domains | `domain.cert.info`, `domain.cert.install` |
+| users | `user.update`, `user.group.*`, `user.permission.*` |
+| diagnosis | composite tools (`ssh_diagnose`, `http_probe`, `incident_snapshot`) |
+
+Policy gates to carry over: confirmation for `app.change_url`/`app.config.set`/
+`domain.cert.install`/`catalog.publish`; recent-backup + ≥2 GB free for
+`app.upgrade`/`package.reconcile`; confirmation + different-admin co-signature
+for `backup.restore`/`system.upgrade`/`system.migrate`/`firewall.*`/
+`user.delete`/`user.group.delete`/`user.permission.add|remove`; owner
+co-signature for `audit.read`.
+
+## Verification
+
+- **Local**: fork suite (496 passing) + `nostrhost-mcp` unit tests (22 passing,
+  1 skip) + flake8 clean.
+- **VM**: real MCP client → `nostrhost-mcp` (unprivileged) → submit → approve →
+  execute → streamed result, with the MCP process holding no host write
+  authority. Phase 4 gate: reads → app install → owner approval → health check
+  → result returned.
+
+---
+
+# 14. OIDC Compatibility — ◑ (bridge VM-proven; client management + signing-key rotation remain)
 
 Once Nostr identity is stable, add a conventional application-authentication
 bridge:
@@ -996,7 +1138,7 @@ applications requiring YunoHost-specific SSO integration.
 
 ---
 
-# 15. ngit Replication / Disaster Recovery (Stage C) — ⏳
+# 15. ngit Replication / Disaster Recovery (Stage C) — ◑ (announcement publication landed; repository/object replication remains)
 
 Publish relevant NIP-34 repository events outbound through the private relay
 to multiple external relays so the configuration-state history is recoverable
@@ -1479,7 +1621,7 @@ are green at the P7 gate.
 
 ---
 
-# 21. End-to-End Native App Lifecycle — ⏳
+# 21. End-to-End Native App Lifecycle — ◑ (plan/reconcile proven on nostrhost-test; the real-app vertical loop remains)
 
 The declarative resource engine is broad enough; stop adding resource types
 temporarily and prove one substantial real application completely through the
@@ -1682,13 +1824,15 @@ on identity, policy and execution semantics, which now exist.
 9.  Admin interface                                         ⏳
 10. Native catalogue (sync + trust events)                  ✓ (trusted projection, relay sync, attestations, and YunoHost integration)
 11. Web-layer auth: Caddy forward_auth, SSOwat retired      ✓ (P0–P6 of CADDY-MIGRATION on the VM; §12, §20 P7 residual cleanup remains)
-12. MCP adapter                                             ✅
+12. MCP adapter                                             ✅ (MCP transition Phases 0–4 complete; 5–8 remain — see plan above)
 13. OIDC                                                    ⏳
 14. ngit replication / disaster recovery (Stage C)          ◑ (multi-relay NIP-34 announcement publication landed; repository/object replication remains)
 15. Declarative reconciliation (Stage D)                    ✓ (risk-classified plans + approval-gated bounded apply)
 16. Distribution release                                    ⏳
 17. Platform simplification (native messaging, mail          ◑ (§18; mail identity/UI cleanup and security-state remain)
     retirement, host security)
+18. Alpha plan W0–W3 (docs → runtime deb → bootstrap →     ◑ (W0/W1 landed, W2 in flight, W3 pending — see plan above)
+    end-to-end native app lifecycle)
 ```
 
 ## Phase 2 — Platform consolidation and cutover
@@ -1718,6 +1862,102 @@ interface (still on the list). Stand up the control plane and get identity
 events + projection working first — done — then prove execution (§5–§6, done),
 then build the state-history layer (§7) before the portal. Portal
 authentication follows on top of identity events and native session creation.
+
+---
+
+# Alpha Execution Plan — "make it a product"
+
+Scope agreed (2026-09-12): **docs + python-deps distribution + native bootstrap
++ end-to-end native app lifecycle** as the near-term path to the 0.1 alpha.
+§25 (LDAP demotion) and §26/§27 (native DNS + secrets) are the later phase.
+Full detail: `docs/ALPHA-PLAN.md`.
+
+The threshold this plan targets:
+
+```text
+Fresh Debian 12 VM
+   ↓
+install NostrHost APT repo → apt install nostrhost → postinstall --new | --restore
+   ↓
+Nostr owner login → Admin works → install native app → app works over HTTPS
+   ↓
+backup → upgrade → deliberately break it → restore/rollback
+```
+
+If that works repeatedly from a blank VM, NostrHost 0.1 alpha is real, even
+with LDAP and some YunoHost compatibility code still underneath.
+
+| Workstream | Scope | Status |
+|---|---|---|
+| **W0** Documentation truth — README/`BASELINE.md`/CI scripts describe what exists (no stale ssowat/moulinette/source-identical claims) | ✅ | README + baseline clean of ssowat references; verify `verify-clean.sh`/`pin-forks.sh` |
+| **W1** `nostrhost-runtime` deb — private venv at `/opt/nostrhost/venv`, bundled wheels (nostr-sdk, bech32, coincurve, pydantic), daemons on venv python, `nostrhost-core(-system)` depends on it | ✅ | declared in `packaging/packages.yml`; acceptance = clean-VM install with no manual pip |
+| **W2** Native bootstrap / postinstall (§19) — `nostrhost postinstall --new` (keys → operator.toml/policy.toml → relay/Caddy/daemons → state S0) and `--restore` (identity → state repo → known-good + Restic → reconcile); retire legacy `tools_postinstall` | ◑ | both `--new` and `--restore` are implemented in `cli.py`; blank-VM acceptance loop + legacy `tools_postinstall` bypass ⏳ |
+| **W3** End-to-end native app lifecycle (§21) — `app install <coordinate>` CLI through the signed plan/approval/reconcile chain; native `app remove/upgrade/change_url`; backup/restore linkage; proof on nostrhost-test then one **real** app | ⏳ | |
+
+Sequencing: W0 → W1 → W2 → W3; each ends green on CI. Final gate is the alpha
+acceptance loop.
+
+Later phase (not near-term): **§25 LDAP demotion** (native user/group store,
+optional `LDAPInterface`, native authenticator, slapd/nslcd hooks optional) and
+**§26/§27 native DNS + secrets** (`DnsResource` + provider adapters; SecretBroker
+consolidation on systemd credentials).
+
+---
+
+# Agent Distribution Plan
+
+Keep the agent runtime and model artifacts **independently installable**: APT
+ships the Go daemon (`libs/nostrhost-agent`) + service integration; Hugging
+Face Hub is the later home for validated model artifacts; the platform must run
+without a Hugging Face account when the operator supplies a local
+OpenAI-compatible endpoint. **The current LoRA adapter is rejected** (22
+independent episodes; 3/17 on the frozen regression suite) — do not publish or
+ship it. Full detail: `docs/AGENT-DISTRIBUTION-PLAN.md`.
+
+| Phase | Scope | Status |
+|---|---|---|
+| 1 | Daemon packaging — systemd unit (unprivileged `nostrhost-agent`, hardening, SIGTERM-clean), first-run disabled until operator config, secret handoff with the strict config loader, private audit/state dir, build + VM checks | ⏳ |
+| 2 | APT package — `golang` entry in `packaging/packages.yml`, staging rules, upgrade/remove/disabled-behaviour VM acceptance on a review branch (publishing `main` is a publication action) | ⏳ |
+| 3 | Model artifacts on Hugging Face — only after a candidate passes the training-regime gates; hash-verified GGUF, no pickles, no embedded tokens | ⏳ blocked on a candidate |
+| 4 | "NostrHost Agent Lab" HF Space — synthetic/public-safe evaluation UI only; never dispatches operations; reproducible pinned-input reports | ⏳ |
+
+Gates: restore `nostrhost-clean6` access and verify core `12.1.41.28` before
+package acceptance; continue independent episode collection; no model release
+until corpus/holdout/regression/safety/license gates pass. The APT package and
+Space are independent of model training.
+
+---
+
+# Resource Engine Cutover Plan
+
+The resource engine describes and reconciles a native package but is not yet
+the sole application-lifecycle authority. The cutover establishes one owner per
+concern, connects the engine to the NostrHost planes, then retires
+compatibility code only after the replacement is proven. Full detail:
+`docs/RESOURCE-ENGINE-CUTOVER.md`.
+
+Target authority is deliberately separated: catalogue decides trust; identity
+decides actor + compatibility projection; policy decides whether a plan may
+apply (resource ownership, risk, approval, restore); the control plane
+transports the signed chain; the resource engine owns package desired state
+and provider execution; Restic owns data recovery.
+
+| Step | Scope | Status |
+|---|---|---|
+| 1 | Canonical native package-coordinate/plan envelope shared by catalog, policy, control, state (`package.plan` schema-versioned envelope with `plan_sha256`; `package.reconcile` verifies the digest) | ✅ |
+| 2 | Policy-aware executor adapter in `nostr_operationsd`; remove direct `native_providers()` construction from request handlers | ✅ (policy/approval seam live; provider construction is inside the executor backend) |
+| 3 | Pre/post state + Restic linkage around native reconciliation | ◑ | native reconciliation classified data-affecting + plan digest carried; **remaining: link the policy-selected Restic snapshot into the native plan result** |
+| 4 | Wire Admin + catalogue install to native plans (legacy path retained for non-native packages) | ⏳ |
+| 5 | Migrate representative packages; publish native/legacy inventory | ⏳ |
+| 6 | Disable legacy lifecycle scripts for native packages; retire helpers + fallback catalog sources by domain | ⏳ |
+
+Removal gates (all must hold): native plan/reconcile pass in a clean test root;
+trusted architecture-specific catalogue declaration; policy evaluates the full
+plan and records approval; control-plane executor applies and verifies;
+pre/post state + required data snapshots linked; restore/rollback exercised;
+Portal/Admin show identical package + operation state; no remaining supported
+package imports the retired helper surface. Until then, the old path stays an
+explicitly labelled compatibility adapter, never an implicit fallback.
 
 ---
 
@@ -1782,12 +2022,14 @@ The first release of this layer stops short of fully automatic reconciliation.
 ## 0.4 - Native Nostr Catalogue
 
 ```text
-⏳ catalogue sync + trust events (relay is the local cache)
-⏳ publisher trust
-⏳ CI attestations
-⏳ catalogue policy
-⏳ Admin catalogue UI
-⏳ application discovery over relays
+✓ catalogue sync + trust events            (relay is the local cache — §11)
+✓ publisher trust                          (trusted projection default)
+✓ CI attestations                          (§11)
+✓ catalogue policy input                   (publisher_trusted / ci_attested in policy)
+⏳ Admin catalogue UI                      (§10)
+⏳ native catalog.list / catalog.publish / catalog.verify operations
+                                            (MCP transition Phase 5 backlog)
+⏳ application discovery over relays       (native catalog surface)
 ```
 
 ## 0.5 - Web Auth and Application Compatibility
@@ -1806,14 +2048,16 @@ The first release of this layer stops short of fully automatic reconciliation.
 ```text
 ✓ identity native
 ✓ policy native
-⏳ catalogue native
-✓ MCP native (adapter)                    (adapter ◑)
+◑ catalogue native                        (trusted projection ✓; native catalog.* ops ⏳)
+✓ MCP native (adapter)                    (adapter ✅; transition Phases 5–8 ⏳)
 ✓ Nostr approvals native
-⏳ state native (ngit / NIP-34 repo + assisted rollback + DR)
-◑ OIDC compatibility (deferred after the VM-proven bridge)
+◑ state native                            (ngit / NIP-34 repo + assisted rollback ✓; Stage C DR ◑)
+◑ OIDC compatibility                      (deferred after the VM-proven bridge)
 ⏳ `_ynh` bridge packages no longer required
 ⏳ tested derivative upgrade path
 ⏳ release repository and installer
+⏳ native postinstall --new / --restore   (alpha W2 — §19)
+⏳ end-to-end native app lifecycle         (alpha W3 — §21)
 ```
 
 ## 1.1 - Platform Simplification (Native Messaging, Mail Retirement, Host Security)

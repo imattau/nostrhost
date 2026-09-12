@@ -1,5 +1,9 @@
 # Alpha Execution Plan — "make it a product"
 
+> **Plan and status are consolidated in `ROADMAP.md` (§ "Alpha Execution
+> Plan"). This document is the working detail — workstream acceptance criteria,
+> sequencing and the later-phase scope.**
+
 Status: current plan (2026-09-12). Scope agreed: **docs + python-deps distribution +
 native bootstrap + end-to-end native app lifecycle** as the near-term path to the
 0.1 alpha. LDAP demotion (§25) and native DNS + secrets (§26/§27) are the later phase.

@@ -21,6 +21,9 @@ bootstrap and proving the full install/upgrade/recovery path. See
 `docs/ALPHA-PLAN.md` for the current execution plan and `docs/ROADMAP.md` for
 the full provenance. `docs/BASELINE.md` records the current derivative
 baseline and pins.
+The separate agent runtime, APT package, Hugging Face model artifacts,
+evaluation Space, and opt-in community data loop are planned in
+`docs/AGENT-DISTRIBUTION-PLAN.md`.
 
 ## Layout
 

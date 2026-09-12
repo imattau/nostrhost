@@ -1,5 +1,10 @@
 # NostrHost MCP Transition
 
+> **Plan and status are consolidated in `ROADMAP.md` (§ "MCP Transition Plan",
+> Phases 0–8). This document is the working specification — frozen feature
+> inventory, tool→operation mapping and per-phase detail — and is updated when
+> a phase lands.**
+
 > **Transition from `yunohost-mcp` being a privileged management product into
 > `nostrhost-mcp` being a thin protocol adapter over NostrHost's native
 > operation model.**

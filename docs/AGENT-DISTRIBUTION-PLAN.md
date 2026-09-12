@@ -1,0 +1,96 @@
+# NostrHost agent distribution plan
+
+> **Plan and status are consolidated in `ROADMAP.md` (§ "Agent Distribution
+> Plan"). This document is the working detail — decisions, phases and release
+> gates.**
+
+## Decision
+
+Keep the agent runtime and model artifacts independently installable. APT will distribute the Go daemon and its service integration. Hugging Face Hub will be the later home for validated model artifacts and public-safe evaluation data; a Hugging Face Space will provide an interactive evaluation demo. NostrHost must run without a Hugging Face account or network connection when the operator supplies a local OpenAI-compatible inference endpoint.
+
+Do not publish or ship the current LoRA adapter. The 36-row synthetic dataset contains only 22 independent episodes, and the adapter scored 3/17 on the frozen regression suite while abstaining on 15 cases. It is rejected. Training outputs, raw VM captures, private traces, and credentials stay out of APT and public Hugging Face repositories.
+
+Treat community contributions as a shared, model-agnostic improvement loop: a reviewed example should improve the benchmark and be eligible for any model's training set, without treating any one model's output as ground truth.
+
+## Current state
+
+- `libs/nostrhost-agent` has the Go resident daemon, strict runtime configuration, a typed operation boundary, audit journal, and local inference endpoint support.
+- The APT build tooling already supports Go packages from pinned submodules, but `nostrhost-agent` is not listed in `packaging/packages.yml` and has no shipped systemd unit.
+- The component README says operators currently provide service-manager packaging.
+- The model is not ready for release. The independent-episode and safety gates in [`../libs/nostrhost-agent/docs/training-regime.md`](../libs/nostrhost-agent/docs/training-regime.md) still apply.
+- `nostrhost-agent-model` now probes local Linux resources, reports catalog resource fit, and can fetch immutable, hash-verified GGUFs after explicit operator action. The two catalogued candidates remain evaluation-only; neither passed the planner gate. No model is currently eligible for deployment.
+- The test VM used for collection has core `12.1.41.21`; current repo source is `12.1.41.28`. Its upgrade remains unverified until VM access is restored.
+
+## Phase 1 — Make the daemon packageable
+
+Keep this work in `libs/nostrhost-agent` and the umbrella APT release manifest.
+
+1. Add a systemd unit that runs `/usr/bin/nostrhost-agent` as a dedicated unprivileged `nostrhost-agent` account, has no shell or home directory, restarts on ordinary failure, handles SIGTERM cleanly, and applies systemd hardening. Only the audit/state directory should be writable by the service.
+2. Define first-run behavior. APT must not generate an operator identity, invent trusted server keys, or enable autonomous operation. Installation should leave the service disabled until the operator has supplied a valid configuration and explicitly enables it.
+3. Resolve secret-file access with the current strict config loader. It requires a regular file with no group/other permissions. The installed design must let the service read the secret without letting the service rewrite its own policy/config; test the chosen root-managed credential handoff (for example, systemd credentials) on Debian 12 before adopting it.
+4. Create the private audit/state directory with stable ownership and restrictive permissions. Do not include VM logs, trace captures, or model files in the package.
+5. Add build and package checks: Go tests, binary build, package-content inspection, `systemd-analyze verify`, config-permission tests, and install/remove/upgrade tests in a disposable Debian 12 NostrHost VM.
+
+The package should be a separate optional `nostrhost-agent` package at first. Do not add it as a dependency of the default `nostrhost` or `nostrhost-core-system` meta-package until setup and operational support are mature.
+
+## Phase 2 — Add and verify the APT package
+
+1. Add a `golang` entry to `packaging/packages.yml` using the pinned `libs/nostrhost-agent` submodule and the existing `packaging/scripts/build-package` Go build path.
+2. Add the systemd unit and any narrowly scoped config/state setup to the package staging rules. Keep `nostrhost-agent-eval`, training scripts, datasets, and adapters out of the server package.
+3. Verify dependency edges and generated package contents. Test a clean install, an upgrade, removal with retained audit data, service-disabled behavior, and explicit operator enablement on the latest NostrHost VM.
+4. Keep this package change on a review branch until the whole APT workflow is known to pass. The current APT workflow publishes on pushes to `main`, so merging the manifest entry is also a repository publication action.
+
+Acceptance: an operator can install the daemon without downloading model weights, without granting it root, and without it starting before valid configuration is installed. Observe mode can run without an inference server; write-capable modes remain subject to NostrHost's registered-operation, approval, and fresh-verification controls.
+
+## Phase 3 — Publish model artifacts on Hugging Face
+
+Start only after a candidate passes the training-regime gates and has a reproducible end-to-end evaluation through the production planner interface.
+
+1. Create a model repository for the deployment artifact, with a model card recording base model and license, exact base revision, tokenizer/chat format, quantization, supported inference runtime, dataset and evaluation report hashes, and intended/unsupported use.
+2. Keep research adapters private during review. Publish an adapter or a merged/quantized GGUF only after review and license checks. Prefer `safetensors` for adapter weights and a documented, hash-verified GGUF for llama.cpp deployment; do not publish Python pickle checkpoints.
+3. The agent component now pins catalog downloads to immutable Hub commits and verifies expected size and SHA-256. Its explicit model command compares local resource estimates before downloading, writes under the operator-selected model directory, and never switches the active model. Keep it out of APT post-install; package the optional command only after the release catalog includes a qualified model and install-path permissions are tested.
+4. Do not embed a Hugging Face token in a `.deb`, example config, Space source, or model. Private/gated downloads require the operator's own credentials. A local model and inference endpoint remain the default deployment path.
+5. If hosted inference is ever supported, make it an explicit operator-selected endpoint and clearly disclose that host observations leave the server. Never route to a hosted service by default.
+
+Acceptance: a documented artifact can be downloaded by an operator at an exact revision, verified locally, selected explicitly, used offline after download, and rolled back by changing the model pin.
+
+## Phase 4 — Build the Hugging Face Space
+
+The requested Space is appropriate once the evaluation harness can emit a versioned, public-safe report. Its defined demo is **NostrHost Agent Lab**: browse synthetic scenario families, inspect expected no-call/proposal decisions, compare base and candidate outputs, and view per-category safety and utility metrics. It must never dispatch NostrHost operations.
+
+1. Use the Hugging Face Spaces workflow in the official [`huggingface-spaces` skill](https://github.com/huggingface/skills/tree/main/skills/huggingface-spaces) and the requested [Space agent instructions](https://huggingface.co/new-space/agents.md) when implementation starts.
+2. Begin with only synthetic or explicitly redacted public cases and immutable evaluation reports. Exclude raw signed events, VM identifiers, domains, keys, logs, audit journals, and any production traces.
+3. Start with a CPU/static or low-cost demo that renders committed reports. Add live inference only if it materially improves review and the owner approves the compute cost; Spaces may sleep and their default local disk is not persistent.
+4. Public visibility is appropriate only for the synthetic evaluation UI and public artifacts. Keep unpublished model candidates and training data private until their promotion and license review is complete.
+5. Make every displayed model result traceable to a model revision, dataset hash, prompt version, and evaluation code revision. Treat model output as a proposal for review, never as an executable action.
+
+Acceptance: a visitor can reproduce the published comparison from pinned inputs, see the adapter rejection and its regression behavior, and cannot submit live host data or trigger operations.
+
+## Community contribution loop
+
+Community data should improve the common dataset and evaluation suite for all candidate models. It must not become automatic telemetry or a firehose of server logs.
+
+This should be part of the agent project, but split across a local exporter and an external review pipeline. The agent owns a companion export command because it has the verified cycle record and exact operation schemas. The resident daemon does not upload data, ask for a Hugging Face token, or change training labels. Dataset curation, review, release, and training remain maintainer-controlled processes outside the running agent.
+
+1. Keep raw operation traces, prompts, logs, domains, addresses, identifiers, event IDs, and keys on the contributor's host by default. Contribution is opt-in, separate from normal agent operation, and off by default.
+2. Implemented in `nostrhost-agent-export`: it accepts one explicitly selected completed cycle, applies conservative local redaction, and writes a review candidate without transmitting data. It preserves operation schemas and leaves the expected decision unlabeled. The candidate is not dataset-ready: a maintainer workflow still needs to validate privacy, evidence, schema conversion, provenance, licensing, and acceptance.
+3. Export a model-neutral episode: trigger/request, observations available at the decision point, registered operation schemas, expected proposal or no-call, concise rationale, evidence-backed outcome/verification, scenario family, and provenance/review status. Do not include chain-of-thought or private free-form reasoning. A model's raw proposal is candidate metadata, not a label.
+4. The operator submits the reviewed bundle separately, initially through a documented dataset contribution workflow (for example, a pull request). Accept public contributions first as `submitted` candidates, not trusted training rows. A maintainer or qualified reviewer validates redaction, operation availability, the expected decision, and supporting outcome evidence. Reject poisoned, duplicated, unsafe, or unverifiable samples. Keep reviewer identity and public credit optional.
+5. Give every accepted episode a stable pseudonymous source reference and group related paraphrases, machines, incident families, and fault scenarios together. A contributor signature can attest origin and consent, but must not be required to expose a real-world Nostr identity publicly.
+6. Maintain a versioned public-safe dataset repository on Hugging Face after review. Keep sensitive/uncertain submissions private and delete them on request according to a documented retention policy. Publish dataset cards with schema, collection policy, license, category balance, redaction limits, known bias, and release hashes.
+7. Split by source/incident family before any training. Accepted rows may join a train split only after review; frozen evaluation and adversarial holdouts are never open for direct training submissions. Maintain a separate live community benchmark queue so new contributions do not leak into the current test set.
+8. Run every accepted dataset release against every supported base and candidate model with the same prompt/tool schema and decoding settings. Publish per-category safety and utility results. This shared benchmark is the primary way a new contribution benefits all models; derive model-specific fine-tuning formats from the same reviewed source records.
+9. Use Nostr for contribution announcements, signed review attestations, and pointers to versioned releases if the community wants that integration. Do not publish raw operational data to relays. Define and review any event kinds and consent semantics before implementing a relay-based submission protocol.
+
+Acceptance: the agent's offline exporter lets an operator inspect and explicitly prepare one sanitized episode without network access; the public dataset contains only accepted, licensed, de-identified records; and each release has a reproducible evaluation report for the same set of models. No host sends data by default, and contribution has no effect on a running agent until a new reviewed dataset/model release is deliberately installed.
+
+## Order and release gates
+
+1. Restore access to `nostrhost-clean6`; upgrade and verify core `12.1.41.28` before using it for package acceptance.
+2. Implement the daemon's service/config lifecycle and package it as optional, disabled-by-default APT software.
+3. Validate clean-install, upgrade, removal, and Observe-mode behavior on the current NostrHost VM.
+4. Continue independent episode collection; do not release a model artifact until the corpus, fresh holdout, regression, safety, and license gates pass.
+5. Build the Space around public-safe synthetic data and reproducible reports. Connect it to no live host.
+6. Finish the maintainer review and dataset intake path for the implemented offline contribution exporter. Publish accepted examples as model-neutral dataset releases and rerun the common benchmark across supported models.
+
+The APT package and Space can be prepared independently of model training. Model publication remains blocked until there is a candidate worth releasing.

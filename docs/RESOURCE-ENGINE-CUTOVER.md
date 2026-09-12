@@ -1,5 +1,9 @@
 # Resource Engine Cutover and Plane Integration
 
+> **Plan and status are consolidated in `ROADMAP.md` (§ "Resource Engine
+> Cutover Plan"). This document is the working specification — the authority
+> model, integration seams, removal gates and implementation order.**
+
 The resource engine is now capable of describing and reconciling a native
 package, but it is not yet the sole application lifecycle authority. The next
 work is therefore a cutover: establish one owner for each concern, connect the
