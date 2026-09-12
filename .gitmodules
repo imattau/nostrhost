@@ -23,3 +23,6 @@
 [submodule "libs/nostrhost-agent"]
 	path = libs/nostrhost-agent
 	url = https://github.com/imattau/nostrhost-agent.git
+[submodule "libs/yunohost-mcp"]
+	path = libs/yunohost-mcp
+	url = https://github.com/imattau/yunohost-mcp.git
