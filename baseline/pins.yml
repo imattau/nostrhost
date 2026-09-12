@@ -103,3 +103,10 @@ libraries:
     branch: master
     pin_commit: 1d84c25c17720f11ae416b4ef5bf997baacd7441
     frozen: true               # no new platform logic; feature inventory + migration base only
+
+  - component: mcp              # thin MCP protocol adapter (MCP transition Phase 1, docs/MCP-TRANSITION.md)
+    repo: imattau/nostrhost-mcp
+    path: libs/nostrhost-mcp
+    branch: main
+    pin_commit: 689f2ea7f6cdd8fb79c0ae37d86b89b7d89d3caf
+    stack: Python (mcp SDK v2)

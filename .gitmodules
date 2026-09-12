@@ -26,3 +26,6 @@
 [submodule "libs/yunohost-mcp"]
 	path = libs/yunohost-mcp
 	url = https://github.com/imattau/yunohost-mcp.git
+[submodule "libs/nostrhost-mcp"]
+	path = libs/nostrhost-mcp
+	url = https://github.com/imattau/nostrhost-mcp.git
