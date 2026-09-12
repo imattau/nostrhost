@@ -270,6 +270,34 @@ unsubscribe`, `credential.set/remove`, `domain.add/remove`,
 `app.install/upgrade/remove`, `package.reconcile`, `state.reconcile`,
 `rollback.apply`.
 
+**Phase 3 is complete**: every mutation category is VM-proven through the
+MCP server — submit a signed kind-2200, return `approval_required` +
+`operation_id`, control-plane approval, then `op_status` → SUCCEEDED with the
+daemon's signed 2204. The 13 mutation ops whose generated MCP schemas were
+empty (no input model) now carry strict Pydantic models (`extra=forbid`) so
+clients see their real required arguments; a fork invariant test pins "every
+approval-gated op has an input model". En route, the policy redaction layer
+was fixed: redacting a container under a sensitive key by swapping in
+`"[REDACTED]"` changed the value's type and broke the `package.plan` →
+`package.reconcile` round-trip (the redacted envelope failed its plan-digest
+check); redaction now recurses into dict/list values, preserving structure.
+
+VM-proven on clean6 (fresh relay store): denied `service.control` (no scope)
+→ FAILED `unauthorized`; then, with scopes granted, `service.control`
+restart, `credential.set`/`credential.list`/`credential.remove`,
+`dns.subscribe`/`dns.unsubscribe` (nostr-native free hostname),
+`domain.add`/`domain.remove` (d6.test), `backup.create` (conf_ldap), and
+`package.plan` → `package.reconcile` (installs nostrhost-test through the
+resource engine) each reach SUCCEEDED after control-plane approval.
+
+Carried technical debt (not Phase 3 scope): the operationsd's subscription
+websocket can drop with close 1011 during heavy relay replay — the daemon
+reconnects and re-projects state, but large accumulated event stores make
+proof runs slow; reset the relay store (`/var/lib/nostrhost/events.db`) on
+test VMs when replay grows. The daemon's grants are also *replace*-semantics
+(one 31100 sets the subject's whole scope set), so grant all scopes in one
+call.
+
 ### Phase 4 — approval flow (out of MCP)
 Already native: 2201 by admin or NIP-46. The adapter only surfaces
 `approval_required` + `operation_id` and later the final result. Push
@@ -369,5 +397,6 @@ event replay on restart.
 | audit | `audit.list` / `audit.get` | ⛔ |
 | approvals | NIP-46 / `op status` (control plane) | ✅ |
 | identity/roles | 31100 / 27236 (control plane) | ✅ |
+| signed mutations + streaming | service/backup/dns/credential/domain/package mutations via MCP | ✅ |
 | client integrations | `nostrhost-mcp` setup | ◑ |
 | memory (Polypack) | deferred optional | ⛔ |
