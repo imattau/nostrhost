@@ -304,6 +304,33 @@ Already native: 2201 by admin or NIP-46. The adapter only surfaces
 approval stays a control-plane utility (`nostr-opctl approve` /
 `approve_operation_nip46`), not part of the MCP server.
 
+**Phase 4 is complete** (VM gate green on clean6, `PHASE4-PROOF-OK`):
+`nostrhost-mcp` → read server status + list apps + domains, then an app
+install (`package.plan` → `package.reconcile`, nostrhost-test) returns
+`approval_required` + `operation_id`, the **owner** approves in the control
+plane, the install executes, the resource engine's own `health.http.check`
+passes (status 200 in the 2204 result) and `op_status` returns the final
+result. The gate's two edge semantics are also proven end-to-end:
+
+- **Owner co-signature** — `domain.remove` is owner-signature-gated by the
+  default policy (`domains.remove`). An approval signed by a *non-owner*
+  admin is ignored by the daemon (the operation stays `REQUESTED`); the
+  owner's approval executes it. This needed the second admin allowlisted on
+  the control relay (NIP-86 `allowpubkey` — the relay is `allowlist_mode`)
+  so its approval could even reach the daemon to be deliberately ignored.
+- **Rejection** — a control-plane `reject` is now visible through the
+  adapter: the fork's event stream carries kind 2202 (`STREAM_KINDS`) and
+  `op_status` maps it to `phase=REJECTED` + reason, with no side effects on
+  the host. Stream/relay hiccups can no longer crash the MCP server (both
+  `_run_to_result` and `_call_op_status` tolerate them).
+
+Also resolved the recurring operationsd keepalive debt here: the daemon's
+subscription websocket now disables its own client keepalive
+(`ping_interval=None`); keepalive belongs to the relay, and the websockets
+client's 20s `ping_timeout` was firing during replay bursts and tearing the
+connection down with close 1011 "keepalive ping timeout", kicking the daemon
+into a reconnect loop. The daemon is stable across proof runs.
+
 ### Phase 5 — Resource Engine integration
 `package.plan`/`package.reconcile` are native. Map old `package_*` test
 tools → plan/reconcile + `catalog.publish`. Legacy-only tools fall to the
@@ -398,5 +425,6 @@ event replay on restart.
 | approvals | NIP-46 / `op status` (control plane) | ✅ |
 | identity/roles | 31100 / 27236 (control plane) | ✅ |
 | signed mutations + streaming | service/backup/dns/credential/domain/package mutations via MCP | ✅ |
+| approval flow (out of MCP) | 2201 control-plane; op_status surfaces approval_required/REJECTED/result | ✅ |
 | client integrations | `nostrhost-mcp` setup | ◑ |
 | memory (Polypack) | deferred optional | ⛔ |
