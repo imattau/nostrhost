@@ -214,7 +214,7 @@ packages:
 
   - name: python3-nostrhost-policy
     kind: python
-    version: "0.1.0"
+    version: "0.1.1"
     source:
       repo: imattau/nostrhost-policy
       submodule: libs/nostrhost-policy

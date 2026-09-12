@@ -27,7 +27,7 @@ forks:
     branch: nostrhost          # derivative branch (first fork modification, Phase 3)
     derivative: true
     pin: debian/12.1.41.2      # upstream baseline the branch was cut from
-    pin_commit: a0d0b41c5f9681f36a3f0a8f51f7a97875ad786f
+    pin_commit: 17ff8e74638214f0ad68a0d16d53d343eed580ce
     live_server: 12.1.41.2
 
   - component: portal          # Nuxt/Vue/TypeScript user portal
@@ -72,7 +72,7 @@ libraries:
     repo: imattau/nostrhost-policy
     path: libs/nostrhost-policy
     branch: main
-    pin_commit: faa1f9991845f44832a8643b4c5cebb388b3ea8d
+    pin_commit: 7f20345f66e1af077707922137d3fc2691a7cde4
     extracted_from: imattau/yunohost-mcp
 
   - component: catalog         # catalogue event schema/relay/publisher/attestation/trust/repository
@@ -94,5 +94,5 @@ libraries:
     repo: imattau/nostrhost-agent
     path: libs/nostrhost-agent
     branch: main
-    pin_commit: cc5afd5856266c56a7e9c89072b0c4786f029255
+    pin_commit: 9780fde6807070bd28d9d32fd6362e7739c6c7fd
     stack: Go
