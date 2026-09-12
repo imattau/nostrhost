@@ -1,0 +1,957 @@
+{
+  "$id": "https://github.com/imattau/nostrhost/blob/main/schema/package.schema.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "definitions": {
+    "AccessResource": {
+      "properties": {
+        "group": {
+          "title": "Group",
+          "type": "string"
+        },
+        "mode": {
+          "default": 488,
+          "maximum": 4095,
+          "minimum": 0,
+          "title": "Mode",
+          "type": "integer"
+        },
+        "owner": {
+          "title": "Owner",
+          "type": "string"
+        },
+        "path": {
+          "format": "path",
+          "title": "Path",
+          "type": "string"
+        },
+        "recursive": {
+          "default": false,
+          "title": "Recursive",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "path"
+      ],
+      "title": "AccessResource",
+      "type": "object"
+    },
+    "AppResource": {
+      "properties": {
+        "id": {
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "version": {
+          "minLength": 1,
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "version"
+      ],
+      "title": "AppResource",
+      "type": "object"
+    },
+    "BackupResource": {
+      "properties": {
+        "database": {
+          "default": false,
+          "title": "Database",
+          "type": "boolean"
+        },
+        "paths": {
+          "items": {
+            "format": "path",
+            "type": "string"
+          },
+          "title": "Paths",
+          "type": "array"
+        }
+      },
+      "title": "BackupResource",
+      "type": "object"
+    },
+    "ConfigFileResource": {
+      "properties": {
+        "content": {
+          "title": "Content",
+          "type": "string"
+        },
+        "context": {
+          "title": "Context",
+          "type": "object"
+        },
+        "destination": {
+          "format": "path",
+          "title": "Destination",
+          "type": "string"
+        },
+        "group": {
+          "title": "Group",
+          "type": "string"
+        },
+        "mode": {
+          "default": 416,
+          "maximum": 4095,
+          "minimum": 0,
+          "title": "Mode",
+          "type": "integer"
+        },
+        "owner": {
+          "title": "Owner",
+          "type": "string"
+        },
+        "template": {
+          "title": "Template",
+          "type": "string"
+        }
+      },
+      "required": [
+        "destination"
+      ],
+      "title": "ConfigFileResource",
+      "type": "object"
+    },
+    "DatabaseResource": {
+      "properties": {
+        "backup": {
+          "default": true,
+          "title": "Backup",
+          "type": "boolean"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "type": {
+          "enum": [
+            "postgresql",
+            "mysql",
+            "mongodb",
+            "redis"
+          ],
+          "title": "Type",
+          "type": "string"
+        },
+        "users": {
+          "additionalProperties": {
+            "$ref": "#/definitions/DatabaseUserResource"
+          },
+          "title": "Users",
+          "type": "object"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "title": "DatabaseResource",
+      "type": "object"
+    },
+    "DatabaseUserResource": {
+      "properties": {
+        "host": {
+          "default": "%",
+          "title": "Host",
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 63,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "password_secret": {
+          "title": "Password Secret",
+          "type": "string"
+        },
+        "privileges": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Privileges",
+          "type": "array"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "title": "DatabaseUserResource",
+      "type": "object"
+    },
+    "DirectoryResource": {
+      "properties": {
+        "backup": {
+          "default": false,
+          "title": "Backup",
+          "type": "boolean"
+        },
+        "group": {
+          "title": "Group",
+          "type": "string"
+        },
+        "mode": {
+          "default": 488,
+          "maximum": 4095,
+          "minimum": 0,
+          "title": "Mode",
+          "type": "integer"
+        },
+        "owner": {
+          "title": "Owner",
+          "type": "string"
+        },
+        "path": {
+          "format": "path",
+          "title": "Path",
+          "type": "string"
+        }
+      },
+      "required": [
+        "path"
+      ],
+      "title": "DirectoryResource",
+      "type": "object"
+    },
+    "DnsRecordResource": {
+      "description": "One app-declared DNS record (``[dns.<name>]``, W4 Phase B).\n\n``name`` is relative to the app's ``web.domain`` (``@`` for the apex).\nNostrHost enforces the record through the domain's provider and owns it\n(``app:<id>``), deleting it when the app goes away. The record is\nreconciled inside the domain's own zone, so ``web.domain`` must be a\nregistered native domain.",
+      "properties": {
+        "name": {
+          "default": "@",
+          "title": "Name",
+          "type": "string"
+        },
+        "ttl": {
+          "default": 3600,
+          "title": "Ttl",
+          "type": "integer"
+        },
+        "type": {
+          "title": "Type",
+          "type": "string"
+        },
+        "value": {
+          "title": "Value",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "value"
+      ],
+      "title": "DnsRecordResource",
+      "type": "object"
+    },
+    "HealthResource": {
+      "properties": {
+        "path": {
+          "default": "/health",
+          "title": "Path",
+          "type": "string"
+        },
+        "retries": {
+          "default": 0,
+          "maximum": 5,
+          "minimum": 0,
+          "title": "Retries",
+          "type": "integer"
+        },
+        "timeout": {
+          "default": 10,
+          "exclusiveMinimum": 0,
+          "maximum": 300,
+          "title": "Timeout",
+          "type": "integer"
+        },
+        "type": {
+          "default": "http",
+          "enum": [
+            "http"
+          ],
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "title": "HealthResource",
+      "type": "object"
+    },
+    "HookResource": {
+      "properties": {
+        "python": {
+          "minLength": 1,
+          "title": "Python",
+          "type": "string"
+        }
+      },
+      "required": [
+        "python"
+      ],
+      "title": "HookResource",
+      "type": "object"
+    },
+    "PackagesResource": {
+      "properties": {
+        "apt": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Apt",
+          "type": "array"
+        }
+      },
+      "title": "PackagesResource",
+      "type": "object"
+    },
+    "PermissionResource": {
+      "properties": {
+        "additional_urls": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Additional Urls",
+          "type": "array"
+        },
+        "allowed": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            }
+          ],
+          "title": "Allowed"
+        },
+        "auth_header": {
+          "default": true,
+          "title": "Auth Header",
+          "type": "boolean"
+        },
+        "auth_request": {
+          "default": false,
+          "title": "Auth Request",
+          "type": "boolean"
+        },
+        "protected": {
+          "default": false,
+          "title": "Protected",
+          "type": "boolean"
+        },
+        "show_tile": {
+          "title": "Show Tile",
+          "type": "boolean"
+        },
+        "url": {
+          "title": "Url",
+          "type": "string"
+        }
+      },
+      "title": "PermissionResource",
+      "type": "object"
+    },
+    "PhpFpmResource": {
+      "properties": {
+        "group": {
+          "title": "Group",
+          "type": "string"
+        },
+        "max_children": {
+          "default": 10,
+          "exclusiveMinimum": 0,
+          "maximum": 10000,
+          "title": "Max Children",
+          "type": "integer"
+        },
+        "socket": {
+          "format": "path",
+          "title": "Socket",
+          "type": "string"
+        },
+        "user": {
+          "title": "User",
+          "type": "string"
+        },
+        "version": {
+          "minLength": 1,
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "version",
+        "socket",
+        "user",
+        "group"
+      ],
+      "title": "PhpFpmResource",
+      "type": "object"
+    },
+    "PolicyResource": {
+      "properties": {
+        "content": {
+          "minLength": 1,
+          "title": "Content",
+          "type": "string"
+        },
+        "name": {
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "type": {
+          "enum": [
+            "logrotate",
+            "crowdsec"
+          ],
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "name",
+        "content"
+      ],
+      "title": "PolicyResource",
+      "type": "object"
+    },
+    "PortsResource": {
+      "properties": {
+        "named": {
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "title": "Named",
+          "type": "object"
+        }
+      },
+      "title": "PortsResource",
+      "type": "object"
+    },
+    "RuntimeResource": {
+      "properties": {
+        "prefix": {
+          "format": "path",
+          "title": "Prefix",
+          "type": "string"
+        },
+        "type": {
+          "enum": [
+            "node",
+            "python",
+            "go",
+            "ruby",
+            "composer",
+            "php"
+          ],
+          "title": "Type",
+          "type": "string"
+        },
+        "version": {
+          "minLength": 1,
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "version"
+      ],
+      "title": "RuntimeResource",
+      "type": "object"
+    },
+    "SecretResource": {
+      "properties": {
+        "generate": {
+          "default": "random",
+          "enum": [
+            "password",
+            "random"
+          ],
+          "title": "Generate",
+          "type": "string"
+        },
+        "length": {
+          "default": 32,
+          "exclusiveMinimum": 0,
+          "maximum": 4096,
+          "title": "Length",
+          "type": "integer"
+        }
+      },
+      "title": "SecretResource",
+      "type": "object"
+    },
+    "ServiceResource": {
+      "properties": {
+        "credentials": {
+          "additionalProperties": {
+            "format": "path",
+            "type": "string"
+          },
+          "title": "Credentials",
+          "type": "object"
+        },
+        "environment": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Environment",
+          "type": "object"
+        },
+        "exec": {
+          "minLength": 1,
+          "title": "Exec",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "restart": {
+          "default": "on-failure",
+          "enum": [
+            "no",
+            "on-failure",
+            "always"
+          ],
+          "title": "Restart",
+          "type": "string"
+        },
+        "security": {
+          "$ref": "#/definitions/ServiceSecurity"
+        },
+        "user": {
+          "title": "User",
+          "type": "string"
+        },
+        "working_directory": {
+          "format": "path",
+          "title": "Working Directory",
+          "type": "string"
+        }
+      },
+      "required": [
+        "exec"
+      ],
+      "title": "ServiceResource",
+      "type": "object"
+    },
+    "ServiceSecurity": {
+      "properties": {
+        "no_new_privileges": {
+          "default": true,
+          "title": "No New Privileges",
+          "type": "boolean"
+        },
+        "private_tmp": {
+          "default": true,
+          "title": "Private Tmp",
+          "type": "boolean"
+        },
+        "protect_home": {
+          "default": true,
+          "title": "Protect Home",
+          "type": "boolean"
+        },
+        "protect_system": {
+          "default": "strict",
+          "enum": [
+            "strict",
+            "full",
+            "yes",
+            "no"
+          ],
+          "title": "Protect System",
+          "type": "string"
+        },
+        "read_write_paths": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Read Write Paths",
+          "type": "array"
+        }
+      },
+      "title": "ServiceSecurity",
+      "type": "object"
+    },
+    "SettingField": {
+      "properties": {
+        "choices": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Choices",
+          "type": "array"
+        },
+        "default": {
+          "title": "Default"
+        },
+        "secret": {
+          "default": false,
+          "title": "Secret",
+          "type": "boolean"
+        },
+        "type": {
+          "enum": [
+            "string",
+            "integer",
+            "number",
+            "boolean",
+            "enum"
+          ],
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "title": "SettingField",
+      "type": "object"
+    },
+    "SettingResource": {
+      "properties": {
+        "fields": {
+          "additionalProperties": {
+            "$ref": "#/definitions/SettingField"
+          },
+          "title": "Fields",
+          "type": "object"
+        },
+        "values": {
+          "title": "Values",
+          "type": "object"
+        }
+      },
+      "title": "SettingResource",
+      "type": "object"
+    },
+    "SourceResource": {
+      "properties": {
+        "destination": {
+          "format": "path",
+          "title": "Destination",
+          "type": "string"
+        },
+        "extract": {
+          "default": true,
+          "title": "Extract",
+          "type": "boolean"
+        },
+        "format": {
+          "default": "auto",
+          "enum": [
+            "auto",
+            "tar",
+            "zip",
+            "file"
+          ],
+          "title": "Format",
+          "type": "string"
+        },
+        "id": {
+          "default": "main",
+          "title": "Id",
+          "type": "string"
+        },
+        "platform": {
+          "title": "Platform",
+          "type": "string"
+        },
+        "rename": {
+          "title": "Rename",
+          "type": "string"
+        },
+        "sha256": {
+          "maxLength": 64,
+          "minLength": 64,
+          "title": "Sha256",
+          "type": "string"
+        },
+        "strip_components": {
+          "default": 0,
+          "maximum": 16,
+          "minimum": 0,
+          "title": "Strip Components",
+          "type": "integer"
+        },
+        "url": {
+          "minLength": 1,
+          "title": "Url",
+          "type": "string"
+        },
+        "variants": {
+          "additionalProperties": {
+            "$ref": "#/definitions/SourceVariant"
+          },
+          "title": "Variants",
+          "type": "object"
+        }
+      },
+      "title": "SourceResource",
+      "type": "object"
+    },
+    "SourceVariant": {
+      "properties": {
+        "sha256": {
+          "maxLength": 64,
+          "minLength": 64,
+          "title": "Sha256",
+          "type": "string"
+        },
+        "url": {
+          "minLength": 1,
+          "title": "Url",
+          "type": "string"
+        }
+      },
+      "required": [
+        "url",
+        "sha256"
+      ],
+      "title": "SourceVariant",
+      "type": "object"
+    },
+    "TimerResource": {
+      "properties": {
+        "exec": {
+          "minLength": 1,
+          "title": "Exec",
+          "type": "string"
+        },
+        "on_calendar": {
+          "minLength": 1,
+          "title": "On Calendar",
+          "type": "string"
+        },
+        "persistent": {
+          "default": true,
+          "title": "Persistent",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "on_calendar",
+        "exec"
+      ],
+      "title": "TimerResource",
+      "type": "object"
+    },
+    "UserResource": {
+      "properties": {
+        "description": {
+          "default": "",
+          "title": "Description",
+          "type": "string"
+        },
+        "groups": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Groups",
+          "type": "array"
+        },
+        "home": {
+          "format": "path",
+          "title": "Home",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "system": {
+          "default": true,
+          "title": "System",
+          "type": "boolean"
+        }
+      },
+      "title": "UserResource",
+      "type": "object"
+    },
+    "WebResource": {
+      "properties": {
+        "auth": {
+          "default": "none",
+          "enum": [
+            "none",
+            "nostrhost"
+          ],
+          "title": "Auth",
+          "type": "string"
+        },
+        "domain": {
+          "title": "Domain",
+          "type": "string"
+        },
+        "file_root": {
+          "title": "File Root",
+          "type": "string"
+        },
+        "https": {
+          "default": "automatic",
+          "enum": [
+            "automatic",
+            "required",
+            "disabled"
+          ],
+          "title": "Https",
+          "type": "string"
+        },
+        "path": {
+          "default": "/",
+          "title": "Path",
+          "type": "string"
+        },
+        "upstream": {
+          "minLength": 1,
+          "title": "Upstream",
+          "type": "string"
+        }
+      },
+      "title": "WebResource",
+      "type": "object"
+    }
+  },
+  "description": "Declarative NostrHost package manifest. Validation is read-only; privileged changes require a separately approved plan.",
+  "properties": {
+    "access": {
+      "additionalProperties": {
+        "$ref": "#/definitions/AccessResource"
+      },
+      "description": "Filesystem ownership and mode changes on existing paths; declare an owner or group explicitly.",
+      "title": "Access",
+      "type": "object"
+    },
+    "app": {
+      "$ref": "#/definitions/AppResource",
+      "description": "Required package identity and version. Keep the id stable across releases."
+    },
+    "backup": {
+      "$ref": "#/definitions/BackupResource",
+      "description": "Filesystem paths and database inputs registered with the backup plane."
+    },
+    "config": {
+      "additionalProperties": {
+        "$ref": "#/definitions/ConfigFileResource"
+      },
+      "description": "Managed configuration files with exactly one content or template source.",
+      "title": "Config",
+      "type": "object"
+    },
+    "database": {
+      "$ref": "#/definitions/DatabaseResource",
+      "description": "A package-owned database and its users/grants. State explicitly whether database data is backed up."
+    },
+    "directories": {
+      "additionalProperties": {
+        "$ref": "#/definitions/DirectoryResource"
+      },
+      "description": "Absolute package-owned paths, access modes, and backup intent.",
+      "title": "Directories",
+      "type": "object"
+    },
+    "dns": {
+      "additionalProperties": {
+        "$ref": "#/definitions/DnsRecordResource"
+      },
+      "description": "Records owned by this app inside the zone for the declared web domain.",
+      "title": "Dns",
+      "type": "object"
+    },
+    "fpm": {
+      "$ref": "#/definitions/PhpFpmResource",
+      "description": "PHP-FPM pool configuration. Declare a matching PHP runtime as well."
+    },
+    "health": {
+      "$ref": "#/definitions/HealthResource",
+      "description": "A bounded HTTP health check used to verify the resulting service or web route."
+    },
+    "hooks": {
+      "additionalProperties": {
+        "$ref": "#/definitions/HookResource"
+      },
+      "description": "Restricted Python hook references for behavior not expressible as a resource; hooks are not shell snippets.",
+      "title": "Hooks",
+      "type": "object"
+    },
+    "packages": {
+      "$ref": "#/definitions/PackagesResource",
+      "description": "APT dependencies owned by the host package manager; shared packages are retained on app removal."
+    },
+    "permissions": {
+      "additionalProperties": {
+        "$ref": "#/definitions/PermissionResource"
+      },
+      "description": "Portal access policy for the package's web routes; this is distinct from filesystem access.",
+      "title": "Permissions",
+      "type": "object"
+    },
+    "policies": {
+      "additionalProperties": {
+        "$ref": "#/definitions/PolicyResource"
+      },
+      "description": "Typed host security/log rotation policies rendered through registered providers.",
+      "title": "Policies",
+      "type": "object"
+    },
+    "ports": {
+      "$ref": "#/definitions/PortsResource",
+      "description": "Named, unique TCP/UDP port allocations requested by the package."
+    },
+    "runtime": {
+      "$ref": "#/definitions/RuntimeResource",
+      "description": "A host-managed language runtime and version; use an explicit prefix only for an isolated runtime."
+    },
+    "secrets": {
+      "additionalProperties": {
+        "$ref": "#/definitions/SecretResource"
+      },
+      "description": "Generated secret resources; never embed secret values in the manifest.",
+      "title": "Secrets",
+      "type": "object"
+    },
+    "service": {
+      "$ref": "#/definitions/ServiceResource",
+      "description": "A systemd service with an absolute executable path and an optional declared system user."
+    },
+    "settings": {
+      "$ref": "#/definitions/SettingResource",
+      "description": "Typed non-secret package settings and defaults. Store credentials with secrets instead."
+    },
+    "source": {
+      "additionalProperties": {
+        "$ref": "#/definitions/SourceResource"
+      },
+      "description": "Verified upstream archives. Every source requires a SHA-256 digest, including each platform variant.",
+      "title": "Source",
+      "type": "object"
+    },
+    "timer": {
+      "$ref": "#/definitions/TimerResource",
+      "description": "A systemd timer and absolute executable for recurring package work."
+    },
+    "user": {
+      "$ref": "#/definitions/UserResource",
+      "description": "Optional system account owned by this package. Services should use this declared identity."
+    },
+    "web": {
+      "$ref": "#/definitions/WebResource",
+      "description": "A Caddy route to an upstream or static file root. Use a registered domain and package route."
+    }
+  },
+  "required": [
+    "app"
+  ],
+  "title": "PackageManifest",
+  "type": "object"
+}

@@ -21,17 +21,24 @@ dependencies and runtimes are retained, and database removal remains a
 high-risk operation subject to backup policy.
 
 ```sh
+nostrhost-package schema --output schema/package.schema.json
+nostrhost-package init my-app --directory packages --template web
+nostrhost-package validate packages/my-app/package.toml --json
 nostrhost-package plan packages/nostrhost-native-example/package.toml
 nostrhost-package plan packages/nostrhost-native-example/package.toml --json
-nostrhost-package schema --json
-nostrhost-package migrate existing-app/manifest.toml --output package.toml
+nostrhost-package explain packages/nostrhost-native-example/package.toml
 ```
 
-Migration is explicit and declarative-only. The migration command converts
-supported YunoHost v2 resources including ports, Portal permissions, database
-declarations, runtimes, config, settings, and backup inputs, but refuses packages containing imperative
-install, upgrade, remove, backup, or restore scripts. Those packages must be
-converted before they can enter the native engine.
+The authoring CLI is designed for both people and automated package authors.
+The checked-in JSON Schema at `schema/package.schema.json` describes the
+manifest vocabulary; `init` creates a safe starting point; `validate --json`
+returns stable field paths and diagnostic codes; and `plan --json` exposes the
+deterministic operations without applying them. `explain` presents ownership,
+risk, and reversibility in plain language. These commands are read-only except
+for writing the requested scaffold/schema output. Applying a package remains a
+separate policy-gated operation.
+See [AI-assisted package authoring](AI-PACKAGE-AUTHORING.md) for the complete
+agent workflow and package safety rules.
 
 Operation envelopes have stable names, resource identities, typed arguments,
 dependencies, risk, reversibility, reverse operation, and a human-readable

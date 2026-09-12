@@ -1,8 +1,8 @@
 # Native Admin and Package Authoring Plan
 
-**Status:** proposed  
+**Status:** active
 **Scope:** NostrHost admin SPA, its native API integration, Debian package, and the package-authoring workflow exposed through admin and CLI tools.  
-**Target:** native NostrHost on its declared Debian baseline. This is a clean cutover; YunoHost API, installer, package-name, and URL compatibility are out of scope.
+**Target:** Debian 12 (Bookworm), with a native NostrHost admin and package toolchain. This is a clean cutover; YunoHost admin API, installer, package-name, and URL compatibility are out of scope.
 
 ## Objective
 
@@ -12,16 +12,24 @@ The YunoHost admin source is a useful starting point for selected UI patterns an
 
 ## Current state and required changes
 
-1. **Static asset delivery exists, but uses inherited naming.** The BOM calls the binary `nostrhost-admin` and installs assets under `/usr/share/nostrhost/admin`; Caddy serves them at `/yunohost/admin/`, and Vite builds with that prefix. Adopt a NostrHost-owned route and configure the SPA and Caddy from one route value.
-2. **Packaging metadata disagrees.** The component Debian tree still builds `yunohost-admin`, depends on `yunohost`, and installs to `/usr/share/yunohost/admin`; core still recommends `yunohost-admin` and `yunohost-portal`. Remove the unused YunoHost package definition and make the NostrHost BOM the sole package/dependency authority.
-3. **The current UI cannot use the native API as-is.** The SPA sends form data and browser credentials to `/yunohost/api/`. Native API calls use NIP-98 authorization, JSON bodies, and only a subset of the operations those screens expect. Build a purpose-designed API and UI slice around NostrHost's operation and package models.
-4. **The package builder expects prebuilt SPA output.** CI has a separate conditional shell build step, while `build-package` only copies an existing `dist/` or `.output/public`. Move build and package assembly into one reproducible command.
-5. **Native package lifecycle is already declarative.** `package.toml` and the resource engine describe files, permissions, routes, health, and backups without per-app Bash. The mixed legacy/native test app should become a straightforward native package fixture; YunoHost installer scripts are not part of the target.
-6. **Package authoring needs stronger machine-facing affordances.** The existing BOM and validator are useful foundations. Add a stable schema, scaffolding, structured validation, explainable plans, and repeatable sandbox tests so an AI can author and iterate on packages without guessing conventions or invoking arbitrary host commands.
+1. **The native asset route is implemented.** The BOM configures `/admin/`, Vite emits assets with that base path, and Caddy serves the SPA from `/usr/share/nostrhost/admin`. The shipped admin now contains only the native package-authoring route and uses the native API.
+2. **The umbrella BOM now owns the admin package.** The admin component's stale YunoHost Debian packaging has been removed; its core recommendation now names `nostrhost-admin` and `nostrhost-portal` at their NostrHost versions.
+3. **The former YunoHost UI could not use the native API as-is.** It sent form data and browser credentials to `/yunohost/api/`. Its route table is no longer shipped. The Bottle API now verifies request-bound NIP-98 freshness and replay, exposes read-only v1 identity/system/catalogue/package endpoints, and serves the NIP-07 package-authoring screen. No v1 mutation endpoint exists yet; writes must wait for the typed policy/approval path.
+4. **The SPA builder now owns build and package assembly.** Toolchain, install/build commands, and output directories are declared in the BOM. CI calls the builder after setting up Node 22; there is no separate SPA shell build step.
+5. **Native package lifecycle is declarative.** `package.toml` and the resource engine describe files, permissions, routes, health, and backups without per-app Bash. The mixed legacy/native test app should become a clean native package fixture; old installer support is not a target requirement.
+6. **The first AI authoring surface is implemented.** The installed `nostrhost-package` entry point uses Typer for schema, scaffold, validation, planning, and explanations. The JSON Schema and author workflow are checked in; broader templates and isolated package lifecycle tests remain.
+
+## Implementation progress on Debian 12
+
+- Complete: native `/admin/` static route, sole NostrHost admin package definition, core recommendations, end-to-end SPA build/package command, AI-facing schema/scaffold/validate/plan/explain CLI, checked-in schema, and authoring guide.
+- Complete: native API URL decision (`/api/v1`), shared request-bound NIP-98 verification with freshness/replay/body checks, Caddy route preserving the signed URL, read-only package schema/validate/plan endpoints sharing the CLI library, and a first NIP-07 package-authoring screen with diagnostics and plan review.
+- Complete: legacy YunoHost admin routes and unversioned direct-write API routes are no longer shipped; the Caddy admin path serves only `/admin/` and the versioned API.
+- Complete: current screen inventory and first-release decisions in [ADMIN-FEATURE-MATRIX.md](ADMIN-FEATURE-MATRIX.md).
+- Remaining: generated client contract, system-health and catalogue UI, richer identity management, typed operation submission/status/history, clean native test package lifecycle, and disposable package test runner.
 
 ## Target architecture
 
-- **Admin frontend:** static SPA distributed as `nostrhost-admin`. Use a NostrHost route such as `/admin/`, with its build base and Caddy routing generated from shared configuration. No install-time script is needed for the static asset package.
+- **Admin frontend:** static SPA distributed as `nostrhost-admin`. The release BOM supplies `/admin/` to the Vite build; a packaging contract test keeps that value aligned with Caddy. No install-time script is needed for the static asset package.
 - **Native API:** versioned endpoints with typed JSON inputs/outputs, structured errors, operation IDs, and idempotency for writes. Model APIs after package, identity, policy, and operation concepts rather than translating legacy YunoHost endpoints.
 - **Authentication and authorization:** supported Nostr signer integration creates short-lived, request-bound NIP-98 events. The browser never receives the server operator secret or persists raw private keys in app storage. Every mutating endpoint enters policy/approval/execution; no endpoint accepts arbitrary shell commands.
 - **Package lifecycle:** `package.toml` expresses desired resources. The resource engine validates, plans, applies, verifies, upgrades, removes, and registers backup inputs. Per-package imperative install/upgrade/remove scripts are not the normal extension mechanism.
@@ -41,7 +49,7 @@ The YunoHost admin source is a useful starting point for selected UI patterns an
 
 **Deliverables**
 
-- Native admin feature matrix with prioritized decisions and operation owners.
+- Native admin feature matrix with prioritized decisions and operation owners (`docs/ADMIN-FEATURE-MATRIX.md`).
 - API/auth contract for the first slice.
 - NostrHost route and asset-path configuration source.
 
@@ -179,12 +187,12 @@ The YunoHost admin source is a useful starting point for selected UI patterns an
 
 ## Decisions before implementation
 
-1. Which signer UX ships first: NIP-07, NIP-46, or both? What is the recovery path when the signer is unavailable?
+1. **Resolved for the first package-authoring screen:** NIP-07; NIP-46 and signer recovery UX are follow-up work.
 2. Which admin capabilities are required in the first native release, and which upstream screens are dropped?
-3. What NostrHost-owned admin URL and API prefix should be canonical?
+3. **Resolved:** the admin is served at `/admin/`; the versioned native API prefix is `/api/v1`.
 4. Should the optional package-authoring MCP tools be delivered with the first package tooling release or after the CLI/schema contract stabilizes?
 5. Which Debian releases are first-class targets for the native admin and package test runner?
 
 ## Recommended order
 
-Complete the feature/API matrix and route decision first. In parallel, consolidate BOM ownership and make SPA build/package reproducible. Then implement the schema/scaffold/JSON-plan authoring loop and native API contract. Deliver the first UI slice only after auth and operation contracts are testable. Finish with the disposable package test harness and VM proof before expanding screens.
+Complete the feature/API matrix first. In parallel, consolidate BOM ownership and make SPA build/package reproducible. The schema/scaffold/JSON-plan authoring loop, initial read-only `/api/v1` package contract, and first NIP-07 package-authoring screen are implemented. Next deliver health/catalogue and operation views against typed contracts, then prove the lifecycle with the disposable package test harness and VM before expanding screens.

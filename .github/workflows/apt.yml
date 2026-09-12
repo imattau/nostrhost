@@ -55,10 +55,27 @@ jobs:
               fh.write(f"names={json.dumps(names)}\n")
           PY
 
+  package-authoring:
+    name: Test AI package-authoring tools (Debian 12-era Python stack)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install Debian 12-compatible test dependencies
+        run: python -m pip install "typer==0.7.0" "click==8.1.7" "pydantic==1.10.14" "PyYAML==6.0.2" "pytest==8.3.5"
+      - name: Test package authoring and packaging contracts
+        env:
+          PYTHONPATH: forks/yunohost/src
+        run: python -m pytest -q tools/tests
+
   build:
     name: Build ${{ matrix.name }}
     runs-on: ubuntu-latest
-    needs: matrix
+    needs: [matrix, package-authoring]
     strategy:
       fail-fast: false
       matrix:
@@ -77,28 +94,11 @@ jobs:
           # put go-installed tools (xcaddy) on PATH for later steps
           echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
 
-      - name: SPA toolchain (portal / admin)
+      - name: Set up pinned SPA toolchain
         if: matrix.name == 'nostrhost-portal' || matrix.name == 'nostrhost-admin'
-        run: |
-          corepack enable
-          corepack prepare yarn@1.22.22 --activate
-
-      - name: Build SPA (admin / portal)
-        if: matrix.name == 'nostrhost-portal' || matrix.name == 'nostrhost-admin'
-        run: |
-          set -euo pipefail
-          if [ "${{ matrix.name }}" = "nostrhost-admin" ]; then
-            dir=forks/admin/app
-            cmd=build
-          else
-            dir=forks/portal
-            cmd=generate
-          fi
-          (
-            cd "$dir"
-            yarn install --frozen-lockfile
-            yarn "$cmd"
-          )
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
 
       - name: Build nostrhost-core (debian-source, ships `nostrhost-core` + `python3-nostrhost` + transitional `yunohost`)
         if: matrix.name == 'nostrhost-core'

@@ -234,6 +234,11 @@ packages:
       repo: imattau/nostrhost-admin
       submodule: forks/admin
       build_dir: app
+      package_manager: yarn@1.22.22
+      install_args: [install, --frozen-lockfile, --non-interactive]
+      build_args: [build]
+      output_dir: dist
+      base_path: /admin/
       static_dir: /usr/share/nostrhost/admin
     summary: NostrHost admin interface (built SPA assets)
     depends:
@@ -247,6 +252,10 @@ packages:
     source:
       repo: imattau/nostrhost-portal
       submodule: forks/portal
+      package_manager: yarn@1.22.22
+      install_args: [install, --frozen-lockfile, --non-interactive]
+      build_args: [generate]
+      output_dir: .output/public
       static_dir: /usr/share/nostrhost/portal
     summary: NostrHost user portal (built SPA assets)
     depends:

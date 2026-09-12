@@ -87,8 +87,10 @@ external Debian packages: crowdsec · crowdsec-firewall-bouncer
   depends resolves, no cycles, meta closure, provides/replaces coherence).
 - `scripts/generate-meta-package` — emits the meta `.deb`s.
 - `scripts/build-package` — builds one non-meta package from its pinned
-  submodule (golang/python/spa/config/caddy/runtime kinds). `nostrhost-core`
-  is built with `dpkg-buildpackage` in its own debian/ tree by the workflow.
+  submodule (golang/python/spa/config/caddy/runtime kinds). For SPAs it also
+  installs the frozen JavaScript dependencies and runs the declared build;
+  generated output is never assumed to exist. `nostrhost-core` is built with
+  `dpkg-buildpackage` in its own debian/ tree by the workflow.
 - `scripts/publish-deb` — stages `.deb`s into a pool and regenerates the
   index (`Packages`, `Packages.gz`, `Release`, optional `InRelease`).
 - `.github/workflows/apt.yml` — builds everything, verifies the graph,
@@ -119,7 +121,8 @@ packaging/scripts/verify-dependencies
 # build meta-packages
 packaging/scripts/generate-meta-package -o packaging/build
 
-# build one package (go/python/spa/config/caddy kinds)
+# build one package (including the complete SPA build when applicable)
+packaging/scripts/build-package --name nostrhost-admin -o packaging/build
 packaging/scripts/build-package --name nostrhost-control -o packaging/build
 
 # assemble an index from built .debs

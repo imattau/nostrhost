@@ -151,15 +151,28 @@ def build_spa(pkg: dict, version: str, outdir: Path) -> Path:
     build_dir = sub / src.get("build_dir", "")
     staging = Path(tempfile.mkdtemp(prefix="nostrhost-spadeb-"))
     try:
-        # identify the static output dir per repo (portal: .output/public, admin: dist)
-        static_src = None
-        for candidate in (build_dir / ".output" / "public", build_dir / "dist"):
-            if candidate.is_dir():
-                static_src = candidate
-                break
-        if static_src is None:
-            raise SystemExit(f"build-package: no static build output in {build_dir} "
-                             "(.output/public or dist); run the SPA build first")
+        package_manager = src.get("package_manager")
+        output_dir = src.get("output_dir")
+        if not package_manager or not output_dir:
+            raise SystemExit(f"build-package: SPA {name} must declare package_manager and output_dir")
+        if not build_dir.is_dir():
+            raise SystemExit(f"build-package: SPA build directory does not exist: {build_dir}")
+        manager = shutil.which("corepack")
+        if manager is None:
+            raise SystemExit("build-package: corepack is required to build SPA packages; install Node.js 22")
+        static_src = (build_dir / output_dir).resolve()
+        if build_dir.resolve() not in static_src.parents:
+            raise SystemExit(f"build-package: SPA output_dir must remain under {build_dir}")
+        # Clear generated output first so an unsuccessful build can never fall
+        # through to packaging an old dist/ directory.
+        shutil.rmtree(static_src, ignore_errors=True)
+        run([manager, package_manager, *src.get("install_args", ["install", "--frozen-lockfile"])], build_dir)
+        build_env = dict(os.environ)
+        if src.get("base_path"):
+            build_env["VITE_BASE_URL"] = src["base_path"]
+        run([manager, package_manager, *src.get("build_args", ["build"])], build_dir, env=build_env)
+        if not static_src.is_dir() or not any(static_src.iterdir()):
+            raise SystemExit(f"build-package: SPA build did not produce non-empty output at {static_src}")
         dest = staging / src["static_dir"].lstrip("/")
         shutil.copytree(static_src, dest)
         write_control(staging, name, version, arch, pkg.get("summary", ""),
