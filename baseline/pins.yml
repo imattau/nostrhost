@@ -27,7 +27,7 @@ forks:
     branch: nostrhost          # derivative branch (first fork modification, Phase 3)
     derivative: true
     pin: debian/12.1.41.2      # upstream baseline the branch was cut from
-    pin_commit: b071d3111c814ef799214f03852048a8576dee55
+    pin_commit: 7337099fb892cd2932fb5fb401e05a2775b034f9
     live_server: 12.1.41.2
 
   - component: portal          # Nuxt/Vue/TypeScript user portal
@@ -108,5 +108,5 @@ libraries:
     repo: imattau/nostrhost-mcp
     path: libs/nostrhost-mcp
     branch: main
-    pin_commit: 6c2c9c8f297c37361482e12562e30b2a583b03c9
+    pin_commit: a7b1a3daff9edfdcc982d5ed27839a0027f657f2
     stack: Python (mcp SDK v2)

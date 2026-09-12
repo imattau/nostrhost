@@ -255,10 +255,14 @@ MCP progress, 2204 as the result (via the installed fork's
 
 ### Phase 2 — native identity + capabilities
 HTTP transport verifies client NIP-98 (`nostrhost_policy.auth.nip98`); stdio
-bound to the owner. Client npub rides as the `actor` tag. Migration tool
-`nostrhost identity import-mcp-agents`: translate old `yunohost-mcp`
-identity.toml roles → 31100 capability grants / 27236 delegations for the
-same agent npubs. No separate "MCP user" class.
+bound to the owner. Client npub rides as the `actor` tag. No separate "MCP
+user" class: agents are native capabilities, granted with
+`nostrhost capability grant <npub> <scopes>` (kind 31100) or
+`nostrhost capability delegate <npub> <scopes> --expires-at` (kind 27236),
+and `nostr-operationsd` authorizes their requests exactly like any other
+identity. No migration tool is built — the only identity.toml in the tree is
+the frozen reference's example file and no legacy deployment exists, so there
+is nothing to translate.
 
 ### Phase 3 — signed mutations + streaming
 Wire `service.restart/control`, `backup.create`, `dns.apply/subscribe/
@@ -331,6 +335,23 @@ streamable HTTP verifies NIP-98 per request (loopback only, `/mcp`), and a
 deploy unit runs it unprivileged. VM-proven on clean6: 44 tools, read op to
 result, write op approval_required → control-plane approval → `op_status`
 SUCCEEDED; HTTP valid NIP-98 → 200, missing/garbage → 401.
+
+**Phase 2 (native identity + capabilities) is complete**: the HTTP transport
+verifies the client's NIP-98 and the client npub rides as the operation
+`actor`; agents are native 31100/27236 capabilities with no separate MCP user
+class, and the migration tool from the original plan was dropped — there is no
+legacy identity.toml to translate (only the frozen reference's example file).
+The daemon now authorizes the **actor** (defaults to the requester) for the
+tool scope, so the MCP client's grants — not the server's signing key —
+decide what it may do. VM-proven on clean6: a fresh client key is rejected
+`unauthorized`, runs read ops after `nostrhost capability grant server.read`,
+a write without its scope is rejected, and after granting `services.restart`
+the write proceeds approval_required → control-plane approval → SUCCEEDED.
+Also fixed en route: the operationsd's subscribe loop now runs
+`handle_event` in a worker thread — the synchronous publish/state-snapshot
+round-trips were stalling the asyncio loop on replay, so the relay timed out
+the websocket (close 1011) and the daemon never got past the accumulated
+event replay on restart.
 
 | Reference capability | Native op | Status |
 |---|---|---|
