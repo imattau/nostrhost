@@ -82,8 +82,8 @@ references keep resolving.
   `nostrhost-control` + `nostrhost-catalog` + `nostrhost-caddy` +
   `nostrhost-security-config` + `python3-nostrhost{-auth,-policy}` +
   `nostrhost-runtime` (private venv with bundled wheels).
-- Some Python runtime deps (`nostr-sdk`, `bech32`, `coincurve`,
-  `pydantic>=2`) are not in Debian bookworm (pydantic only ships v1 there).
+- Some Python runtime deps (`nostr-sdk`, `pydantic>=2`) are not in Debian
+  bookworm (pydantic only ships v1 there).
   They are bundled into `nostrhost-runtime` as pinned manylinux cp311 wheels
   and installed offline into `/opt/nostrhost/venv` (created with
   `--system-site-packages` so the dist-packages debs stay visible); daemons

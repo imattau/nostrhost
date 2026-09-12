@@ -12,18 +12,18 @@ The YunoHost admin source is a useful starting point for selected UI patterns an
 
 ## Current state and required changes
 
-1. **The native asset route is implemented.** The BOM configures `/admin/`, Vite emits assets with that base path, and Caddy serves the SPA from `/usr/share/nostrhost/admin`. The shipped admin now contains only the native package-authoring route and uses the native API.
+1. **The native asset route is implemented.** Vite and the release manifest use `/yunohost/admin/`; Caddy serves the SPA from `/usr/share/nostrhost/admin` at that path.
 2. **The umbrella BOM now owns the admin package.** The admin component's stale YunoHost Debian packaging has been removed; its core recommendation now names `nostrhost-admin` and `nostrhost-portal` at their NostrHost versions.
-3. **The former YunoHost UI could not use the native API as-is.** It sent form data and browser credentials to `/yunohost/api/`. Its route table is no longer shipped. The Bottle API now verifies request-bound NIP-98 freshness and replay, exposes read-only v1 identity/system/catalogue/package endpoints, and serves the NIP-07 package-authoring screen. No v1 mutation endpoint exists yet; writes must wait for the typed policy/approval path.
+3. **The former YunoHost UI could not use the native API as-is.** Its old routes and unused UI dependencies have been removed from the shipped admin build. The NIP-07 package screen now sends JSON to `POST /package/plan`; Caddy proxies that route to the native API on loopback port 8190. Package writes continue through the separate policy and approval path.
 4. **The SPA builder now owns build and package assembly.** Toolchain, install/build commands, and output directories are declared in the BOM. CI calls the builder after setting up Node 22; there is no separate SPA shell build step.
 5. **Native package lifecycle is declarative.** `package.toml` and the resource engine describe files, permissions, routes, health, and backups without per-app Bash. The mixed legacy/native test app should become a clean native package fixture; old installer support is not a target requirement.
-6. **The first AI authoring surface is implemented.** The installed `nostrhost-package` entry point uses Typer for schema, scaffold, validation, planning, and explanations. The JSON Schema and author workflow are checked in; broader templates and isolated package lifecycle tests remain.
+6. **The AI authoring surface uses the existing Typer CLI.** `nostrhost package schema` publishes the checked-in JSON Schema and `nostrhost package plan` validates a JSON manifest and returns a plan. This replaces the redundant argparse package wrapper; package lifecycle tests remain.
 
 ## Implementation progress on Debian 12
 
-- Complete: native `/admin/` static route, sole NostrHost admin package definition, core recommendations, end-to-end SPA build/package command, AI-facing schema/scaffold/validate/plan/explain CLI, checked-in schema, and authoring guide.
-- Complete: native API URL decision (`/api/v1`), shared request-bound NIP-98 verification with freshness/replay/body checks, Caddy route preserving the signed URL, read-only package schema/validate/plan endpoints sharing the CLI library, and a first NIP-07 package-authoring screen with diagnostics and plan review.
-- Complete: legacy YunoHost admin routes and unversioned direct-write API routes are no longer shipped; the Caddy admin path serves only `/admin/` and the versioned API.
+- Complete: native `/yunohost/admin/` SPA route, sole NostrHost admin package definition, core recommendations, SPA build/package command, Typer package schema/plan commands, checked-in JSON Schema, and AI authoring guide.
+- Complete: NIP-98-signed `POST /package/plan`, matching Caddy proxy to the native API, and NIP-07 package planning UI using the shared JSON package contract.
+- Complete: dormant legacy YunoHost admin modules and unused frontend dependencies were removed from the SPA build graph; the package API is separate from YunoHost's legacy API route.
 - Complete: current screen inventory and first-release decisions in [ADMIN-FEATURE-MATRIX.md](ADMIN-FEATURE-MATRIX.md).
 - Remaining: generated client contract, system-health and catalogue UI, richer identity management, typed operation submission/status/history, clean native test package lifecycle, and disposable package test runner.
 

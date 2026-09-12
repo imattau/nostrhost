@@ -56,7 +56,7 @@ before any fork change:
 The first fork modification (`yunohost` → `nostrhost` branch) adds the native
 identity layer. End-to-end on the testbed:
 
-1. Install the forked `yunohost` package (with `nostrhost-auth`, `coincurve`,
+1. Install the forked `yunohost` package (with `nostrhost-auth`, `nostr-sdk`,
    `websockets`) on the VM, and run `nostrhost-control` with
    `require_auth_kinds = []` (loopback posture) + allowlist mode.
 2. Configure `/etc/nostrhost/operator.toml` (operator key, control relay,
@@ -461,7 +461,7 @@ via Playwright on the VM) against the deployed stack. Harness:
 
 Prerequisites installed on the VM: Playwright + chromium
 (`pip install --break-system-packages playwright` + `playwright install
-chromium`, plus the chromium system libs), pynacl/coincurve for the harness,
+chromium`, plus the chromium system libs), pynacl for the harness,
 and `nostr-tools`/`ws` for the bunker (`/opt/node22/bin/npm`).
 
 ### NIP-07

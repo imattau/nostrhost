@@ -62,7 +62,7 @@ top-level docs.
 
 ## Workstream 1 — `nostrhost-runtime` deb (private venv, bundled wheels)
 
-Problem: `nostr-sdk`, `bech32`, `coincurve`, `pydantic>=2` are not in Debian
+Problem: `nostr-sdk`, `pydantic>=2` are not in Debian
 bookworm (pydantic ships v1 there) and are currently PyPI-provisioned globally.
 That is the weakest distribution-quality point.
 
@@ -80,7 +80,7 @@ Target: reproducible, pip-free installs. A `nostrhost-runtime` deb:
 - `nostrhost-core-system` / `nostrhost-core` Depends on `nostrhost-runtime`.
 
 Acceptance: blank VM `apt install nostrhost` → no manual `pip`; the venv
-interpreter imports `nostr_sdk`, `pydantic`, `coincurve`, `bech32`; CI builds
+interpreter imports `nostr_sdk`, `pydantic`; CI builds
 the wheels-deb.
 
 ---

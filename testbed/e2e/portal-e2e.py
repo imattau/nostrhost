@@ -8,15 +8,12 @@ server mints the passwordless cookie. This exercises the actual browser UI,
 the actual challenge+login server flow, the cookie, and the dashboard.
 """
 
-import base64
-import hashlib
 import json
 import os
 import ssl
 import sys
-import urllib.request
 
-from coincurve import PrivateKey
+from nostr_sdk import EventBuilder, Keys, Kind, Tag, Timestamp
 
 from playwright.sync_api import sync_playwright
 
@@ -37,25 +34,16 @@ def ssl_ctx() -> ssl.SSLContext:
     return ctx
 
 
-def event_id(ev: dict) -> str:
-    serial = json.dumps(
-        [0, ev["pubkey"], ev["created_at"], ev["kind"], ev["tags"], ev["content"]],
-        separators=(",", ":"),
-    ).encode()
-    return hashlib.sha256(serial).hexdigest()
+def sign_event(sk: Keys, ev: dict) -> dict:
+    event = EventBuilder(Kind(ev["kind"]), ev["content"])
+    event = event.tags([Tag.parse(tag) for tag in ev["tags"]])
+    event = event.custom_created_at(Timestamp.from_secs(ev["created_at"])).finalize(sk)
+    return json.loads(event.as_json())
 
 
-def sign_event(sk: PrivateKey, ev: dict) -> dict:
-    ev = dict(ev)
-    ev["pubkey"] = xonly(sk)
-    ev["id"] = event_id(ev)
-    ev["sig"] = sk.sign_schnorr(bytes.fromhex(ev["id"])).hex()
-    return ev
-
-
-def xonly(sk: PrivateKey) -> str:
-    """Nostr (BIP-340) x-only pubkey: the 32-byte x coordinate."""
-    return sk.public_key.format().hex()[2:]
+def xonly(sk: Keys) -> str:
+    """Return the Nostr x-only public key in canonical hex form."""
+    return sk.public_key().to_hex()
 
 
 def http(method: str, path: str, body: dict | None = None) -> tuple[int, dict, list[str]]:
@@ -90,7 +78,7 @@ def main() -> None:
     secret = os.environ.get("NOSTR_TEST_SECRET")
     if not secret:
         raise SystemExit("NOSTR_TEST_SECRET env required (dave hex key)")
-    sk = PrivateKey(bytes.fromhex(secret))
+    sk = Keys.parse(secret)
     pubkey = xonly(sk)
 
     with sync_playwright() as p:
@@ -205,7 +193,6 @@ def main() -> None:
             # bunker on the 7448 test relay. The challenge+login API calls go
             # to the REAL server (no interception) — the bunker signs the
             # kind-22242 for dave.
-            import urllib.request as _ur
             bunker_uri = "bunker://6532b6701f56a96248627755863ec494ba3ccd3a0cdf1ce349ba7f8081513e86?relay=ws://127.0.0.1:7448"
             page.goto(f"{BASE}/nostr-login/", wait_until="domcontentloaded")
             try:

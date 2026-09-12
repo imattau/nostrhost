@@ -3,11 +3,10 @@
 The cutover and integration map for legacy removal and NostrHost plane
 integration is documented in [RESOURCE-ENGINE-CUTOVER.md](RESOURCE-ENGINE-CUTOVER.md).
 
-Native packages declare desired resources in `package.toml`. The Python
-package engine validates that document, builds a dependency graph, and emits a
-deterministic dry-run plan of executor-neutral operations. Planning is
-unprivileged; only a future executor/provider implementation may mutate the
-host.
+Native packages declare desired resources in a JSON `package.json` document.
+The Python package engine validates that document, builds a dependency graph,
+and emits a deterministic plan of executor-neutral operations. Planning is
+read-only; applying a plan is a separate authorized operation.
 
 The first supported model includes app metadata, sources, apt packages,
 users, directories, runtimes, databases, services, web routes, health,
@@ -21,22 +20,16 @@ dependencies and runtimes are retained, and database removal remains a
 high-risk operation subject to backup policy.
 
 ```sh
-nostrhost-package schema --output schema/package.schema.json
-nostrhost-package init my-app --directory packages --template web
-nostrhost-package validate packages/my-app/package.toml --json
-nostrhost-package plan packages/nostrhost-native-example/package.toml
-nostrhost-package plan packages/nostrhost-native-example/package.toml --json
-nostrhost-package explain packages/nostrhost-native-example/package.toml
+nostrhost package schema --output schema/package.schema.json
+nostrhost package plan packages/my-app/package.json --output-as json
 ```
 
-The authoring CLI is designed for both people and automated package authors.
-The checked-in JSON Schema at `schema/package.schema.json` describes the
-manifest vocabulary; `init` creates a safe starting point; `validate --json`
-returns stable field paths and diagnostic codes; and `plan --json` exposes the
-deterministic operations without applying them. `explain` presents ownership,
-risk, and reversibility in plain language. These commands are read-only except
-for writing the requested scaffold/schema output. Applying a package remains a
-separate policy-gated operation.
+The Typer `nostrhost package` commands are designed for people and automated
+package authors. The checked-in JSON Schema at `schema/package.schema.json`
+describes the manifest vocabulary, and `plan` validates a manifest before
+returning its deterministic operations. These commands are read-only except
+for writing a requested schema file. Applying a package remains a separate
+policy-gated operation.
 See [AI-assisted package authoring](AI-PACKAGE-AUTHORING.md) for the complete
 agent workflow and package safety rules.
 

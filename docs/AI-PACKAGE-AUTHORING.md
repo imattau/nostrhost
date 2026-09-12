@@ -1,83 +1,74 @@
 # AI-Assisted Native Package Authoring
 
-NostrHost packages are desired-state declarations in `package.toml`. Package
-authors and AI agents should describe the resources an app needs and let the
-resource engine validate, plan, and reconcile them. A package manifest is not
-an instruction to run arbitrary shell commands.
+NostrHost packages are JSON desired-state declarations. Authors and AI agents
+describe the resources an app needs; the package engine validates the
+declaration and returns a deterministic plan. A manifest is data, not an
+instruction to run shell commands.
 
 ## Authoring loop
 
 1. Identify the app's source, runtime, system dependencies, service account,
    data paths, ports, web routes, configuration, secrets, health checks, and
-   backup requirements. Ask for missing facts that change the package's
-   behavior or security. Never invent upstream hashes, secrets, domains, or
-   service commands.
+   backup requirements. Ask for missing facts that change behavior or
+   security. Never invent upstream hashes, secrets, domains, or service
+   commands.
 2. Read the checked-in [package schema](../schema/package.schema.json) and the
-   closest example under `packages/`. Scaffold when useful:
+   closest example under `packages/`. Create a JSON manifest such as
+   `packages/my-app/package.json`; keep it as the single source of truth.
+3. Ask the Typer CLI to validate the manifest and produce a machine-readable
+   plan:
 
    ```sh
-   nostrhost-package init my-app --directory packages --template web
+   nostrhost package schema --output schema/package.schema.json
+   nostrhost package plan packages/my-app/package.json --output-as json
    ```
 
-   The `web` template is a static-site example. `minimal` creates only the
-   required package identity. Replace example values before treating a
-   scaffold as installable.
-3. Validate and inspect the deterministic plan:
-
-   ```sh
-   nostrhost-package validate packages/my-app/package.toml --json
-   nostrhost-package plan packages/my-app/package.toml --json
-   nostrhost-package explain packages/my-app/package.toml
-   ```
-
-   Validation JSON has a schema version, validity flag, package identity, and
-   diagnostics with stable code, manifest path, message, and optional hint.
-   Fix every error. Treat warnings and high-risk, non-reversible, or
-   unowned-resource operations as design review items before proceeding.
-4. Build and exercise the package only in a disposable test target using the
-   same providers as the declared Debian 12 platform. Verify initial install,
-   health, upgrade, backup inputs, restore behavior where applicable, and
-   removal. Check that shared APT/runtime resources are retained and that
-   package-owned data follows its explicit policy.
+   Planning validates the model and returns an error if any declaration is
+   invalid. Treat high-risk, non-reversible, or unowned-resource operations as
+   design review items. Plan output is descriptive; it is not authorization to
+   apply changes.
+4. Build and exercise the package only in a disposable Debian 12 test target
+   using the same providers as production. Verify install, health, upgrade,
+   backup inputs, restore behavior where applicable, and removal. Check that
+   shared APT/runtime resources are retained and package-owned data follows its
+   explicit policy.
 5. Have a person review the manifest and plan. Applying a package is a
-   separate privileged operation and must pass catalogue trust, policy, and
-   approval; authoring or validating a file does not authorize installation.
+   separate privileged operation and must pass the configured policy and
+   approval path.
 
 ## Authoring rules
 
 - Keep `app.id` stable and versions explicit. Make package-owned paths absolute
   and specific to the app.
 - Pin downloaded sources with SHA-256. Use architecture variants when release
-  artifacts differ by architecture; do not use a mutable URL without a digest.
-- Prefer existing typed resources for APT packages, users, directories,
-  services, web routes, permissions, configuration, databases, timers,
-  settings, secrets, policies, health, and backups.
+  artifacts differ; do not use a mutable URL without a digest.
+- Prefer the typed resources for APT packages, users, directories, services,
+  web routes, permissions, configuration, databases, timers, settings,
+  secrets, policies, health, and backups.
 - Store generated credentials using secret resources. Never place secrets in
-  `package.toml`, source archives, examples, plans, or test output.
-- State ownership and reversibility explicitly through resources. Avoid
-  broad filesystem paths and global configuration changes.
+  manifests, examples, plans, or test output.
+- State ownership and reversibility explicitly. Avoid broad filesystem paths
+  and global configuration changes.
 - If a capability cannot be expressed, propose a typed resource/provider or a
-  narrowly scoped Python hook with a declared contract. Do not add a shell
-  script as an unreviewed escape hatch.
-- Keep package metadata in `package.toml`; do not duplicate the same resource
-  declarations in a second installer manifest.
+  narrowly scoped Python hook with a declared contract. Do not add an
+  unreviewed shell-script escape hatch.
+- Keep package metadata in JSON and avoid duplicating resource declarations in
+  a second installer manifest.
 
 ## Tool contract for agents
 
-The CLI is the stable local interface. Agents can request the JSON Schema,
-create a scaffold, validate a manifest, and inspect a plan without mutating the
-host. Consumers should parse JSON by its `schema` field and diagnostic `code`,
-not by matching human-readable prose. Plan output is descriptive and
-executor-neutral; it is not proof that a host provider or approval is present.
-
-Source checkout usage from this repository:
+The Typer `nostrhost package` group is the package authoring interface:
 
 ```sh
-PYTHONPATH=forks/yunohost/src forks/yunohost/bin/nostrhost-package schema
-PYTHONPATH=forks/yunohost/src forks/yunohost/bin/nostrhost-package validate packages/my-app/package.toml --json
-PYTHONPATH=forks/yunohost/src forks/yunohost/bin/nostrhost-package plan packages/my-app/package.toml --json
+nostrhost package schema
+nostrhost package plan packages/my-app/package.json --output-as json
 ```
 
-The checked-in schema is generated by the first command with
-`--output schema/package.schema.json`. Update it whenever the package model
-changes, and keep the schema parity test green.
+Schema and plan results are JSON. Agents should use the schema to form a
+manifest and parse structured plan fields rather than matching prose. Planning
+does not inspect or mutate installed host resources. Package reconciliation is
+a separate write operation and must only run through the authorized control
+path.
+
+From a source checkout, prefix the command with the repository's
+`PYTHONPATH=forks/yunohost/src` and run `forks/yunohost/bin/nostrhost`.

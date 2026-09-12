@@ -141,7 +141,7 @@ packages:
   # packaging/runtime/requirements.txt changes, bump the version here.
   - name: nostrhost-runtime
     kind: runtime
-    version: "0.1.2"
+    version: "0.1.3"
     summary: NostrHost Python runtime venv (bundled manylinux cp311 wheels)
     depends:
       - python3-venv
@@ -238,7 +238,7 @@ packages:
       install_args: [install, --frozen-lockfile, --non-interactive]
       build_args: [build]
       output_dir: dist
-      base_path: /admin/
+      base_path: /yunohost/admin/
       static_dir: /usr/share/nostrhost/admin
     summary: NostrHost admin interface (built SPA assets)
     depends:

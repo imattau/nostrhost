@@ -1919,7 +1919,7 @@ with LDAP and some YunoHost compatibility code still underneath.
 | Workstream | Scope | Status |
 |---|---|---|
 | **W0** Documentation truth — README/`BASELINE.md`/CI scripts describe what exists (no stale ssowat/moulinette/source-identical claims) | ✅ | README + baseline clean of ssowat references; verify `verify-clean.sh`/`pin-forks.sh` |
-| **W1** `nostrhost-runtime` deb — private venv at `/opt/nostrhost/venv`, bundled wheels (nostr-sdk, bech32, coincurve, pydantic), daemons on venv python, `nostrhost-core(-system)` depends on it | ✅ | declared in `packaging/packages.yml`; acceptance = clean-VM install with no manual pip |
+| **W1** `nostrhost-runtime` deb — private venv at `/opt/nostrhost/venv`, bundled wheels (nostr-sdk, pydantic), daemons on venv python, `nostrhost-core(-system)` depends on it | ✅ | declared in `packaging/packages.yml`; acceptance = clean-VM install with no manual pip |
 | **W2** Native bootstrap / postinstall (§19) — `nostrhost postinstall --new` (keys → operator.toml/policy.toml → relay/Caddy/daemons → state S0) and `--restore` (identity → state repo → known-good + Restic → reconcile); retire legacy `tools_postinstall` | ◑ | both `--new` and `--restore` are implemented in `cli.py`; blank-VM acceptance loop + legacy `tools_postinstall` bypass ⏳ |
 | **W3** End-to-end native app lifecycle (§21) — `app install <coordinate>` CLI through the signed plan/approval/reconcile chain; native `app remove/upgrade/change_url`; backup/restore linkage; proof on nostrhost-test then one **real** app | ⏳ | |
 
