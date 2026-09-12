@@ -187,8 +187,8 @@ Legend: ✅ native op exists · ◑ native op planned · ⛔ legacy path (un-mig
 | `user_group_*`, `user_permission_*` | `user.group.*` / `user.permission.*` | ⛔ pending |
 | `package_inspect`, `package_lint`, `package_logs` | `package.plan` / `package.inspect` | ✅/◑ |
 | `package_install_test` … `test_package` | `package.plan` + `package.reconcile` (Resource Engine) | ✅ |
-| `catalog_list` | `catalog.list` | ⛔ pending |
-| `catalog_publish_plan`, `catalog_verify`, `catalog_publish` | `catalog.publish` / `catalog.verify` | ⛔ pending |
+| `catalog_list` | `catalog.list` / `catalog.get` | ✅ |
+| `catalog_publish_plan`, `catalog_verify`, `catalog_publish` | `catalog.publish` / `catalog.verify` | ✅/⛔ (`catalog.publish` landed, signed with the node publisher key; `catalog.verify` ⏳) |
 | `audit_list`, `audit_get` | `audit.list` / `audit.get` | ⛔ pending |
 | `approve_operation`, `approval_get`, `approval_status` | control-plane NIP-46 / `op status` | ✅ |
 | `operations_list`, `operation_status`, `operation_logs` | `op.list` / `op.status` / `op.logs` | ✅ |
@@ -425,7 +425,7 @@ event replay on restart.
 | system upgrade/migrate | `system.upgrade` (migrate ⛔) | ◑ |
 | firewall | `firewall.list` / `firewall.open` / `firewall.close` / `firewall.reload` | ✅ |
 | diagnosis/logs | `diagnosis.run` (logs ⛔) | ◑ |
-| catalog | `catalog.list` / `catalog.publish` | ⛔ |
+| catalog | `catalog.list` / `catalog.get` / `catalog.publish` | ✅ (verify ⏳) |
 | audit | `audit.list` / `audit.get` | ⛔ |
 | approvals | NIP-46 / `op status` (control plane) | ✅ |
 | identity/roles | 31100 / 27236 (control plane) | ✅ |

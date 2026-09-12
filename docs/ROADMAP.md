@@ -82,7 +82,7 @@ the **working specifications**; the plan, its phases and its status live here.
 | §8 | Portal Nostr authentication | ✓ | real-browser passkey attestation + visual app-grid pass (headless limit only) |
 | §9 | Restic linkage + assisted rollback (Stage B) | ✅ | reverse steps for app reinstall/upgrade stay manual pending install-arg provenance |
 | §10 | Admin interface (native management views) | ⏳ | identities/agents/delegations/approvals/catalogue/trust/audit views |
-| §11 | Native Nostr catalogue | ✓ | native `catalog.*` operation surface ⏳ (see MCP transition backlog) |
+| §11 | Native Nostr catalogue | ✓ | `catalog.list/get/publish` native ops landed (MCP Phase 5); `catalog.verify` + Admin catalogue UI ⏳ |
 | §12 | Web-layer auth (Caddy `forward_auth`, SSOwat retired) | ✓ | P7 residual-reference cleanup (§20) |
 | §13 | MCP adapter | ✅ | MCP transition Phases 5–8 (below) |
 | §14 | OIDC compatibility | ◑ | client management + signing-key rotation (bridge live/VM-proven) |
@@ -100,7 +100,7 @@ the **working specifications**; the plan, its phases and its status live here.
 | §26 | Native DNS management | ⏳ | later phase (alpha) |
 | §27 | Secrets / key lifecycle | ◑ | node-key inventory + safe keeping landed (POSTINSTALL-KEYS); rotation + Restic/DB/external/DNS/Caddy/agent secret classes remain |
 | MCP 0–4 | MCP transition: registry, skeleton, identity, signed mutations, approval flow | ✅ | — |
-| MCP 5 | Resource Engine integration (catalog surface) | ⏳ | `catalog.list/publish/verify` + legacy `package_*` tool mapping + compat path |
+| MCP 5 | Resource Engine integration (catalog surface) | ◑ | `catalog.list/get/publish` landed (publisher key signs declarations); legacy `package_*` tool mapping + audit/system/services/logs/backups/domains/users backlog remain |
 | MCP 6 | Client integrations + packaging | ⏳ | port claude-code/codex/gemini/hermes/openclaw/opencode configs, skill rename, deb + PyPI |
 | MCP 7 | Multi-host / fleet projection | ⏳ | deferred until MCP 1–6 proven |
 | MCP 8 | Retire duplicated `yunohost-mcp` logic | ⏳ | gated on MCP 5–6 |
@@ -1084,7 +1084,7 @@ modules are retired as native equivalents land. Full detail:
 | **2** | Native identity + capabilities — client npub rides as the operation `actor`; agents are native 31100/27236 capabilities; the daemon authorizes the actor, not the signing key | ✅ |
 | **3** | Signed mutations + streaming — service/backup/dns/credential/domain/app/package/state/rollback mutations VM-proven; strict input models; redaction container fix | ✅ |
 | **4** | Approval flow (out of MCP) — control-plane 2201/NIP-46; `op_status` surfaces `approval_required`/`REJECTED`/result; owner co-signature + rejection proven; operationsd keepalive (1011) debt resolved | ✅ (gate `PHASE4-PROOF-OK`) |
-| **5** | Resource Engine integration — `package.plan`/`package.reconcile` native and proven; remaining: native **catalog surface** + map legacy `package_*` test tools + explicit legacy compat path | ⏳ |
+| **5** | Resource Engine integration — `package.plan`/`package.reconcile` native and proven; **native catalog surface landed** (`catalog.list`/`catalog.get`/`catalog.publish` — publish builds a kind-32267 declaration signed with the node's `publisher_sk`, pushed to the control relay and ingested locally); remaining: map legacy `package_*` test tools + the audit/system/services/logs/backups/domains/users native-op backlog + explicit legacy compat path | ◑ |
 | **6** | Client integrations — port claude-code/codex/gemini/hermes/openclaw/opencode configs to `nostrhost-mcp`; rename the `yunohost-mcp-operations` skill; OpenCode Web → loopback streamable HTTP; package + publish (`python3-nostrhost-mcp` deb + PyPI) | ⏳ |
 | **7** | Multi-host / fleet projection (per-node adapter; client → node relay mapping) | ⏳ deferred |
 | **8** | Retire duplicated `yunohost-mcp` logic (kept: protocol, schema/tool exposure, client setup, redaction, result translation, transport) | ⏳ gated on 5–6 |
@@ -1096,7 +1096,7 @@ gates:
 
 | Op group | Missing native ops |
 |---|---|
-| catalog | `catalog.list`, `catalog.publish`, `catalog.verify` |
+| catalog | ✅ `catalog.list`, `catalog.get`, `catalog.publish` (publisher key signs kind-32267 declarations) — `catalog.verify` still ⏳ |
 | audit | `audit.list`, `audit.get` (owner co-signature per call) |
 | system | `updates.check`, `updates.refresh`, `system.migrations`, `system.migrate` |
 | services | `service.history` |
