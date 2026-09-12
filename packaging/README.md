@@ -18,7 +18,7 @@ each built from its own component repo (held here as pinned submodules).
 | `nostrhost-notify` | NIP-17/59 notification daemon | control, core |
 | `nostrhost-catalog` | catalogue resolver/service | control |
 | `python3-nostrhost-auth` | Python auth/identity library | nostr-sdk |
-| `python3-nostrhost-policy` | Python authorisation library | bech32, coincurve, pydantic |
+| `python3-nostrhost-policy` | Python authorisation library | nostr-sdk, pydantic |
 | `nostrhost-admin` | built admin SPA assets | core |
 | `nostrhost-portal` | built portal SPA assets | core |
 | `nostrhost-caddy` | Caddy + `caddy-l4` | — |
@@ -30,7 +30,7 @@ libraries stay ordinary external Debian packages — never repackaged here.
 
 Some Python runtime deps are **not in Debian bookworm** (or only in an
 incompatible version): `nostr-sdk` (for `python3-nostrhost-auth`), and
-`bech32`, `coincurve`, `pydantic>=2` (for `python3-nostrhost-policy`; bookworm
+`nostr-sdk`, `pydantic>=2` (for `python3-nostrhost-policy`; bookworm
 only ships pydantic 1.x). They are bundled into `nostrhost-runtime` as pinned
 manylinux cp311 wheels (downloaded at build time from `packaging/runtime/
 requirements.txt`) and installed **offline** into a private venv:

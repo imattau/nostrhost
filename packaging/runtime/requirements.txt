@@ -12,15 +12,13 @@
 # pip-installed by hand on the target. Keep this list aligned with the
 # component uv.locks:
 #   - libs/nostrhost-auth   -> nostr-sdk
-#   - libs/nostrhost-policy -> bech32, coincurve, pydantic
+#   - libs/nostrhost-policy -> nostr-sdk, pydantic
 # Transitive pins (pydantic-core, typing-extensions, annotated-types,
 # typing-inspection) are pinned here too so the wheel set is reproducible.
 #
 # IMPORTANT: when any pin here changes, bump the `nostrhost-runtime` version
 # in packaging/packages.yml — apt does not upgrade a same-version rebuild.
 nostr-sdk==0.45.1
-bech32==1.2.0
-coincurve==21.0.0
 pydantic==2.13.5
 pydantic-core==2.46.5
 typing-extensions==4.16.0
