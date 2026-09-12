@@ -322,6 +322,16 @@ first commit**: the registry carries input schemas + risk/reversibility
 (`operation_catalog()`), scopes are aligned to the shared policy enum, the
 broadened native surface is registered (18 new ops) and policy-gated.
 
+**Phase 1 (`nostrhost-mcp` skeleton) is complete**: the adapter repo
+(`libs/nostrhost-mcp`, imattau/nostrhost-mcp) is scaffolded — a thin MCP
+server over the installed fork (mcp SDK v2) whose tools are generated from
+`operation_catalog()`; read ops stream to the terminal 2204, write ops return
+`approval_required` + `operation_id` (with an `op_status` helper to poll),
+streamable HTTP verifies NIP-98 per request (loopback only, `/mcp`), and a
+deploy unit runs it unprivileged. VM-proven on clean6: 44 tools, read op to
+result, write op approval_required → control-plane approval → `op_status`
+SUCCEEDED; HTTP valid NIP-98 → 200, missing/garbage → 401.
+
 | Reference capability | Native op | Status |
 |---|---|---|
 | host reads | `system.status` / `system.version` | ✅ |

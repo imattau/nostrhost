@@ -108,5 +108,5 @@ libraries:
     repo: imattau/nostrhost-mcp
     path: libs/nostrhost-mcp
     branch: main
-    pin_commit: 689f2ea7f6cdd8fb79c0ae37d86b89b7d89d3caf
+    pin_commit: 6c2c9c8f297c37361482e12562e30b2a583b03c9
     stack: Python (mcp SDK v2)
