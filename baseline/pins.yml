@@ -72,7 +72,7 @@ libraries:
     repo: imattau/nostrhost-policy
     path: libs/nostrhost-policy
     branch: main
-    pin_commit: 7f20345f66e1af077707922137d3fc2691a7cde4
+    pin_commit: ce0a7a481055c8188ee8b709a54c8a82cf023d18
     extracted_from: imattau/yunohost-mcp
 
   - component: catalog         # catalogue event schema/relay/publisher/attestation/trust/repository

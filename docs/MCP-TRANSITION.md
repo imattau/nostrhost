@@ -154,37 +154,37 @@ Legend: ✅ native op exists · ◑ native op planned · ⛔ legacy path (un-mig
 | Reference tool(s) | Native operation | Status |
 |---|---|---|
 | `whoami`, `server_identity` | `system.status` (identity introspection) | ◑ add |
-| `server_info`, `validate_server`, `health_check` | `system.status` / `system.version` | ◑ add |
-| `system_snapshot`, `network_snapshot` | `system.status` / `network.public_ip` | ◑ add |
+| `server_info`, `validate_server`, `health_check` | `system.status` / `system.version` | ✅ `system.status` |
+| `system_snapshot`, `network_snapshot` | `system.status` / `network.public_ip` | ✅ |
 | `apps_list`, `app_info`, `app_resources` | `app.list` | ✅ |
-| `app_install` | `app.install` | ◑ add |
-| `app_upgrade`, `plan_app_upgrade`, `execute_plan`, `safe_upgrade` | `app.upgrade` | ◑ add |
+| `app_install` | `app.install` | ✅ |
+| `app_upgrade`, `plan_app_upgrade`, `execute_plan`, `safe_upgrade` | `app.upgrade` | ✅ |
 | `app_remove` | `app.remove` | ✅ |
-| `app_change_url` | `app.change_url` | ◑ add |
-| `app_config_get` / `app_config_set` | `app.config.read` / `app.config.set` | ◑ add |
-| `updates_check`, `updates_refresh` | `updates.check` / `updates.refresh` | ◑ add |
-| `migrations_list`, `migrations_state` | `system.migrations` (read) | ◑ add |
-| `migrations_run` | `system.migrate` | ◑ add |
+| `app_change_url` | `app.change_url` | ✅ |
+| `app_config_get` / `app_config_set` | `app.config.read` / `app.config.set` | ✅ |
+| `updates_check`, `updates_refresh` | `updates.check` / `updates.refresh` | ⛔ pending |
+| `migrations_list`, `migrations_state` | `system.migrations` (read) | ⛔ pending |
+| `migrations_run` | `system.migrate` | ⛔ pending |
 | `services_list`, `service_status`, `service_logs` | `service.status` | ✅ |
 | `service_restart` | `service.restart` | ✅ |
-| `service_history` | `service.history` | ◑ add |
-| `journal_query`, `web_logs` | `logs.read` / `logs.web` | ◑ add |
-| `diagnosis_run`, `diagnosis_get`, `diagnose_app` | `diagnosis.run` | ◑ add |
-| `ssh_diagnose`, `http_probe`, `incident_snapshot` | `diagnosis.run` (composites) | ◑ add |
-| `backups_list`, `backup_create` | `backup.list` / `backup.create` | ◑ add |
-| `backup_restore` | `backup.restore` | ◑ add |
-| `backups.delete` (scope) | `backup.delete` | ◑ add |
+| `service_history` | `service.history` | ⛔ pending |
+| `journal_query`, `web_logs` | `logs.read` / `logs.web` | ⛔ pending |
+| `diagnosis_run`, `diagnosis_get`, `diagnose_app` | `diagnosis.run` | ✅ |
+| `ssh_diagnose`, `http_probe`, `incident_snapshot` | `diagnosis.run` (composites) | ◑ compose |
+| `backups_list`, `backup_create` | `backup.list` / `backup.create` | ✅ |
+| `backup_restore` | `backup.restore` | ✅ |
+| `backups.delete` (scope) | `backup.delete` | ⛔ pending |
 | `domains_list`, `domain_add` | `domain.list` / `domain.add` | ✅ |
-| `domain_cert_info`, `domain_cert_install` | `domain.cert.info` / `domain.cert.install` | ◑ add |
-| `firewall_is_open`, `firewall_list` | `firewall.list` / `firewall.status` | ◑ add |
-| `firewall_open`, `firewall_close`, `firewall_reload` | `firewall.open` / `firewall.close` / `firewall.reload` | ◑ add |
-| `users_list`, `user_create`, `user_update`, `user_delete` | `user.list` / `user.create` / `user.update` / `user.delete` | ◑ add |
-| `user_group_*`, `user_permission_*` | `user.group.*` / `user.permission.*` | ◑ add |
+| `domain_cert_info`, `domain_cert_install` | `domain.cert.info` / `domain.cert.install` | ⛔ pending |
+| `firewall_is_open`, `firewall_list` | `firewall.list` / `firewall.status` | ✅ `firewall.list` |
+| `firewall_open`, `firewall_close`, `firewall_reload` | `firewall.open` / `firewall.close` / `firewall.reload` | ✅ |
+| `users_list`, `user_create`, `user_update`, `user_delete` | `user.list` / `user.create` / `user.update` / `user.delete` | ✅ (user.update ⛔) |
+| `user_group_*`, `user_permission_*` | `user.group.*` / `user.permission.*` | ⛔ pending |
 | `package_inspect`, `package_lint`, `package_logs` | `package.plan` / `package.inspect` | ✅/◑ |
 | `package_install_test` … `test_package` | `package.plan` + `package.reconcile` (Resource Engine) | ✅ |
-| `catalog_list` | `catalog.list` | ◑ add |
-| `catalog_publish_plan`, `catalog_verify`, `catalog_publish` | `catalog.publish` / `catalog.verify` | ◑ add |
-| `audit_list`, `audit_get` | `audit.list` / `audit.get` | ◑ add |
+| `catalog_list` | `catalog.list` | ⛔ pending |
+| `catalog_publish_plan`, `catalog_verify`, `catalog_publish` | `catalog.publish` / `catalog.verify` | ⛔ pending |
+| `audit_list`, `audit_get` | `audit.list` / `audit.get` | ⛔ pending |
 | `approve_operation`, `approval_get`, `approval_status` | control-plane NIP-46 / `op status` | ✅ |
 | `operations_list`, `operation_status`, `operation_logs` | `op.list` / `op.status` / `op.logs` | ✅ |
 | `memory_*` (Polypack) | deferred optional integration | ⛔ defer |
@@ -317,20 +317,25 @@ health check → result returned
 Updated as each row lands. `Done` = native op VM-proven through the chain and
 the reference tool retired from the legacy path.
 
+**Phase 0 (registry hardening + full native surface) is complete as of the
+first commit**: the registry carries input schemas + risk/reversibility
+(`operation_catalog()`), scopes are aligned to the shared policy enum, the
+broadened native surface is registered (18 new ops) and policy-gated.
+
 | Reference capability | Native op | Status |
 |---|---|---|
-| host reads | `system.status` / `system.version` | ◑ |
-| app lifecycle | `app.list` / `app.install` / `app.upgrade` / `app.remove` | ◑ |
-| services | `service.status` / `service.restart` / `service.control` | ◑ |
-| backup | `backup.create` / `backup.list` / `backup.restore` | ◑ |
+| host reads | `system.status` / `system.version` | ✅ |
+| app lifecycle | `app.list` / `app.install` / `app.upgrade` / `app.remove` / `app.change_url` / `app.config.read/set` | ✅ |
+| services | `service.status` / `service.restart` / `service.control` | ✅ |
+| backup | `backup.create` / `backup.list` / `backup.restore` | ✅ |
 | domains/DNS | `domain.*` / `dns.*` / `network.public_ip` | ✅ |
 | package lifecycle | `package.plan` / `package.reconcile` | ✅ |
-| users/groups/permissions | `user.*` / `user.group.*` / `user.permission.*` | ◑ |
-| system upgrade/migrate | `system.upgrade` / `system.migrate` | ◑ |
-| firewall | `firewall.*` | ◑ |
-| diagnosis/logs | `diagnosis.run` / `logs.read` | ◑ |
-| catalog | `catalog.list` / `catalog.publish` | ◑ |
-| audit | `audit.list` / `audit.get` | ◑ |
+| users/groups/permissions | `user.list` / `user.create` / `user.delete` (groups/permissions ⛔) | ◑ |
+| system upgrade/migrate | `system.upgrade` (migrate ⛔) | ◑ |
+| firewall | `firewall.list` / `firewall.open` / `firewall.close` / `firewall.reload` | ✅ |
+| diagnosis/logs | `diagnosis.run` (logs ⛔) | ◑ |
+| catalog | `catalog.list` / `catalog.publish` | ⛔ |
+| audit | `audit.list` / `audit.get` | ⛔ |
 | approvals | NIP-46 / `op status` (control plane) | ✅ |
 | identity/roles | 31100 / 27236 (control plane) | ✅ |
 | client integrations | `nostrhost-mcp` setup | ◑ |
