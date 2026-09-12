@@ -85,7 +85,7 @@ libraries:
     repo: imattau/nostrhost-control
     path: libs/nostrhost-control
     branch: main
-    pin_commit: afc80f496287fdfd23aef7ff0593a7e58cb6221c
+    pin_commit: 46e641640e72063d0a6ce65cdfdb26b47e959d2d
     stack: khatru-based Go relay (NIP-11/42/77/86/98)
     event_protocol: libs/nostrhost-control/EVENT-PROTOCOL.md
     selection: docs/RELAY-SELECTION.md
