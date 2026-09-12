@@ -27,7 +27,7 @@ forks:
     branch: nostrhost          # derivative branch (first fork modification, Phase 3)
     derivative: true
     pin: debian/12.1.41.2      # upstream baseline the branch was cut from
-    pin_commit: 16457ce89afad317f7405ae5adf06549b163d5b4
+    pin_commit: a901df2afd52d38b1962d8399b51d9dad07217e2
     live_server: 12.1.41.2
 
   - component: portal          # Nuxt/Vue/TypeScript user portal
@@ -72,7 +72,7 @@ libraries:
     repo: imattau/nostrhost-policy
     path: libs/nostrhost-policy
     branch: main
-    pin_commit: 0452034c5bd1d22112a252b593aefd07fd618541
+    pin_commit: d2ab56386be3100a4b722e2eda575e8a081dac05
     extracted_from: imattau/yunohost-mcp
 
   - component: catalog         # catalogue event schema/relay/publisher/attestation/trust/repository
@@ -101,12 +101,12 @@ libraries:
     repo: imattau/yunohost-mcp
     path: libs/yunohost-mcp
     branch: master
-    pin_commit: 1d84c25c17720f11ae416b4ef5bf997baacd7441
+    pin_commit: 51fc2e7b231b281dfd82bc3cf91d8197d15cdd78
     frozen: true               # no new platform logic; feature inventory + migration base only
 
   - component: mcp              # thin MCP protocol adapter (MCP transition Phase 1, docs/MCP-TRANSITION.md)
     repo: imattau/nostrhost-mcp
     path: libs/nostrhost-mcp
     branch: main
-    pin_commit: b9ed1821112a5f9452fe69429c0b614d38437c8c
+    pin_commit: 1378850c1f5a1234c8341b3751400a3ca299e1f1
     stack: Python (mcp SDK v2)
