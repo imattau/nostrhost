@@ -27,7 +27,7 @@ forks:
     branch: nostrhost          # derivative branch (first fork modification, Phase 3)
     derivative: true
     pin: debian/12.1.41.2      # upstream baseline the branch was cut from
-    pin_commit: 10dca0ed3750db7794e4dcc36bb7654d9278cdcc
+    pin_commit: 27d83f6a1c1d08728031979521ce7be075fb03dc
     live_server: 12.1.41.2
 
   - component: portal          # Nuxt/Vue/TypeScript user portal
@@ -94,5 +94,5 @@ libraries:
     repo: imattau/nostrhost-agent
     path: libs/nostrhost-agent
     branch: main
-    pin_commit: 3eba608757650ee8ff40ff6ce2170baddaf0bd57
+    pin_commit: 2f4bac80ab4ba7fb2bd86a3c6daeba734f66ce05
     stack: Go
