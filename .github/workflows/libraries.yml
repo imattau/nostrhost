@@ -75,8 +75,11 @@ jobs:
 
       - name: Install deps
         run: |
-          pip install -q pytest coincurve nostr-sdk websockets bottle PyJWT typer
+          pip install -q pytest coincurve nostr-sdk websockets bottle PyJWT typer \
+            toml pyyaml requests jinja2 packaging passlib cryptography publicsuffix2 \
+            psutil dnspython python-debian email-validator pyopenssl
           pip install -q -e libs/nostrhost-auth
+          pip install -q -e libs/nostrhost-policy
 
       - name: Run nostr identity tests (fork, nostrhost branch)
         working-directory: forks/yunohost
