@@ -27,7 +27,7 @@ forks:
     branch: nostrhost          # derivative branch (first fork modification, Phase 3)
     derivative: true
     pin: debian/12.1.41.2      # upstream baseline the branch was cut from
-    pin_commit: 2351d4c3accd1eceed8478046b17017b02ba8043
+    pin_commit: c4116863b64a2e1bf1897f386aeb25331a7c5423
     live_server: 12.1.41.2
 
   - component: portal          # Nuxt/Vue/TypeScript user portal
@@ -90,9 +90,9 @@ libraries:
     event_protocol: libs/nostrhost-control/EVENT-PROTOCOL.md
     selection: docs/RELAY-SELECTION.md
 
-  - component: agent           # local, policy-bound administrator (initial policy boundary)
+  - component: agent           # policy-bound local administrator and audited cycle engine
     repo: imattau/nostrhost-agent
     path: libs/nostrhost-agent
     branch: main
-    pin_commit: a5933e2d50d35da4b49c18718b7f6818461c3501
+    pin_commit: 92fbe1d195cdd41cfccf73a6e6b866394eb92d5f
     stack: Go
