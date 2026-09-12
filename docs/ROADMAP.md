@@ -90,7 +90,7 @@ the **working specifications**; the plan, its phases and its status live here.
 | §16 | Declarative reconciliation (Stage D) | ✓ | — |
 | §17 | Distribution + release tooling / native self-update | ⏳ | Debian repo, installer image, signed self-update |
 | §18 | Platform simplification (messaging, mail, security) | ◑ | mail identity/UI cleanup; security-state digest cadence (§18.6) |
-| §19 | Native bootstrap / postinstall | ◑ | alpha W2: CLI implements `postinstall --new/--restore`; blank-VM acceptance loop + legacy postinstall bypass ⏳ |
+| §19 | Native bootstrap / postinstall | ◑ | five-key bootstrap + recovery bundle + `--restore` CLI landed (POSTINSTALL-KEYS); blank-VM acceptance loop + legacy postinstall bypass ⏳ |
 | §20 | Web cutover completion (Caddy P7) | ⏳ | Caddy storage in backup, cert state in ngit, residual nginx helpers/migrations |
 | §21 | End-to-end native app lifecycle | ◑ | `package.plan`/`reconcile` proven on nostrhost-test; the §21 vertical loop on one **real** app ⏳ |
 | §22 | YNH package migration analyser | ⏳ | manifest + Bash-AST analyser, deterministic migration, AI repair loop |
@@ -98,7 +98,7 @@ the **working specifications**; the plan, its phases and its status live here.
 | §24 | Native vs compatibility boundary | ⏳ | measurable shrink (122→87→41→0 helpers) |
 | §25 | LDAP dependency inventory / reduction | ⏳ | later phase (alpha) |
 | §26 | Native DNS management | ⏳ | later phase (alpha) |
-| §27 | Secrets / key lifecycle | ⏳ | later phase (alpha) |
+| §27 | Secrets / key lifecycle | ◑ | node-key inventory + safe keeping landed (POSTINSTALL-KEYS); rotation + Restic/DB/external/DNS/Caddy/agent secret classes remain |
 | MCP 0–4 | MCP transition: registry, skeleton, identity, signed mutations, approval flow | ✅ | — |
 | MCP 5 | Resource Engine integration (catalog surface) | ⏳ | `catalog.list/publish/verify` + legacy `package_*` tool mapping + compat path |
 | MCP 6 | Client integrations + packaging | ⏳ | port claude-code/codex/gemini/hermes/openclaw/opencode configs, skill rename, deb + PyPI |
@@ -106,7 +106,7 @@ the **working specifications**; the plan, its phases and its status live here.
 | MCP 8 | Retire duplicated `yunohost-mcp` logic | ⏳ | gated on MCP 5–6 |
 | Alpha W0 | Documentation truth | ✅ | — |
 | Alpha W1 | `nostrhost-runtime` deb (private venv, bundled wheels) | ✅ | in `packaging/packages.yml`; verify clean-VM install |
-| Alpha W2 | Native bootstrap / postinstall | ◑ | CLI implements `--new/--restore`; blank-VM acceptance loop + legacy postinstall bypass |
+| Alpha W2 | Native bootstrap / postinstall | ◑ | five-key bootstrap + recovery bundle landed (POSTINSTALL-KEYS); blank-VM acceptance loop + legacy postinstall bypass |
 | Alpha W3 | End-to-end native app lifecycle | ⏳ | `app install <coordinate>` CLI + native backup/restore + real-app proof |
 | Agent 1–2 | Agent daemon packaging (optional APT, disabled by default) | ⏳ | systemd unit, first-run, secret handoff, VM acceptance |
 | Agent 3–4 | Model artifacts on Hugging Face + evaluation Space | ⏳ | blocked on a candidate passing the training-regime gates |
@@ -391,9 +391,11 @@ is a projection, not a database.
 Implemented and proven on the testbed: `link`/`revoke` author kind-31102
 identity events, the projector materialises them into LDAP-compatible accounts,
 and `resolve_pubkey`/`resolve_username` resolve across the mapping. Bootstrap
-is hardened into three roles — `server_sk` (machine key, signs execution
-results), `operator_sk` (primary admin, signs approvals/capabilities), and an
-`admins` list — via root-only `nostrhost-bootstrap`.
+is hardened into five roles — `server_sk` (machine key, signs execution
+results), `operator_sk` (primary admin, signs approvals/capabilities),
+`notice_sk` (portal notice key), `publisher_sk` (catalogue publisher) and
+`notifier_sk` (notification service) — plus an `admins` list — via root-only
+`nostrhost-bootstrap` / `postinstall --new` (§19, `docs/POSTINSTALL-KEYS.md`).
 
 ---
 
@@ -1547,14 +1549,18 @@ more consistent with its Nostr-native identity and control architecture.
 
 ---
 
-# 19. Native Bootstrap / Postinstall — ⏳
+# 19. Native Bootstrap / Postinstall — ◑ (postinstall CLI + five-key bootstrap landed; acceptance loop + `--restore` DR path remain)
 
 The biggest missing platform-level piece. A clean install must no longer
-bootstrap through the old YunoHost admin/password assumptions. Today
-`nostrhost-bootstrap` already provisions the three hardened roles
-(`server_sk` / `operator_sk` / `admins` / `notice_sk`) root-only (§4), but the
-path from Debian to a ready NostrHost node is still assembled piecemeal.
-Make it a single declarative postinstall:
+bootstrap through the old YunoHost admin/password assumptions. `postinstall
+--new` provisions the five hardened roles root-only (§4, `docs/POSTINSTALL-KEYS.md`):
+`server_sk` / `operator_sk` (default admin) / `notice_sk` / `publisher_sk`
+(catalogue) / `notifier_sk` (notification service), renders `relay.toml`,
+`policy.toml`, `notify.toml` and `catalogue.env`, records state S0, and
+presents the keys for safe keeping once (`nsec1` recovery bundle + root-only
+`/etc/nostrhost/keys.recovery`). `postinstall --restore` recovers identity +
+state + Restic and requires every node key explicitly (flags or `--keys-file`);
+the blank-VM acceptance loop and the legacy `tools_postinstall` bypass remain.
 
 ```text
 Debian
@@ -1787,16 +1793,37 @@ Provider APIs replace Bash helpers. DNS participates in semantic state
 
 ---
 
-# 27. Secrets / Key Lifecycle — ⏳
+# 27. Secrets / Key Lifecycle — ◑ (node-key inventory + safe keeping landed; rotation/backup/recovery architecture remains)
 
 NostrHost holds increasingly valuable keys: server nsec, operator nsec,
-notification key, Restic credentials, database secrets, external relay
-credentials, DNS provider credentials, Caddy-related secrets, agent keys.
+notification key, catalogue publisher key, Restic credentials, database
+secrets, external relay credentials, DNS provider credentials, Caddy-related
+secrets, agent keys.
 Formalise the lifecycle as first-class design:
 
 ```text
 generation · storage · access · rotation · backup · recovery · revocation
 ```
+
+The **node identity keys** are now a defined set with a safe-keeping story
+(`docs/POSTINSTALL-KEYS.md`):
+
+```text
+operator_sk  — primary admin / owner (approvals, grants, identity defs)
+server_sk    — server machine key (execution events 2203/2204)
+notice_sk    — portal low-privilege notice key (portal.toml, ynh-portal)
+publisher_sk — catalogue publisher (catalog.publish; writer-only on the relay)
+notifier_sk  — notification service (reads notices, sends NIP-17 DMs only)
+```
+
+Storage: root-only `operator.toml` (0600) + `portal.toml` (0640 ynh-portal);
+the relay allowlists all four control pubkeys (operator/server/notice/publisher
+as writers, only the operator as admin). **Backup**: the installer is shown the
+`nsec1` bundle once and a root-only `/etc/nostrhost/keys.recovery` is written —
+the keys are never in ngit state. **Recovery**: `postinstall --restore` takes
+every key explicitly (64-hex or `nsec1`, or `--keys-file`). Rotation and the
+remaining secret classes (Restic/DB/external/DNS/Caddy/agent) still need the
+explicit architecture below.
 
 systemd credentials are a useful storage primitive, but the overall
 key-management policy needs explicit architecture. Secrets are referenced by
