@@ -35,7 +35,8 @@ nostrhost/
 │   ├── nostrhost-auth/     #   identity/challenge/verify/npub/mappings/NIP-05
 │   ├── nostrhost-policy/   #   roles/scopes/NIP-98/delegation/approvals/audit
 │   ├── nostrhost-catalog/  #   catalogue schema/relay/attestation/trust
-│   └── nostrhost-control/  #   control plane: local relay + event model
+│   ├── nostrhost-control/  #   control plane: local relay + event model
+│   └── nostrhost-agent/    #   policy-bound local administrator
 ├── packages/         # native package.toml examples / test apps (resource engine)
 ├── packaging/        # APT release BOM, scripts, compatibility matrix
 ├── baseline/

@@ -20,3 +20,6 @@
 [submodule "libs/nostrhost-control"]
 	path = libs/nostrhost-control
 	url = https://github.com/imattau/nostrhost-control.git
+[submodule "libs/nostrhost-agent"]
+	path = libs/nostrhost-agent
+	url = https://github.com/imattau/nostrhost-agent.git
