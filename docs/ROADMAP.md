@@ -82,7 +82,7 @@ the **working specifications**; the plan, its phases and its status live here.
 | §8 | Portal Nostr authentication | ✓ | real-browser passkey attestation + visual app-grid pass (headless limit only) |
 | §9 | Restic linkage + assisted rollback (Stage B) | ✅ | reverse steps for app reinstall/upgrade stay manual pending install-arg provenance |
 | §10 | Admin interface (native management views) | ⏳ | identities/agents/delegations/approvals/catalogue/trust/audit views |
-| §11 | Native Nostr catalogue | ✓ | `catalog.list/get/publish` native ops landed (MCP Phase 5); `catalog.verify` + Admin catalogue UI ⏳ |
+| §11 | Native Nostr catalogue | ✓ | `catalog.list/get/publish/verify` native ops landed (MCP Phase 5); Admin catalogue UI ⏳ |
 | §12 | Web-layer auth (Caddy `forward_auth`, SSOwat retired) | ✓ | P7 residual-reference cleanup (§20) |
 | §13 | MCP adapter | ✅ | MCP transition Phases 5–8 (below) |
 | §14 | OIDC compatibility | ◑ | client management + signing-key rotation (bridge live/VM-proven) |
@@ -100,7 +100,7 @@ the **working specifications**; the plan, its phases and its status live here.
 | §26 | Native DNS management | ⏳ | later phase (alpha) |
 | §27 | Secrets / key lifecycle | ◑ | node-key inventory + safe keeping landed (POSTINSTALL-KEYS); rotation + Restic/DB/external/DNS/Caddy/agent secret classes remain |
 | MCP 0–4 | MCP transition: registry, skeleton, identity, signed mutations, approval flow | ✅ | — |
-| MCP 5 | Resource Engine integration (catalog surface) | ◑ | `catalog.list/get/publish` landed (publisher key signs declarations); legacy `package_*` tool mapping + audit/system/services/logs/backups/domains/users backlog remain |
+| MCP 5 | Resource Engine integration (catalog surface) | ✓ | `catalog.list/get/publish/verify` + the full backlog landed (updates/migrations/service.history/logs/backup.delete/domain.cert/users/groups/permissions/audit) — 69 ops; legacy `package_*` mapping + compat path dropped by direction |
 | MCP 6 | Client integrations + packaging | ⏳ | port claude-code/codex/gemini/hermes/openclaw/opencode configs, skill rename, deb + PyPI |
 | MCP 7 | Multi-host / fleet projection | ⏳ | deferred until MCP 1–6 proven |
 | MCP 8 | Retire duplicated `yunohost-mcp` logic | ⏳ | gated on MCP 5–6 |
@@ -127,7 +127,7 @@ compatibility/migration source:
 ```text
 1.  Alpha W2  native postinstall --new / --restore          (§19)
 2.  Alpha W3  end-to-end native app lifecycle               (§21)
-3.  MCP 5     catalog.list / catalog.publish / catalog.verify + package_* mapping
+3.  MCP 5     catalog.list / catalog.publish / catalog.verify + package_* mapping — ✅ done (69 ops; legacy mapping dropped)
 4.  MCP 6     client integrations (configs, skill rename, deb + PyPI)
 5.  §20       Caddy P7 residual cleanup
 6.  §17/§19   distribution + native self-update
@@ -1084,29 +1084,31 @@ modules are retired as native equivalents land. Full detail:
 | **2** | Native identity + capabilities — client npub rides as the operation `actor`; agents are native 31100/27236 capabilities; the daemon authorizes the actor, not the signing key | ✅ |
 | **3** | Signed mutations + streaming — service/backup/dns/credential/domain/app/package/state/rollback mutations VM-proven; strict input models; redaction container fix | ✅ |
 | **4** | Approval flow (out of MCP) — control-plane 2201/NIP-46; `op_status` surfaces `approval_required`/`REJECTED`/result; owner co-signature + rejection proven; operationsd keepalive (1011) debt resolved | ✅ (gate `PHASE4-PROOF-OK`) |
-| **5** | Resource Engine integration — `package.plan`/`package.reconcile` native and proven; **native catalog surface landed** (`catalog.list`/`catalog.get`/`catalog.publish` — publish builds a kind-32267 declaration signed with the node's `publisher_sk`, pushed to the control relay and ingested locally); remaining: map legacy `package_*` test tools + the audit/system/services/logs/backups/domains/users native-op backlog + explicit legacy compat path | ◑ |
+| **5** | Resource Engine integration — **complete**. `package.plan`/`package.reconcile` native and proven; native catalog surface (`catalog.list`/`catalog.get`/`catalog.publish`/`catalog.verify`); and the full Phase 5 backlog landed — `updates.check/refresh`, `system.migrations`/`system.migrate`, `service.history`, `logs.read`/`logs.web` (Caddy access log, /var/log/caddy — nginx is not part of the stack), `backup.delete`, `domain.cert.info`/`domain.cert.install`, `user.update`, `user.group.*`, `user.permission.*`, `audit.list`/`audit.get` (signed chain on the control relay). Registry is 69 ops. Legacy `package_*` test-tool mapping and the explicit legacy compat path were **dropped by direction** (no legacy deployment exists). | ✅ |
 | **6** | Client integrations — port claude-code/codex/gemini/hermes/openclaw/opencode configs to `nostrhost-mcp`; rename the `yunohost-mcp-operations` skill; OpenCode Web → loopback streamable HTTP; package + publish (`python3-nostrhost-mcp` deb + PyPI) | ⏳ |
 | **7** | Multi-host / fleet projection (per-node adapter; client → node relay mapping) | ⏳ deferred |
 | **8** | Retire duplicated `yunohost-mcp` logic (kept: protocol, schema/tool exposure, client setup, redaction, result translation, transport) | ⏳ gated on 5–6 |
 
 ## Phase 5 backlog — the missing native operation surface
 
-Read ops first (immediate, un-gated), then the write ops with their policy
-gates:
+**Complete (fork `e85ca0b7`): the registry is 69 ops.** Read ops land
+un-gated, write ops carry their policy gates; `audit.*` reads are owner
+co-signed per call. Legacy `package_*` test-tool mapping + explicit legacy
+compat path dropped by direction (no legacy deployment exists).
 
-| Op group | Missing native ops |
+| Op group | Status |
 |---|---|
-| catalog | ✅ `catalog.list`, `catalog.get`, `catalog.publish` (publisher key signs kind-32267 declarations) — `catalog.verify` still ⏳ |
-| audit | `audit.list`, `audit.get` (owner co-signature per call) |
-| system | `updates.check`, `updates.refresh`, `system.migrations`, `system.migrate` |
-| services | `service.history` |
-| logs | `logs.read`, `logs.web` |
-| backups | `backup.delete` |
-| domains | `domain.cert.info`, `domain.cert.install` |
-| users | `user.update`, `user.group.*`, `user.permission.*` |
-| diagnosis | composite tools (`ssh_diagnose`, `http_probe`, `incident_snapshot`) |
+| catalog | ✅ `catalog.list`/`catalog.get`/`catalog.publish` (publisher key signs kind-32267 declarations) + `catalog.verify` (Python id/sig/schema/trusted-publisher check; naddr rejected — no nip19 decoder) |
+| audit | ✅ `audit.list`, `audit.get` — the signed operation chain on the control relay is the audit log (`query_chain_events`); owner co-signature per call |
+| system | ✅ `updates.check`, `updates.refresh`, `system.migrations`, `system.migrate` |
+| services | ✅ `service.history` |
+| logs | ✅ `logs.read` (allowlisted journals incl. caddy + nostr daemons), `logs.web` (Caddy JSON access log, /var/log/caddy — nginx is not part of the stack) |
+| backups | ✅ `backup.delete` |
+| domains | ✅ `domain.cert.info`, `domain.cert.install` (staging rejected; ACME failure surfaced via `acme_error`) |
+| users | ✅ `user.update`, `user.group.*` (`admins` escalates to `users.admin_access`), `user.permission.*` (`users.permissions` tier) |
+| diagnosis | ◑ composite tools (`ssh_diagnose`, `http_probe`, `incident_snapshot`) still map to `diagnosis.run` composites — no separate ops |
 
-Policy gates to carry over: confirmation for `app.change_url`/`app.config.set`/
+Policy gates carried: confirmation for `app.change_url`/`app.config.set`/
 `domain.cert.install`/`catalog.publish`; recent-backup + ≥2 GB free for
 `app.upgrade`/`package.reconcile`; confirmation + different-admin co-signature
 for `backup.restore`/`system.upgrade`/`system.migrate`/`firewall.*`/
@@ -1115,7 +1117,7 @@ co-signature for `audit.read`.
 
 ## Verification
 
-- **Local**: fork suite (496 passing) + `nostrhost-mcp` unit tests (22 passing,
+- **Local**: fork suite (539 passing) + `nostrhost-mcp` unit tests (22 passing,
   1 skip) + flake8 clean.
 - **VM**: real MCP client → `nostrhost-mcp` (unprivileged) → submit → approve →
   execute → streamed result, with the MCP process holding no host write

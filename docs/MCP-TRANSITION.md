@@ -167,29 +167,29 @@ Legend: ✅ native op exists · ◑ native op planned · ⛔ legacy path (un-mig
 | `app_remove` | `app.remove` | ✅ |
 | `app_change_url` | `app.change_url` | ✅ |
 | `app_config_get` / `app_config_set` | `app.config.read` / `app.config.set` | ✅ |
-| `updates_check`, `updates_refresh` | `updates.check` / `updates.refresh` | ⛔ pending |
-| `migrations_list`, `migrations_state` | `system.migrations` (read) | ⛔ pending |
-| `migrations_run` | `system.migrate` | ⛔ pending |
+| `updates_check`, `updates_refresh` | `updates.check` / `updates.refresh` | ✅ |
+| `migrations_list`, `migrations_state` | `system.migrations` (read) | ✅ |
+| `migrations_run` | `system.migrate` | ✅ |
 | `services_list`, `service_status`, `service_logs` | `service.status` | ✅ |
 | `service_restart` | `service.restart` | ✅ |
-| `service_history` | `service.history` | ⛔ pending |
-| `journal_query`, `web_logs` | `logs.read` / `logs.web` | ⛔ pending |
+| `service_history` | `service.history` | ✅ |
+| `journal_query`, `web_logs` | `logs.read` / `logs.web` | ✅ (`logs.web` reads the native Caddy access log — /var/log/caddy/access.log — not nginx) |
 | `diagnosis_run`, `diagnosis_get`, `diagnose_app` | `diagnosis.run` | ✅ |
 | `ssh_diagnose`, `http_probe`, `incident_snapshot` | `diagnosis.run` (composites) | ◑ compose |
 | `backups_list`, `backup_create` | `backup.list` / `backup.create` | ✅ |
 | `backup_restore` | `backup.restore` | ✅ |
-| `backups.delete` (scope) | `backup.delete` | ⛔ pending |
+| `backups.delete` (scope) | `backup.delete` | ✅ |
 | `domains_list`, `domain_add` | `domain.list` / `domain.add` | ✅ |
-| `domain_cert_info`, `domain_cert_install` | `domain.cert.info` / `domain.cert.install` | ⛔ pending |
+| `domain_cert_info`, `domain_cert_install` | `domain.cert.info` / `domain.cert.install` | ✅ |
 | `firewall_is_open`, `firewall_list` | `firewall.list` / `firewall.status` | ✅ `firewall.list` |
 | `firewall_open`, `firewall_close`, `firewall_reload` | `firewall.open` / `firewall.close` / `firewall.reload` | ✅ |
-| `users_list`, `user_create`, `user_update`, `user_delete` | `user.list` / `user.create` / `user.update` / `user.delete` | ✅ (user.update ⛔) |
-| `user_group_*`, `user_permission_*` | `user.group.*` / `user.permission.*` | ⛔ pending |
+| `users_list`, `user_create`, `user_update`, `user_delete` | `user.list` / `user.create` / `user.update` / `user.delete` | ✅ |
+| `user_group_*`, `user_permission_*` | `user.group.*` / `user.permission.*` | ✅ |
 | `package_inspect`, `package_lint`, `package_logs` | `package.plan` / `package.inspect` | ✅/◑ |
 | `package_install_test` … `test_package` | `package.plan` + `package.reconcile` (Resource Engine) | ✅ |
 | `catalog_list` | `catalog.list` / `catalog.get` | ✅ |
-| `catalog_publish_plan`, `catalog_verify`, `catalog_publish` | `catalog.publish` / `catalog.verify` | ✅/⛔ (`catalog.publish` landed, signed with the node publisher key; `catalog.verify` ⏳) |
-| `audit_list`, `audit_get` | `audit.list` / `audit.get` | ⛔ pending |
+| `catalog_publish_plan`, `catalog_verify`, `catalog_publish` | `catalog.publish` / `catalog.verify` | ✅ (`catalog.publish` signed with the node publisher key; `catalog.verify` verifies id/sig/schema/trusted publisher in Python — naddr input rejected, no nip19 decoder) |
+| `audit_list`, `audit_get` | `audit.list` / `audit.get` | ✅ (signed chain on the control relay; owner co-signature per call) |
 | `approve_operation`, `approval_get`, `approval_status` | control-plane NIP-46 / `op status` | ✅ |
 | `operations_list`, `operation_status`, `operation_logs` | `op.list` / `op.status` / `op.logs` | ✅ |
 | `memory_*` (Polypack) | deferred optional integration | ⛔ defer |
@@ -338,8 +338,21 @@ into a reconnect loop. The daemon is stable across proof runs.
 
 ### Phase 5 — Resource Engine integration
 `package.plan`/`package.reconcile` are native. Map old `package_*` test
-tools → plan/reconcile + `catalog.publish`. Legacy-only tools fall to the
-explicit compat path.
+tools → plan/reconcile + `catalog.publish`.
+
+**Phase 5 is complete** (fork `e85ca0b7`, registry 69 ops): the full backlog
+landed — `updates.check/refresh`, `system.migrations`/`system.migrate`,
+`service.history`, `logs.read`/`logs.web` (the native web server is Caddy, so
+`logs.web` reads `/var/log/caddy/access.log` JSON, not nginx),
+`backup.delete`, `domain.cert.info`/`domain.cert.install`, `user.update`,
+`user.group.*` (`admins` escalates to the owner-co-signed `users.admin_access`
+tier), `user.permission.*`, `audit.list`/`audit.get` (the signed operation
+chain on the control relay is the audit log, read via a new
+`query_chain_events` helper; owner co-signed per call), and `catalog.verify`
+(Python id/signature/schema/trusted-publisher verification; naddr rejected —
+no nip19 decoder). The legacy `package_*` test-tool mapping and the explicit
+legacy compat path were **dropped by direction** — there is no legacy
+deployment to translate, so nothing needs the compat path.
 
 ### Phase 6 — client integrations
 Port claude-code/codex/gemini/hermes/openclaw/opencode configs to point at
@@ -421,12 +434,12 @@ event replay on restart.
 | backup | `backup.create` / `backup.list` / `backup.restore` | ✅ |
 | domains/DNS | `domain.*` / `dns.*` / `network.public_ip` | ✅ |
 | package lifecycle | `package.plan` / `package.reconcile` | ✅ |
-| users/groups/permissions | `user.list` / `user.create` / `user.delete` (groups/permissions ⛔) | ◑ |
-| system upgrade/migrate | `system.upgrade` (migrate ⛔) | ◑ |
+| users/groups/permissions | `user.list` / `user.create` / `user.update` / `user.delete` / `user.group.*` / `user.permission.*` | ✅ |
+| system upgrade/migrate | `system.upgrade` / `system.migrations` / `system.migrate` / `updates.check` / `updates.refresh` | ✅ |
 | firewall | `firewall.list` / `firewall.open` / `firewall.close` / `firewall.reload` | ✅ |
-| diagnosis/logs | `diagnosis.run` (logs ⛔) | ◑ |
-| catalog | `catalog.list` / `catalog.get` / `catalog.publish` | ✅ (verify ⏳) |
-| audit | `audit.list` / `audit.get` | ⛔ |
+| diagnosis/logs | `diagnosis.run` / `logs.read` / `logs.web` / `service.history` | ✅ |
+| catalog | `catalog.list` / `catalog.get` / `catalog.publish` / `catalog.verify` | ✅ |
+| audit | `audit.list` / `audit.get` | ✅ |
 | approvals | NIP-46 / `op status` (control plane) | ✅ |
 | identity/roles | 31100 / 27236 (control plane) | ✅ |
 | signed mutations + streaming | service/backup/dns/credential/domain/package mutations via MCP | ✅ |
