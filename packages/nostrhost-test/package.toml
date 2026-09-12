@@ -1,12 +1,10 @@
-# Native package declaration for the NostrHost test app (P4).
+# Native package declaration for the NostrHost test app (W3 app lifecycle).
 #
-# This replaces the legacy YunoHost manifest/nginx path: the app is served by
-# Caddy as a static (file_server) native web route protected by the authd
-# (forward_auth). The legacy manifest.json + conf/nginx.conf are retained only
-# until the nginx shim is retired (CADDY-MIGRATION P6).
-#
-# `domain` is the testbed domain; the production engine resolves the primary
-# domain at reconcile time.
+# Fully self-contained: the web content is rendered as a managed config file
+# (no network source), the app declares its web route, Portal permission,
+# HTTP health check and Restic backup paths so the W3 signed loop exercises
+# every step: fetch -> verify -> plan -> signed request -> policy -> approval
+# -> Caddy route -> permissions -> health -> Restic pre/post state.
 
 [app]
 id = "nostrhost-test"
@@ -14,6 +12,16 @@ version = "0.1"
 
 [directories.install]
 path = "/var/www/nostrhost-test"
+mode = 0o755
+
+[config.index]
+destination = "/var/www/nostrhost-test/index.html"
+mode = 0o644
+content = """<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>nostrhost-test</title></head>
+<body><h1>nostrhost-test ok</h1><p>served natively by the resource engine</p></body>
+</html>
+"""
 
 [web]
 domain = "nostrhost.test"
@@ -28,3 +36,13 @@ https = "automatic"
 url = "/"
 allowed = ["all_users"]
 auth_request = true
+
+[health]
+type = "http"
+path = "/nostrhost-test/"
+timeout = 5
+retries = 2
+
+[backup]
+paths = ["/var/www/nostrhost-test"]
+database = false
