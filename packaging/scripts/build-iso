@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+# packaging/scripts/build-iso — build the NostrHost Debian installation ISO
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+INSTALLER_DIR="$ROOT/forks/installer"
+
+which xorriso >/dev/null 2>&1 || { echo "ERROR: xorriso is required (apt install xorriso)"; exit 1; }
+
+OUTPUT="${1:-$ROOT/nostrhost-12-amd64.iso}"
+BASE_ISO="${2:-}"
+
+if [[ -z "$BASE_ISO" ]]; then
+    BASE_ISO="/tmp/debian-12-netinst-amd64.iso"
+    if [[ ! -f "$BASE_ISO" ]]; then
+        echo "== Downloading Debian 12 Bookworm netinst ISO =="
+        python3 "$INSTALLER_DIR/udib.py" -o "$BASE_ISO" get iso
+    fi
+fi
+
+echo "== Injecting NostrHost assets and repacking ISO =="
+python3 "$INSTALLER_DIR/udib.py" -o "$OUTPUT" inject -i "$BASE_ISO"
+echo "== Successfully built NostrHost ISO: $OUTPUT =="

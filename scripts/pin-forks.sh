@@ -28,7 +28,8 @@ get_pin() { awk -v c="$1" '
 
 for pair in "yunohost debian/12.1.41.2 YunoHost/yunohost" \
             "portal debian/12.1.2 YunoHost/yunohost-portal" \
-            "admin debian/12.1.15 YunoHost/yunohost-admin"; do
+            "admin debian/12.1.15 YunoHost/yunohost-admin" \
+            "installer main YunoHost/custom-debian-iso"; do
   set -- $pair
   comp="$1"; tag="$2"; upstream_repo="$3"
   dir="$ROOT/forks/$comp"

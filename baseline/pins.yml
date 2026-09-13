@@ -52,6 +52,17 @@ forks:
     pin_commit: 12bdb10d3cde3144d637a1cac1af223d2e1390e4
     live_server: 12.1.15
 
+  - component: installer       # Debian ISO graphical installer image builder
+    upstream_repo: YunoHost/custom-debian-iso
+    fork_repo: imattau/nostrhost-custom-debian-iso
+    path: forks/installer
+    upstream_branch: main
+    branch: main
+    derivative: true
+    pin: baf6e1bc2abac7d64f9d86a0f5228f1e5819d738
+    pin_commit: 779be40aec1ac7fed0621a59b36257356c662bf3
+    live_server: 12.1.41.2
+
 # Upstream dependencies pinned by the same stable tags, but NOT forked in
 # Stage 1 (the derivative builds against upstream versions of these).
 dependencies: []
