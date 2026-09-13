@@ -122,7 +122,7 @@ Classification per dependency:
 | 1 | Moulinette LDAP-bind credential check | `forks/yunohost/src/authenticators/ldap_admin.py`, `ldap_ynhuser.py` (`_authenticate_credentials`) | **Done — deleted** | Confirmed zero callers (moulinette itself is retired). Removed in this pass; the `Authenticator` classes remain for their still-live session-cookie methods. |
 | 2 | Moulinette actionsmap config | `forks/yunohost/share/actionsmap.yml`, `share/actionsmap-portal.yml` | **Done — deleted** | Confirmed unread by anything (no systemd unit, no packaging reference); referenced `ldap_admin`/`ldap_ynhuser` as HTTP-layer authenticators for a framework that no longer runs. |
 | 3 | Session-cookie management | `ldap_admin.py`, `ldap_ynhuser.py` (`set_session_cookie`/`get_session_cookie`/`delete_session_cookie`) | Retain — not LDAP | Plain JWT+cookie code, no LDAP inside it. Actively used by `nostr_login.py` and others. Out of scope for LDAP retirement; a future rename away from the `ldap_*` module names (now misleading) is cosmetic cleanup, not urgent. |
-| 4 | Portal authorization read (`user_is_allowed_on_domain`) | `ldap_ynhuser.py:92-159` | Replace with NIP-51 projection, then delete the LDAP read | Called from both login and every session-cookie validation (`get_session_cookie`). This is today's *de facto* permission-membership check and the real Phase 2 target, alongside row 6. |
+| 4 | Portal authorization read (`user_is_allowed_on_domain`) | `ldap_ynhuser.py:92-159` | ◑ admin-group LDAP read demoted; email-domain LDAP read remains | The admins-group check now tries `is_admin_user()` (native, no LDAP) first and only falls back to the LDAP `cn=admins,ou=groups` read for admins with no linked identity yet -- additive, same philosophy as row 6/the NIP-51 merge. The other LDAP read in this function (matching a user's email address to the domain) is untouched: it's a mail/account concept, not a membership-list concept NIP-51 fits, and mail is being retired separately (`docs/MAIL-RETIREMENT.md`) -- out of scope here. |
 | 5 | Low-level LDAP client (`LDAPInterface`) | `forks/yunohost/src/utils/ldap.py` | Delete outright (infra) | Removable once rows 4, 6, 7 no longer call it. |
 | 6 | App permission sync (`ou=permission`) | `forks/yunohost/src/permission.py:616` `_sync_permissions_with_ldap()`, called from lines 332, 453, 610 | Replace with NIP-51 projection, then delete | The authd JSON permission file used by Caddy `forward_auth` is sourced from this LDAP sync today. No NIP-51 projector code exists anywhere in the repo yet. Build the NIP-51-list -> permission-projection path first, cut it over as the only writer, then delete `_sync_permissions_with_ldap()` and its call sites. |
 | 7 | User/group CRUD (Unix account store) | `forks/yunohost/src/user.py` | Mostly done — LDAP already secondary | `nostr_identityd.py` already treats the kind-31102 identity event as authoritative and materializes it into the native `nostrhost_auth.identity.mappings` projection store; the LDAP/Unix account (`YnhAccountBackend.ensure_user`) is only created as a *derived* compatibility artifact when a not-yet-existing username is named (`handle_identity_event`, lines 86–156). Remaining work is `user.py`'s own direct CRUD surface. |
@@ -159,12 +159,15 @@ this revision. What's left is narrower than originally scoped:
    `public` — this is a safe, gradually-adoptable path, not the cutover
    itself. `nostrhost user permission grant-nostr <permission> <pubkey>...
    [--public]` / `clear-nostr <permission>` (CLI) publish the operator-signed
-   kind-30000 event, mirroring `identity link`/`revoke`. Still open: (a)
-   `user_is_allowed_on_domain()` (row 4) still reads LDAP directly and isn't
-   merged with NIP-51 yet; (b) no Admin UI (web) exposes grant-nostr yet,
-   CLI-only for now; (c) the actual cutover (stop writing/reading LDAP
-   membership once grants have moved to NIP-51 in practice) is not done, by
-   design, until NIP-51 is the primary path in real use.
+   kind-30000 event, mirroring `identity link`/`revoke`. `is_admin_user()`
+   (native, no LDAP) now runs ahead of the LDAP admins-group read inside
+   `user_is_allowed_on_domain()` (row 4) -- additive, same as the permission
+   merge. Still open: (a) the *email-domain* LDAP read in the same function
+   is untouched (a mail concept, not a membership one -- see row 4's note);
+   (b) no Admin UI (web) exposes grant-nostr yet, CLI-only for now; (c) the
+   actual cutover (stop writing/reading LDAP membership once grants have
+   moved to NIP-51 in practice) is not done, by design, until NIP-51 is the
+   primary path in real use.
 4. **Phase 3 — Unix account store cleanup (mostly done already).** The
    identity projector already treats Nostr identity as authoritative and
    LDAP as a derived fallback (row 7); once Phase 2 lands, nothing needs
@@ -185,7 +188,7 @@ this revision. What's left is narrower than originally scoped:
 |---|---|
 | 0 — Inventory | ✓ maintained (this document) |
 | 1 — Delete dead moulinette auth code | ✓ done (this revision) |
-| 2 — NIP-51 permission projection | ◑ additive projector + CLI authoring landed (`nip51_permissions.py`, `nostr_permissiond`, `user permission grant-nostr`/`clear-nostr`); `user_is_allowed_on_domain()` LDAP read, Admin (web) UI, and actual LDAP cutover remain |
+| 2 — NIP-51 permission projection | ◑ additive projector + CLI authoring + native admin check landed (`nip51_permissions.py`, `nostr_permissiond`, `user permission grant-nostr`/`clear-nostr`, `is_admin_user()`); the email-domain LDAP read, Admin (web) UI, and actual LDAP cutover remain |
 | 3 — Unix account store cleanup | ◑ mostly done — identity projector already treats LDAP as a derived fallback; remaining work is removing that fallback + `user.py`'s direct LDAP CRUD |
 | 4 — Delete `slapd` and config | ⏳ not started |
 | 5 — Cleanup migration + policy update | ⏳ not started |
