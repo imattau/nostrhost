@@ -78,15 +78,15 @@ the **working specifications**; the plan, its phases and its status live here.
 | # | Workstream | Status | Remaining |
 |---|---|---|---|
 | §1–§6 | Fork baseline, extraction, control plane, identity, authorisation, operations | ✅ | — |
-| §7 | State history + recovery (ngit/NIP-34, Stages A–D) | ◑ | Stage C (ngit replication/DR, §15), Stage D tail (reconcile auto-apply hardening) |
+| §7 | State history + recovery (ngit/NIP-34, Stages A–D) | ◑ | Stage D tail (reconcile auto-apply hardening); Stages A–C ✅ |
 | §8 | Portal Nostr authentication | ✓ | real-browser passkey attestation + visual app-grid pass (headless limit only) |
 | §9 | Restic linkage + assisted rollback (Stage B) | ✅ | reverse steps for app reinstall/upgrade stay manual pending install-arg provenance |
-| §10 | Admin interface (native management views) | ⏳ | identities/agents/delegations/approvals/catalogue/trust/audit views |
+| §10 | Admin interface (native management views) | ◑ | native package authoring screen + planning API landed (fork `63c6eb307`); identities/agents/delegations/approvals/catalogue/trust/audit views ⏳ |
 | §11 | Native Nostr catalogue | ✓ | `catalog.list/get/publish/verify` native ops landed (MCP Phase 5); Admin catalogue UI ⏳ |
 | §12 | Web-layer auth (Caddy `forward_auth`, SSOwat retired) | ✓ | P7 residual-reference cleanup (§20) |
-| §13 | MCP adapter | ✅ | MCP transition Phases 5–8 (below) |
+| §13 | MCP adapter | ✅ | MCP transition Phases 6–8 (below) |
 | §14 | OIDC compatibility | ◑ | client management + signing-key rotation (bridge live/VM-proven) |
-| §15 | ngit replication / DR (Stage C) | ◑ | repository/object replication to external relays |
+| §15 | ngit replication / DR (Stage C) | ✅ | kind-30617 announcement + kind-2214 chunked gzip state-bundle replicated outbound to control + external relays; `clone_state_repository` reconstructs the repo from relays + identity (no central forge) |
 | §16 | Declarative reconciliation (Stage D) | ✓ | — |
 | §17 | Distribution + release tooling / native self-update | ⏳ | Debian repo, installer image, signed self-update |
 | §18 | Platform simplification (messaging, mail, security) | ◑ | mail identity/UI cleanup; security-state digest cadence (§18.6) |
@@ -96,7 +96,7 @@ the **working specifications**; the plan, its phases and its status live here.
 | §22 | YNH package migration analyser | ⏳ | manifest + Bash-AST analyser, deterministic migration, AI repair loop |
 | §23 | Behavioural equivalence testing | ⏳ | VM A/B comparison + confidence attestation |
 | §24 | Native vs compatibility boundary | ⏳ | measurable shrink (122→87→41→0 helpers) |
-| §25 | LDAP dependency inventory / reduction | ⏳ | later phase (alpha) |
+| §25 | LDAP dependency inventory / reduction | ◑ | dead moulinette LDAP-bind code + unread actionsmap config deleted; NIP-51 permission projection + CLI authoring (`grant-nostr`/`clear-nostr`) + `nostr_permissiond` + native admin check landed; the email-domain LDAP read, Admin (web) UI, and actual LDAP cutover remain — plan in `docs/LDAP-RETIREMENT.md` |
 | §26 | Native DNS management | ⏳ | later phase (alpha) |
 | §27 | Secrets / key lifecycle | ◑ | node-key inventory + safe keeping landed (POSTINSTALL-KEYS); rotation + Restic/DB/external/DNS/Caddy/agent secret classes remain |
 | MCP 0–4 | MCP transition: registry, skeleton, identity, signed mutations, approval flow | ✅ | — |
@@ -518,7 +518,7 @@ enforced on the protected control kinds.
 
 ---
 
-# 7. Introduce `nostrhost-state` with ngit / NIP-34 — ◑ (Stage A + B complete; Stage C ◑, Stage D ✓ §16)
+# 7. Introduce `nostrhost-state` with ngit / NIP-34 — ◑ (Stages A–C complete; Stage D ✓ §16; Stage D tail remains)
 
 This is the correct point to introduce durable configuration-state management.
 Identity, policy and execution semantics (§4–§6) now exist, so state history
@@ -705,10 +705,18 @@ Restic snapshots where required; produce semantic diffs.
 ### Stage B: assisted rollback
 Add rollback-plan generation, policy evaluation and controlled restoration.
 
-### Stage C: ngit replication and recovery
+### Stage C: ngit replication and recovery — ✅
 Publish relevant NIP-34 repository events outbound through the private relay
 to multiple external relays; Git object storage uses ordinary Git/GRASP-style
-storage without making a central forge authoritative.
+storage without making a central forge authoritative. Implemented: the
+kind-30617 announcement plus kind-2214 chunked, gzip-compressed, server-signed
+git-bundle events replicate the repository outbound to the control + external
+relays (`nostrhost-state publish`; `postinstall --new/--restore` publish
+automatically). `clone_state_repository` reconstructs the full repository from
+relays + identity alone when the announcement carries no git transport —
+`postinstall --restore --state-relay` needs no central forge and no hand-carried
+bundle. `--snapshot-only` flattens the latest known-good revision into a small
+single-commit bundle for relays with tight size limits.
 
 ### Stage D: declarative reconciliation
 Compare the committed semantic state with live YunoHost state, classify drift
@@ -862,7 +870,7 @@ automatic reconciliation (Stage D, §17).
 
 ---
 
-# 10. Fork and Extend the Admin Interface — ⏳
+# 10. Fork and Extend the Admin Interface — ◑ (native package authoring screen + planning API landed)
 
 Retain the current Vue/Vite/TypeScript admin stack.
 
@@ -1067,7 +1075,7 @@ The architectural rule kept throughout:
 
 `nostrhost-mcp` is a thin protocol adapter over the installed fork's operation
 model. The fork `ToolSpec` registry (`src/nostr_operations.py` +
-`src/nostrhost/native_ops.py`, 43 ops) is the single source of truth;
+`src/nostrhost/native_ops.py`, 69 ops) is the single source of truth;
 `operation_catalog()` drives generated MCP tools, CLI, API and Admin forms.
 The protocol-neutral `NostrMCPAdapter` submits signed kind-2200 requests and
 correlates 2201/2203/2204/2205. The reference implementation
@@ -1087,7 +1095,7 @@ modules are retired as native equivalents land. Full detail:
 | **5** | Resource Engine integration — **complete**. `package.plan`/`package.reconcile` native and proven; native catalog surface (`catalog.list`/`catalog.get`/`catalog.publish`/`catalog.verify`); and the full Phase 5 backlog landed — `updates.check/refresh`, `system.migrations`/`system.migrate`, `service.history`, `logs.read`/`logs.web` (Caddy access log, /var/log/caddy — nginx is not part of the stack), `backup.delete`, `domain.cert.info`/`domain.cert.install`, `user.update`, `user.group.*`, `user.permission.*`, `audit.list`/`audit.get` (signed chain on the control relay). Registry is 69 ops. Legacy `package_*` test-tool mapping and the explicit legacy compat path were **dropped by direction** (no legacy deployment exists). | ✅ |
 | **6** | Client integrations — port claude-code/codex/gemini/hermes/openclaw/opencode configs to `nostrhost-mcp`; rename the `yunohost-mcp-operations` skill; OpenCode Web → loopback streamable HTTP; package + publish (`python3-nostrhost-mcp` deb + PyPI) | ⏳ |
 | **7** | Multi-host / fleet projection (per-node adapter; client → node relay mapping) | ⏳ deferred |
-| **8** | Retire duplicated `yunohost-mcp` logic (kept: protocol, schema/tool exposure, client setup, redaction, result translation, transport) | ⏳ gated on 5–6 |
+| **8** | Retire duplicated `yunohost-mcp` logic (kept: protocol, schema/tool exposure, client setup, redaction, result translation, transport) | ◑ gated on 5–6 — auth alignment ahead of schedule: `yunohost-mcp` + `nostrhost-policy` now share the nostr-sdk key/signing primitives (policy `14155d7`, yunohost-mcp `2af92ea`) |
 
 ## Phase 5 backlog — the missing native operation surface
 
@@ -1098,7 +1106,7 @@ compat path dropped by direction (no legacy deployment exists).
 
 | Op group | Status |
 |---|---|
-| catalog | ✅ `catalog.list`/`catalog.get`/`catalog.publish` (publisher key signs kind-32267 declarations) + `catalog.verify` (Python id/sig/schema/trusted-publisher check; naddr rejected — no nip19 decoder) |
+| catalog | ✅ `catalog.list`/`catalog.get`/`catalog.publish` (publisher key signs kind-32267 declarations) + `catalog.verify` (Python id/sig/schema/trusted-publisher check; naddr input not yet wired — the Nip19 decoder (`Nip19Coordinate`) is now available via nostr-sdk, so naddr support is a scope choice, not a missing capability) |
 | audit | ✅ `audit.list`, `audit.get` — the signed operation chain on the control relay is the audit log (`query_chain_events`); owner co-signature per call |
 | system | ✅ `updates.check`, `updates.refresh`, `system.migrations`, `system.migrate` |
 | services | ✅ `service.history` |
@@ -1117,7 +1125,7 @@ co-signature for `audit.read`.
 
 ## Verification
 
-- **Local**: fork suite (539 passing) + `nostrhost-mcp` unit tests (22 passing,
+- **Local**: fork suite (547 passing) + `nostrhost-mcp` unit tests (22 passing,
   1 skip) + flake8 clean.
 - **VM**: real MCP client → `nostrhost-mcp` (unprivileged) → submit → approve →
   execute → streamed result, with the MCP process holding no host write
@@ -1142,7 +1150,7 @@ applications requiring YunoHost-specific SSO integration.
 
 ---
 
-# 15. ngit Replication / Disaster Recovery (Stage C) — ◑ (announcement publication landed; repository/object replication remains)
+# 15. ngit Replication / Disaster Recovery (Stage C) — ✅
 
 Publish relevant NIP-34 repository events outbound through the private relay
 to multiple external relays so the configuration-state history is recoverable
@@ -1151,6 +1159,15 @@ disaster-recovery story from §7.6: identity, state and data are each
 retrievable, and the machine can be reconstructed rather than merely
 restored. Git object storage uses ordinary Git/GRASP-style storage; no central
 forge becomes authoritative.
+
+Implemented: `nostrhost-state publish` replicates the repository as chunked,
+gzip-compressed, server-signed kind-2214 events to the control + external
+relays (full-history by default; `--snapshot-only` flattens the latest
+known-good revision). `clone_state_repository`/`fetch_state_bundle` reconstruct
+the repository from relays + identity alone, so `postinstall --restore
+--state-relay` needs no git remote and no hand-carried bundle. The kind-2214
+series is reassembly-verified by its sha256 `x` tag; tampered/incomplete series
+are refused.
 
 ---
 
@@ -1764,15 +1781,21 @@ slapd itself?
 old admin APIs?
 ```
 
-The eventual target:
+The eventual target: Nostr-keypair identity (nostrhost-auth) for
+authentication, NIP-51 lists for group/permission membership, with LDAP
+removed outright — no legacy-app compatibility provider is kept:
 
 ```text
-Nostr identity
+Nostr identity (keypair auth)
+   ↓
+NIP-51 group/permission lists
    ↓
 local account/group projection
 
-LDAP = optional compatibility provider (not a default platform service)
+LDAP = removed (slapd, python-ldap, LDAP authenticators deleted from core)
 ```
+
+Full dependency inventory and phased plan: `docs/LDAP-RETIREMENT.md`.
 
 ---
 
@@ -1850,12 +1873,12 @@ on identity, policy and execution semantics, which now exist.
 6.  nostrhost-state Stage A            (ngit / NIP-34)      ✅   (Stage A + B complete)
 7.  Portal Nostr authentication (+ native session creation) ✓  (all three signer flows + /nostr-account self-service identity mgmt browser-proven; only real-browser passkey attestation pending — headless limit)
 8.  Restic linkage + known-good + assisted rollback (Stage B) ✅  (registry-bounded execution, chain-gated, testbed-validated)
-9.  Admin interface                                         ⏳
+9.  Admin interface                                         ◑ (native package authoring screen + planning API landed; first-class views ⏳)
 10. Native catalogue (sync + trust events)                  ✓ (trusted projection, relay sync, attestations, and YunoHost integration)
 11. Web-layer auth: Caddy forward_auth, SSOwat retired      ✓ (P0–P6 of CADDY-MIGRATION on the VM; §12, §20 P7 residual cleanup remains)
-12. MCP adapter                                             ✅ (MCP transition Phases 0–4 complete; 5–8 remain — see plan above)
+12. MCP adapter                                             ✅ (MCP transition Phases 0–5 complete; 6–8 remain — see plan above)
 13. OIDC                                                    ⏳
-14. ngit replication / disaster recovery (Stage C)          ◑ (multi-relay NIP-34 announcement publication landed; repository/object replication remains)
+14. ngit replication / disaster recovery (Stage C)          ✅ (kind-30617 announcement + kind-2214 chunked state-bundle replicated outbound; clone reconstructs from relays + identity)
 15. Declarative reconciliation (Stage D)                    ✓ (risk-classified plans + approval-gated bounded apply)
 16. Distribution release                                    ⏳
 17. Platform simplification (native messaging, mail          ◑ (§18; mail identity/UI cleanup and security-state remain)
@@ -1976,7 +1999,7 @@ and provider execution; Restic owns data recovery.
 | 1 | Canonical native package-coordinate/plan envelope shared by catalog, policy, control, state (`package.plan` schema-versioned envelope with `plan_sha256`; `package.reconcile` verifies the digest) | ✅ |
 | 2 | Policy-aware executor adapter in `nostr_operationsd`; remove direct `native_providers()` construction from request handlers | ✅ (policy/approval seam live; provider construction is inside the executor backend) |
 | 3 | Pre/post state + Restic linkage around native reconciliation | ◑ | native reconciliation classified data-affecting + plan digest carried; **remaining: link the policy-selected Restic snapshot into the native plan result** |
-| 4 | Wire Admin + catalogue install to native plans (legacy path retained for non-native packages) | ⏳ |
+| 4 | Wire Admin + catalogue install to native plans (legacy path retained for non-native packages) | ◑ | Admin native package authoring screen + planning API landed (fork `63c6eb307`, admin `204daea2`); catalogue-install wiring remains ⏳ |
 | 5 | Migrate representative packages; publish native/legacy inventory | ⏳ |
 | 6 | Disable legacy lifecycle scripts for native packages; retire helpers + fallback catalog sources by domain | ⏳ |
 
@@ -2056,8 +2079,8 @@ The first release of this layer stops short of fully automatic reconciliation.
 ✓ CI attestations                          (§11)
 ✓ catalogue policy input                   (publisher_trusted / ci_attested in policy)
 ⏳ Admin catalogue UI                      (§10)
-⏳ native catalog.list / catalog.publish / catalog.verify operations
-                                            (MCP transition Phase 5 backlog)
+✓ native catalog.list / catalog.publish / catalog.verify operations
+                                            (MCP transition Phase 5 — landed)
 ⏳ application discovery over relays       (native catalog surface)
 ```
 
@@ -2077,10 +2100,10 @@ The first release of this layer stops short of fully automatic reconciliation.
 ```text
 ✓ identity native
 ✓ policy native
-◑ catalogue native                        (trusted projection ✓; native catalog.* ops ⏳)
-✓ MCP native (adapter)                    (adapter ✅; transition Phases 5–8 ⏳)
+◑ catalogue native                        (trusted projection ✓; native catalog.* ops ✓ — Phase 5; Admin catalogue UI ⏳)
+✓ MCP native (adapter)                    (adapter ✅; transition Phases 6–8 ⏳)
 ✓ Nostr approvals native
-◑ state native                            (ngit / NIP-34 repo + assisted rollback ✓; Stage C DR ◑)
+◑ state native                            (ngit / NIP-34 repo + assisted rollback ✓; Stage C DR ✅ — bundle replicated to relays; reconcile tail ◑)
 ◑ OIDC compatibility                      (deferred after the VM-proven bridge)
 ⏳ `_ynh` bridge packages no longer required
 ⏳ tested derivative upgrade path

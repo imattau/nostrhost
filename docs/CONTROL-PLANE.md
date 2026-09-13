@@ -137,6 +137,8 @@ NostrHost trust/policy declarations              (only if not expressible as NIP
 YunoHost operation request / approval / result   (regular; the audit chain)
 package attestation                              (only if 32267/30063/CI standards don't fit)
 system / service / backup / security events      (regular)
+state-bundle replication chunks (kind 2214)      (regular; Stage C ngit DR — git
+                                                 objects replicated outbound to relays)
 ```
 
 Constraints before allocation:

@@ -57,6 +57,8 @@ Guiding philosophy (roadmap §3 / `CONTROL-PLANE.md` §2.0):
 | Policy evaluation ("may X do Y on Z") | — | evaluator (extracted `nostrhost-policy`) | computation stays; storage moves to events |
 | LDAP | — | stays initially as compatibility projection | |
 | YunoHost machine-state (apps, domains, backups, services, firewall, nginx, system) | — | stays as executor | intent via events only |
+| State-repository discovery | NIP-34 (kind 30617 repository announcement, addressable) | — | server-signed; `nostr://<server-npub>/nostrhost-state` |
+| State-repository replication / DR | — | **state-bundle chunks** (kind 2214, regular) | Stage C: gzip git bundle split into signed chunks published outbound; reconstructs repo from relays + identity, no central forge |
 
 ## 3. Custom kind surface (current best estimate)
 
@@ -66,6 +68,7 @@ After the mapping, NostrHost-only kinds are small:
 - YunoHost operation request / approval / rejection / execution-result (regular; the audit chain)
 - package/CI attestation (no standard fits; supersedes the bespoke `30080`)
 - system / service / backup / security events (regular)
+- state-bundle replication chunks (kind 2214, regular) — Stage C ngit DR
 
 NostrHost delegation is **NIP-26** (agent signing) + a small capability event
 for scope grants; no separate bespoke delegation kind is planned unless that

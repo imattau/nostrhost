@@ -27,7 +27,7 @@ forks:
     branch: nostrhost          # derivative branch (first fork modification, Phase 3)
     derivative: true
     pin: debian/12.1.41.2      # upstream baseline the branch was cut from
-    pin_commit: a901df2afd52d38b1962d8399b51d9dad07217e2
+    pin_commit: 83918164d2836c37feabe9f1ae02efce3de85690
     live_server: 12.1.41.2
 
   - component: portal          # Nuxt/Vue/TypeScript user portal
@@ -38,7 +38,7 @@ forks:
     branch: dev               # Nostr (NIP-07) login page + Tailwind/shadcn-vue redesign (PR #1)
     derivative: true
     pin: debian/12.1.2
-    pin_commit: 28ec6c3272583ea0c51c0b579e8f7116d4a0eeeb
+    pin_commit: 6e49545209eb6342683d4b0600cef03cc93e703c
     live_server: 12.1.2
 
   - component: admin           # Vue/Vite/TypeScript admin interface
@@ -49,7 +49,7 @@ forks:
     branch: dev               # Tailwind/shadcn-vue redesign (app shell, PR #1)
     derivative: true
     pin: debian/12.1.15
-    pin_commit: 12bdb10d3cde3144d637a1cac1af223d2e1390e4
+    pin_commit: 623cc22b720f791f5e1aeba9f4b127e581d6fb8e
     live_server: 12.1.15
 
   - component: installer       # Debian ISO graphical installer image builder
@@ -83,7 +83,7 @@ libraries:
     repo: imattau/nostrhost-policy
     path: libs/nostrhost-policy
     branch: main
-    pin_commit: d2ab56386be3100a4b722e2eda575e8a081dac05
+    pin_commit: de0ea202db8032d30eab9f5e629aa02678b4b4cb
     extracted_from: imattau/yunohost-mcp
 
   - component: catalog         # catalogue event schema/relay/publisher/attestation/trust/repository
