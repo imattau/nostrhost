@@ -639,8 +639,39 @@ verified on the running Debian 12 NostrHost VM (`nostrhost-clean6`,
 
 The full §alpha threshold was run on a **brand-new** blank Debian 12 VM
 (`nostrhost-clean7`, fresh overlay on the genericcloud base, core
-`12.1.41.32`): apt install → `postinstall --new` → owner identity → relay →
-daemons → native app install → HTTPS → backup → upgrade → break → restore.
-Details and results are recorded against the clean7 VM; the previous clean
-snapshots (clean, clean2–clean5) were deleted after the run. `clean6` is
-retained as the LDAP-free reference.
+`12.1.41.32`+). Sequence and results:
+
+1. **Install** — `apt install nostrhost` from the live GitHub Pages repo with
+   no manual pip. `/opt/nostrhost/venv` imports `nostr_sdk` + `pydantic
+   2.13.5` (W1 verified). Packages: nostrhost-core 12.1.41.32/33,
+   nostrhost-control 0.1.1, nostrhost-runtime 0.1.3, nostrhost-notify 0.1.0.
+2. **Bootstrap** — `nostrhost postinstall new --domain nostrhost.test` printed
+   the five-key nsec1 recovery bundle once, wrote `keys.recovery`,
+   `operator.toml`, `policy.toml`, `relay.toml`, `notify.toml`,
+   `catalogue.env`; all daemons active; nsswitch = `files` only; state S0
+   committed + bundle + announcement published (W2).
+3. **HTTPS** — served over Caddy's internal CA (`.test` cannot be ACME
+   validated). Gap found + fixed: the per-domain Caddy snippet now renders
+   `tls internal` (fork `0faddf024`), and postinstall adds Caddy's internal
+   root to the system trust store so package health checks verify (fork
+   `d65d32275`).
+4. **Native API** — `/package/*` route to the native HTTP API on 8190;
+   admin SPA served at `/yunohost/admin/`, portal at `/yunohost/sso/`, both
+   200 over HTTPS.
+5. **App lifecycle** — `app install nostrhost-test` (8-op signed plan,
+   health 200, `restic_snapshot` id linked in the result); `app upgrade`
+   0.1→0.2 (conservative re-apply, health 200, `previous_version`); the app
+   sits behind the NostrHost auth gate (302 → SSO login → 200). **W2/W3
+   gaps found + fixed**: postinstall provisions a default local Restic repo
+   + config (`/etc/nostrhost/restic.toml`) and `nostrhost-core` Depends on
+   `restic`, so the policy backup gate is satisfiable out of the box (fork
+   `f2e53ab4e`).
+6. **Backup** — `backup create` (full host Restic snapshot) and
+   `app backup` (app-declared paths) both work.
+7. **Break → restore** — deliberately replaced the app's `index.html` with
+   garbage; `app restore nostrhost-test <snapshot>` recovered the original
+   content from the linked Restic snapshot; app healthy again over HTTPS.
+
+The loop is green end-to-end from a blank VM. The previous clean snapshots
+(clean, clean2–clean5, nostrhost-agent-collection) were deleted after the
+run. `clean6` is retained as the LDAP-free reference.

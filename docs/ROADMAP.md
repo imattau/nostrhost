@@ -90,7 +90,7 @@ the **working specifications**; the plan, its phases and its status live here.
 | §16 | Declarative reconciliation (Stage D) | ✓ | — |
 | §17 | Distribution + release tooling / native self-update | ⏳ | Debian repo, installer image, signed self-update |
 | §18 | Platform simplification (messaging, mail, security) | ◑ | mail identity/UI cleanup; security-state digest cadence (§18.6) |
-| §19 | Native bootstrap / postinstall | ✓ | five-key bootstrap + recovery bundle + `--restore` CLI landed (POSTINSTALL-KEYS); `postinstall --new` is the canonical path (legacy `tools_postinstall` wizard not involved); blank-VM acceptance loop run on clean7 |
+| §19 | Native bootstrap / postinstall | ✓ | five-key bootstrap + recovery bundle + `--restore` CLI landed (POSTINSTALL-KEYS); `postinstall --new` is the canonical path (legacy `tools_postinstall` wizard not involved); blank-VM acceptance loop run on clean7 (incl. restic provisioning + Caddy internal-CA trust) |
 | §20 | Web cutover completion (Caddy P7) | ⏳ | Caddy storage in backup, cert state in ngit, residual nginx helpers/migrations |
 | §21 | End-to-end native app lifecycle | ◑ | `package.plan`/`reconcile` proven on nostrhost-test; the §21 vertical loop proven on one **real** app (`opencode-web_nh`, full signed loop verified); Restic snapshot id now linked into the plan result; backup/restore CLI landed |
 | §22 | YNH package migration analyser | ⏳ | manifest + Bash-AST analyser, deterministic migration, AI repair loop |
@@ -107,7 +107,7 @@ the **working specifications**; the plan, its phases and its status live here.
 | MCP 8 | Retire duplicated `yunohost-mcp` logic | ⏳ | gated on MCP 5–6 |
 | Alpha W0 | Documentation truth | ✅ | — |
 | Alpha W1 | `nostrhost-runtime` deb (private venv, bundled wheels) | ✅ | verified on clean6/clean7: VM installed via the live APT repo, `/opt/nostrhost/venv` imports `nostr_sdk` + `pydantic 2.13`, no manual pip |
-| Alpha W2 | Native bootstrap / postinstall | ✓ | five-key bootstrap + recovery bundle landed (POSTINSTALL-KEYS); `postinstall --new` canonical (no legacy wizard); blank-VM acceptance loop run on clean7 |
+| Alpha W2 | Native bootstrap / postinstall | ✓ | five-key bootstrap + recovery bundle landed (POSTINSTALL-KEYS); `postinstall --new` canonical (no legacy wizard); blank-VM acceptance loop green on clean7 (restic + Caddy internal-CA provisioning) |
 | Alpha W3 | End-to-end native app lifecycle | ◑ | `app install/upgrade/remove/change-url/backup/restore` CLI landed; signed loop proven on nostrhost-test + `opencode-web_nh` (real app); Restic snapshot linked into plan result |
 | Agent 1–2 | Agent daemon packaging (optional APT, disabled by default) | ⏳ | systemd unit, first-run, secret handoff, VM acceptance |
 | Agent 3–4 | Model artifacts on Hugging Face + evaluation Space | ⏳ | blocked on a candidate passing the training-regime gates |
@@ -126,8 +126,8 @@ runtime deb → native bootstrap → end-to-end native app lifecycle), then the
 compatibility/migration source:
 
 ```text
-1.  Alpha W2  native postinstall --new / --restore          (§19) — ✅ done (blank-VM acceptance loop run on clean7)
-2.  Alpha W3  end-to-end native app lifecycle               (§21) — ◑ (proven on nostrhost-test + opencode-web_nh; fresh-VM re-exercise on clean7)
+1.  Alpha W2  native postinstall --new / --restore          (§19) — ✅ done (blank-VM acceptance loop green on clean7)
+2.  Alpha W3  end-to-end native app lifecycle               (§21) — ✅ done (nostrhost-test + opencode-web_nh; install→upgrade→break→restore green on clean7)
 3.  MCP 5     catalog.list / catalog.publish / catalog.verify + package_* mapping — ✅ done (69 ops; legacy mapping dropped)
 4.  MCP 6     client integrations (configs, skill rename, deb + PyPI)
 5.  §20       Caddy P7 residual cleanup
@@ -1650,7 +1650,7 @@ are green at the P7 gate.
 
 ---
 
-# 21. End-to-End Native App Lifecycle — ◑ (signed loop proven on nostrhost-test + opencode-web_nh; Restic snapshot linked into the plan result)
+# 21. End-to-End Native App Lifecycle — ✓ (signed loop proven on nostrhost-test + opencode-web_nh; install→upgrade→break→restore green on clean7)
 
 The declarative resource engine is broad enough; stop adding resource types
 temporarily and prove one substantial real application completely through the
@@ -2011,8 +2011,8 @@ with LDAP and some YunoHost compatibility code still underneath.
 |---|---|---|
 | **W0** Documentation truth — README/`BASELINE.md`/CI scripts describe what exists (no stale ssowat/moulinette/source-identical claims) | ✅ | README + baseline clean of ssowat references; verify `verify-clean.sh`/`pin-forks.sh` |
 | **W1** `nostrhost-runtime` deb — private venv at `/opt/nostrhost/venv`, bundled wheels (nostr-sdk, pydantic), daemons on venv python, `nostrhost-core(-system)` depends on it | ✅ | verified on clean6/clean7: VM installed via the live APT repo, venv imports `nostr_sdk` + `pydantic 2.13`, no manual pip |
-| **W2** Native bootstrap / postinstall (§19) — `nostrhost postinstall --new` (keys → operator.toml/policy.toml → relay/Caddy/daemons → state S0) and `--restore` (identity → state repo → known-good + Restic → reconcile); retire legacy `tools_postinstall` | ✓ | both `--new` and `--restore` implemented in `cli.py`; `--new` is canonical (no legacy wizard); blank-VM acceptance loop run on clean7 |
-| **W3** End-to-end native app lifecycle (§21) — `app install <coordinate>` CLI through the signed plan/approval/reconcile chain; native `app remove/upgrade/change_url`; backup/restore linkage; proof on nostrhost-test then one **real** app | ◑ | signed loop proven on nostrhost-test **and** `opencode-web_nh` (real app); Restic snapshot id now linked into the plan result; backup/restore CLI landed |
+| **W2** Native bootstrap / postinstall (§19) — `nostrhost postinstall --new` (keys → operator.toml/policy.toml → relay/Caddy/daemons → state S0) and `--restore` (identity → state repo → known-good + Restic → reconcile); retire legacy `tools_postinstall` | ✓ | both `--new` and `--restore` implemented in `cli.py`; `--new` is canonical (no legacy wizard); blank-VM acceptance loop green on clean7 |
+| **W3** End-to-end native app lifecycle (§21) — `app install <coordinate>` CLI through the signed plan/approval/reconcile chain; native `app remove/upgrade/change_url`; backup/restore linkage; proof on nostrhost-test then one **real** app | ✓ | signed loop proven on nostrhost-test **and** `opencode-web_nh` (real app); Restic snapshot linked into the plan result; backup/restore CLI landed; install→upgrade→break→restore proven on clean7 |
 
 Sequencing: W0 → W1 → W2 → W3; each ends green on CI. Final gate is the alpha
 acceptance loop.
