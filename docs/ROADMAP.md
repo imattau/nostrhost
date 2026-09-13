@@ -2030,8 +2030,8 @@ ship it. Full detail: `docs/AGENT-DISTRIBUTION-PLAN.md`.
 
 | Phase | Scope | Status |
 |---|---|---|
-| 1 | Daemon packaging — systemd unit (unprivileged `nostrhost-agent`, hardening, SIGTERM-clean), first-run disabled until operator config, secret handoff with the strict config loader, private audit/state dir, build + VM checks | ⏳ |
-| 2 | APT package — `golang` entry in `packaging/packages.yml`, staging rules, upgrade/remove/disabled-behaviour VM acceptance on a review branch (publishing `main` is a publication action) | ⏳ |
+| 1 | Daemon packaging — systemd unit (unprivileged `nostrhost-agent`, hardening, SIGTERM-clean), first-run disabled until operator config, systemd credential handoff, private audit/state dir | ◑ (unit, maintainer scripts, config check and credential staging landed; live Debian 12 credential test pending) |
+| 2 | APT package — optional `golang` entry in `packaging/packages.yml`, staging rules, lifecycle scripts and disabled-by-default behavior | ◑ (manifest and package build landed; install/upgrade/remove/purge VM acceptance and review release pending) |
 | 3 | Model artifacts on Hugging Face — only after a candidate passes the training-regime gates; hash-verified GGUF, no pickles, no embedded tokens | ⏳ blocked on a candidate |
 | 4 | "NostrHost Agent Lab" HF Space — synthetic/public-safe evaluation UI only; never dispatches operations; reproducible pinned-input reports | ⏳ |
 

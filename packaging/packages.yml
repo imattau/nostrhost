@@ -157,7 +157,7 @@ packages:
   # independent packages even though they share a source repository.
   - name: nostrhost-control
     kind: golang
-    version: "0.1.0"                     # from tag control/v0.1.0 in CI
+    version: "0.1.1"                     # agent writer allowlist reconciliation
     source:
       repo: imattau/nostrhost-control
       submodule: libs/nostrhost-control
@@ -216,6 +216,7 @@ packages:
     depends:
       - adduser
       - init-system-helpers
+      - nostrhost-control
       - systemd
     provides: []
     breaks: []

@@ -27,7 +27,7 @@ forks:
     branch: nostrhost          # derivative branch (first fork modification, Phase 3)
     derivative: true
     pin: debian/12.1.41.2      # upstream baseline the branch was cut from
-    pin_commit: 04ce092ceda4c7dfab8c42e8eda9a7607c16132d
+    pin_commit: c3dbb6f583760de07e8d36c6c2f56f97427f6001
     live_server: 12.1.41.2
 
   - component: portal          # Nuxt/Vue/TypeScript user portal
@@ -105,7 +105,7 @@ libraries:
     repo: imattau/nostrhost-agent
     path: libs/nostrhost-agent
     branch: main
-    pin_commit: fce802490c9b6c2f7485023b0e81f523a0e6030d
+    pin_commit: 764bcc829e848fdaf172a71f45864282d2e27f91
     stack: Go
 
   - component: yunohost-mcp    # FROZEN reference implementation (MCP transition §2, docs/MCP-TRANSITION.md)

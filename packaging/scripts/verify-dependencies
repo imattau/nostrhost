@@ -118,6 +118,8 @@ def validate(manifest: dict, compat: dict) -> int:
         errors.append(f"  nostrhost-core-system does not reach: {sorted(missing)}")
 
     full = closure("nostrhost")
+    if "nostrhost-agent" in full or "nostrhost-agent" in core_system:
+        errors.append("  nostrhost-agent must remain optional and outside the default meta-packages")
     required_full = required_core_system | {
         "nostrhost-admin", "nostrhost-portal", "nostrhost-notify",
     }
