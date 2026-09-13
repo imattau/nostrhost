@@ -198,6 +198,28 @@ packages:
     provides: []
     breaks: []
 
+  # Optional resident assistant. It is deliberately absent from both meta-
+  # packages until its provisioning and operational lifecycle is mature.
+  - name: nostrhost-agent
+    kind: golang
+    version: "0.1.0"
+    source:
+      repo: imattau/nostrhost-agent
+      submodule: libs/nostrhost-agent
+      cmd: ./cmd/nostrhost-agent
+      systemd: nostrhost-agent.service
+      maintainer_scripts:
+        postinst: deploy/postinst
+        prerm: deploy/prerm
+        postrm: deploy/postrm
+    summary: Optional NostrHost agent daemon (disabled until explicitly configured)
+    depends:
+      - adduser
+      - init-system-helpers
+      - systemd
+    provides: []
+    breaks: []
+
   # -------------------------------------------------------- python libs ----
   - name: python3-nostrhost-auth
     kind: python
@@ -305,6 +327,9 @@ packages:
 # External Debian packages these entries depend on, so verify-dependencies can
 # distinguish "our" packages from upstream ones. Only used for validation.
 external_deps:
+  - adduser
+  - init-system-helpers
+  - systemd
   - python3-typer
   - python3-bottle
   - python3-requests

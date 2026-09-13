@@ -17,6 +17,7 @@ each built from its own component repo (held here as pinned submodules).
 | `nostrhost-control` | local khatru control-plane relay | core |
 | `nostrhost-notify` | NIP-17/59 notification daemon | control, core |
 | `nostrhost-catalog` | catalogue resolver/service | control |
+| `nostrhost-agent` | optional resident Observe-mode capable agent daemon; disabled until explicitly configured and enabled | adduser, systemd |
 | `python3-nostrhost-auth` | Python auth/identity library | nostr-sdk |
 | `python3-nostrhost-policy` | Python authorisation library | nostr-sdk, pydantic |
 | `nostrhost-admin` | built admin SPA assets | core |
@@ -27,6 +28,18 @@ each built from its own component repo (held here as pinned submodules).
 
 `crowdsec`, `nftables`, `slapd` and normal Python/system
 libraries stay ordinary external Debian packages — never repackaged here.
+
+`nostrhost-agent` is intentionally not a dependency of either meta-package.
+Its package creates a dedicated service account and private state directory,
+but its `postinst` does not create keys/configuration or enable/start the
+service. After platform `nostrhost postinstall new` or `restore`, an operator
+who installed the optional package can run `sudo nostrhost agent init` to
+create a separate Observe-mode identity/config, review and grant only needed
+relay scopes with `nostrhost capability grant`, then run
+`sudo nostrhost agent enable`. The service reads the root-managed config via a
+systemd credential copy. `agent disable` stops and disables it. Package removal
+retains the config, account, and audit journal; `apt purge nostrhost-agent`
+removes the package config and state.
 
 Some Python runtime deps are **not in Debian bookworm** (or only in an
 incompatible version): `nostr-sdk` (for `python3-nostrhost-auth`), and

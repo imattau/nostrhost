@@ -45,6 +45,21 @@ def run(cmd: list[str], cwd: Path, **kw) -> str:
 
 
 def deb_build(staging: Path, out: Path) -> None:
+    # Temporary staging roots inherit tempfile's private 0700 mode, while the
+    # caller's umask may otherwise leave group-writable package files. Debian
+    # packages need searchable roots and must never ship writable executables
+    # or units for unprivileged groups.
+    staging.chmod(0o755)
+    for current, dirs, files in os.walk(staging):
+        current_path = Path(current)
+        if current_path != staging:
+            current_path.chmod(current_path.stat().st_mode & 0o755)
+        for dirname in dirs:
+            path = current_path / dirname
+            path.chmod(path.stat().st_mode & 0o755)
+        for filename in files:
+            path = current_path / filename
+            path.chmod(path.stat().st_mode & 0o755)
     subprocess.run(
         ["dpkg-deb", "--build", "--root-owner-group", str(staging), str(out)],
         check=True,
@@ -92,15 +107,23 @@ def build_golang(pkg: dict, version: str, outdir: Path) -> Path:
             env={**os.environ, "CGO_ENABLED": "0"})
         if src.get("systemd"):
             unit = sub / "deploy" / src["systemd"]
-            if not unit.exists():
-                # fall back to repo-root deploy dir
-                unit = sub / "deploy" / src["systemd"]
-            if unit.exists():
-                (staging / "lib" / "systemd" / "system").mkdir(parents=True, exist_ok=True)
-                shutil.copy2(unit, staging / "lib" / "systemd" / "system" / src["systemd"])
+            if not unit.is_file():
+                raise SystemExit(f"build-package: declared systemd unit not found: {unit}")
+            (staging / "lib" / "systemd" / "system").mkdir(parents=True, exist_ok=True)
+            shutil.copy2(unit, staging / "lib" / "systemd" / "system" / src["systemd"])
         write_control(staging, name, version, arch, pkg.get("summary", ""),
                       pkg.get("depends", []), pkg.get("provides", []),
                       pkg.get("conflicts", []), pkg.get("replaces", []))
+        allowed_scripts = {"preinst", "postinst", "prerm", "postrm"}
+        for script_name, relative_path in src.get("maintainer_scripts", {}).items():
+            if script_name not in allowed_scripts:
+                raise SystemExit(f"build-package: unsupported maintainer script {script_name!r}")
+            script = sub / relative_path
+            if not script.is_file():
+                raise SystemExit(f"build-package: declared maintainer script not found: {script}")
+            target = staging / "DEBIAN" / script_name
+            shutil.copy2(script, target)
+            target.chmod(0o755)
         out = outdir / f"{name}_{version}_{arch}.deb"
         deb_build(staging, out)
         return out
