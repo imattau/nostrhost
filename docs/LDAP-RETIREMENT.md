@@ -168,25 +168,22 @@ this revision. What's left is narrower than originally scoped:
    actual cutover (stop writing/reading LDAP membership once grants have
    moved to NIP-51 in practice) is not done, by design, until NIP-51 is the
    primary path in real use.
-4. **Phase 3 — Unix account store: identity linking is native, the account
-   itself is not (corrected scope).** Pubkey↔username *linking* is already
-   Nostr-native (the identity projector). The Unix/LDAP account
-   (`user.py`'s `user_create`/`delete`/`update`) is genuinely load-bearing —
-   real Unix login goes through `libnss-ldapd`/`libpam-ldapd` against LDAP —
-   and isn't a "remove the fallback" cleanup; it's blocked on Phase 4/5
-   replacing LDAP as the Unix directory service itself, a system-level
-   change (NSS/PAM), not a code cleanup. What *is* done: `user.py`'s
-   permission-affecting call sites now also refresh the native permission
-   projection (`_regen_native_permissions_projection()`), closing a real
-   staleness gap that predates this plan.
-5. **Phase 4 — Delete `slapd` and its config from core.** Remove
-   `slapd`/`python-ldap` from core's dependency set entirely (not opt-in —
-   deleted), drop the schema/config (row 9), the cert-reload logic (row 8),
-   and the backup/restore hooks (row 11).
-6. **Phase 5 — Cleanup migration + policy update.** Add a migration that
-   removes any residual LDAP state (`slapd` data directory, stale service
-   registration) from upgraded installs, and update the domain-removal
-   irreversibility rationale (row 14).
+4. **Phase 3 — Native Unix account store (done).** Pubkey↔username *linking*
+    is Nostr-native (the identity projector). The Unix account itself now
+    lives in a native store (`nostrhost/accounts.py`): `user_create` creates a
+    real `/etc/passwd` account via `useradd` (no more libnss-ldapd/
+    libpam-ldapd), and YunoHost metadata (fullname, mail, mailbox quota, mail
+    aliases/forwards, admin flag, permission groups) is persisted in a
+    root-owned JSON store at `/etc/nostrhost/accounts.json`. SSH keys live in
+    `ssh-keys.json`; `passwordless_sudo` is a native sudoers.d rule.
+5. **Phase 4 — Delete `slapd` and its config from core (done).** Removed
+    `slapd`/`python-ldap`/`ldap-utils`/`sudo-ldap`/`libnss-ldapd`/`unscd`/
+    `libpam-ldapd` from the dependency set, the schema/config, the cert-reload
+    logic, the backup/restore hooks, and the `slapd`/`nslcd` service config.
+6. **Phase 5 — Cleanup migration + policy update (done).** `utils/ldap.py`
+    deleted; the `@Migration.ldap_migration` wrapper is a no-op; migration
+    `0033` is a safe no-op (no LDAP permission objects exist); `nsswitch.conf`
+    uses plain `files`.
 
 ## Status
 
@@ -195,9 +192,9 @@ this revision. What's left is narrower than originally scoped:
 | 0 — Inventory | ✓ maintained (this document) |
 | 1 — Delete dead moulinette auth code | ✓ done (this revision) |
 | 2 — NIP-51 permission projection | ◑ additive projector + CLI authoring + native admin check landed (`nip51_permissions.py`, `nostr_permissiond`, `user permission grant-nostr`/`clear-nostr`, `is_admin_user()`); the email-domain LDAP read, Admin (web) UI, and actual LDAP cutover remain |
-| 3 — Unix account store | ◑ scope corrected — identity *linking* is native (done); the Unix/LDAP account itself is load-bearing and blocked on Phase 4/5 (NSS/PAM), not a cleanup target. Fixed instead: `user.py` now refreshes the native permission projection on every CRUD call, closing a real staleness bug |
-| 4 — Delete `slapd` and config | ⏳ not started |
-| 5 — Cleanup migration + policy update | ⏳ not started |
+| 3 — Unix account store | ✓ native account store (`nostrhost/accounts.py`): real Unix accounts via `useradd`/`userdel`/`groupadd`/`gpasswd` (so `/etc/passwd` + file ownership work without libnss-ldapd/libpam-ldapd) + a root-owned JSON metadata store for fullname/mail/quota/groups. `user.py`'s `user_list`/`create`/`delete`/`update`/`info` and the group functions read/write it instead of LDAP; SSH keys moved to `ssh-keys.json`; `passwordless_sudo` moved to a native sudoers.d rule |
+| 4 — Delete `slapd` and config | ✓ `python3-ldap`/`slapd`/`ldap-utils`/`sudo-ldap`/`libnss-ldapd`/`unscd`/`libpam-ldapd` dropped from `debian/control`; `conf/slapd`, `conf/nslcd`, the `06-slapd`/`09-nslcd` hooks, the `05-conf_ldap` backup/restore hooks, the dovecot/postfix LDAP configs, the `slapd` service registration, and the `slapd` restart in `nostr_certd` all removed; `nsswitch.conf` now uses plain `files` (no LDAP/NSS daemon) |
+| 5 — Cleanup migration + policy update | ✓ `utils/ldap.py` deleted; the `@Migration.ldap_migration` wrapper is a no-op (no slapd to back up); migration `0033` reduced to a safe no-op (no LDAP permission objects exist to migrate); migration `0027`'s dead `_ldap` import removed. `_sync_permissions_with_ldap` now regenerates the native `/etc/nostrhost/permissions.json` the authd reads instead of writing LDAP |
 
 ## Non-goals
 
