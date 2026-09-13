@@ -38,7 +38,7 @@ forks:
     branch: dev               # Nostr (NIP-07) login page + Tailwind/shadcn-vue redesign (PR #1)
     derivative: true
     pin: debian/12.1.2
-    pin_commit: 8d77219f234042b08e670fa3df57a10d8b192461
+    pin_commit: 62e8f0f003d7a86dda75af3e934618bb6208a4bc
     live_server: 12.1.2
 
   - component: admin           # Vue/Vite/TypeScript admin interface
@@ -49,7 +49,7 @@ forks:
     branch: dev               # Tailwind/shadcn-vue redesign (app shell, PR #1)
     derivative: true
     pin: debian/12.1.15
-    pin_commit: 30cc34a2c3d94513487e2c1b8d0005dcdc276168
+    pin_commit: b0a713c9359198b9ba7fce1cb99215b6fcefd9c4
     live_server: 12.1.15
 
   - component: installer       # Debian ISO graphical installer image builder
