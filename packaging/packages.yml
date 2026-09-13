@@ -238,7 +238,7 @@ packages:
       install_args: [install, --frozen-lockfile, --non-interactive]
       build_args: [build]
       output_dir: dist
-      base_path: /yunohost/admin/
+      base_path: /admin/
       static_dir: /usr/share/nostrhost/admin
     summary: NostrHost admin interface (built SPA assets)
     depends:

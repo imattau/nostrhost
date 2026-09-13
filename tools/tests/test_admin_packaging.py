@@ -20,10 +20,10 @@ def test_admin_route_and_asset_path_match_release_manifest() -> None:
     caddy = (ROOT / "forks/yunohost/src/nostrhost/caddy_admin.py").read_text(encoding="utf-8")
     vite = (ROOT / "forks/admin/app/vite.config.ts").read_text(encoding="utf-8")
 
-    assert route == "/yunohost/admin/"
+    assert route == "/admin/"
     assert asset_root in caddy
-    assert '"/yunohost/{tag}/*"' in caddy
-    assert "env.VITE_BASE_URL || '/yunohost/admin/'" in vite
+    assert '"/usr/share/nostrhost/admin", "admin", "/admin"' in caddy
+    assert "env.VITE_BASE_URL || '/admin/'" in vite
     assert not (ROOT / "forks/admin/debian/control").exists()
 
 

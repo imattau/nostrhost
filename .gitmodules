@@ -29,3 +29,7 @@
 [submodule "libs/nostrhost-mcp"]
 	path = libs/nostrhost-mcp
 	url = https://github.com/imattau/nostrhost-mcp.git
+[submodule "forks/installer"]
+	path = forks/installer
+	url = https://github.com/imattau/nostrhost-custom-debian-iso.git
+	branch = main

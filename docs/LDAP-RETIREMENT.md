@@ -157,12 +157,14 @@ this revision. What's left is narrower than originally scoped:
    additive**: it unions on top of the LDAP-sourced membership from
    `user_permission_list()`/row 6 and never removes access or unsets
    `public` — this is a safe, gradually-adoptable path, not the cutover
-   itself. Still open: (a) `user_is_allowed_on_domain()` (row 4) still reads
-   LDAP directly and isn't merged with NIP-51 yet; (b) nothing publishes
-   permission-list events yet — no CLI/Admin UI to author a kind-30000
-   grant; (c) the actual cutover (stop writing/reading LDAP membership once
-   grants have moved to NIP-51 in practice) is not done, by design, until
-   NIP-51 is the primary path in real use.
+   itself. `nostrhost user permission grant-nostr <permission> <pubkey>...
+   [--public]` / `clear-nostr <permission>` (CLI) publish the operator-signed
+   kind-30000 event, mirroring `identity link`/`revoke`. Still open: (a)
+   `user_is_allowed_on_domain()` (row 4) still reads LDAP directly and isn't
+   merged with NIP-51 yet; (b) no Admin UI (web) exposes grant-nostr yet,
+   CLI-only for now; (c) the actual cutover (stop writing/reading LDAP
+   membership once grants have moved to NIP-51 in practice) is not done, by
+   design, until NIP-51 is the primary path in real use.
 4. **Phase 3 — Unix account store cleanup (mostly done already).** The
    identity projector already treats Nostr identity as authoritative and
    LDAP as a derived fallback (row 7); once Phase 2 lands, nothing needs
@@ -183,7 +185,7 @@ this revision. What's left is narrower than originally scoped:
 |---|---|
 | 0 — Inventory | ✓ maintained (this document) |
 | 1 — Delete dead moulinette auth code | ✓ done (this revision) |
-| 2 — NIP-51 permission projection | ◑ additive projector landed (`nip51_permissions.py`, `nostr_permissiond`); `user_is_allowed_on_domain()` LDAP read + grant-authoring UI/CLI + actual LDAP cutover remain |
+| 2 — NIP-51 permission projection | ◑ additive projector + CLI authoring landed (`nip51_permissions.py`, `nostr_permissiond`, `user permission grant-nostr`/`clear-nostr`); `user_is_allowed_on_domain()` LDAP read, Admin (web) UI, and actual LDAP cutover remain |
 | 3 — Unix account store cleanup | ◑ mostly done — identity projector already treats LDAP as a derived fallback; remaining work is removing that fallback + `user.py`'s direct LDAP CRUD |
 | 4 — Delete `slapd` and config | ⏳ not started |
 | 5 — Cleanup migration + policy update | ⏳ not started |

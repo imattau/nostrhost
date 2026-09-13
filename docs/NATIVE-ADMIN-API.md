@@ -2,7 +2,7 @@
 
 **Platform baseline:** Debian 12 (Bookworm)
 **Native API:** `127.0.0.1:8190`
-**Admin SPA:** `/yunohost/admin/`
+**Admin SPA:** `/admin/`
 
 The admin SPA uses native NostrHost endpoints and does not call the YunoHost
 admin API. The package screen sends a JSON package object to the native package
@@ -17,8 +17,8 @@ to a linked identity, and requires admin authority. Browser requests are
 signed by a NIP-07 extension. The app keeps only the public key in component
 memory and never receives or stores the private key.
 
-Caddy serves the SPA from `/usr/share/nostrhost/admin` at
-`/yunohost/admin/`. It proxies `/package/*` on the same host to the loopback
+Caddy serves the SPA from `/usr/share/nostrhost/admin` at `/admin/`. It proxies
+`/package/*` on the same host to the loopback
 native API at port 8190, preserving the request URL and method used by NIP-98.
 The Vite production base path, release manifest, and Caddy route are checked
 together by the admin packaging tests.

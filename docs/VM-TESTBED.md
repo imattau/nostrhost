@@ -552,3 +552,53 @@ SO_PEERCRED-gated), which operator-signs the kind-31102 events.
 
 Remaining §8 client work: only the real-browser passkey attestation and a
 visual grid check (documented headless limits).
+
+## Native admin and package-authoring acceptance (2026-09-13)
+
+The native admin package, core package, and authoring CLI were exercised on
+the local Debian 12 NostrHost VM (`nostrhost-clean6`, 192.168.122.37). Its
+virtual disk was expanded from 3 GiB to 16 GiB so the Debian build toolchain
+and core package could be tested in the guest.
+
+- Built and installed `nostrhost-core` and `python3-nostrhost` 12.1.41.28 over
+  12.1.41.21. The Debian build dependency check and binary package build passed
+  inside the VM, and post-install configuration regeneration completed.
+- Reconciled the current domain routes through the installed Caddy route
+  builder. `/admin/` returns the SPA HTML, its JavaScript and CSS return the
+  correct content types, and `/admin/packages` falls back to the SPA shell.
+- `GET /healthz` returns `200`; unsigned `POST /package/plan` returns `401`;
+  all system services remain active and none are failed.
+- Ran the installed package-authoring CLI: scaffold → validate → plan (13
+  operations) → explain → schema passed. The schema and plan outputs parse as
+  JSON, and Typer exposes its native shell-completion options.
+
+The VM run found and fixed these gaps:
+
+1. `bin/nostrhost-package` was stored without its executable bit and contained
+   duplicate virtual-environment dispatch logic.
+2. The CLI lacked the planned `init`, `validate`, and `explain` commands; the
+   schema command also could not write the checked-in schema contract. These
+   commands now share the typed package engine and return structured output
+   suitable for automation.
+3. Debian 12's packaged Typer rejected the `Path | None` option annotation at
+   CLI startup. The command now uses `Optional[Path]`, and was rerun on the
+   VM's installed Typer.
+4. Generated Caddy domain configuration and the default admin redirect still
+   used the former admin URL while the bundle and route builder used `/admin/`.
+   The template, redirect, access-control allowlist, and regression test now
+   agree on `/admin/`.
+5. The dynamic Caddy SPA route rewrote every request to `index.html`, which
+   would return HTML for asset URLs. It now serves existing files and uses
+   `index.html` only as the SPA fallback.
+6. The running VM's generated Caddy configuration did not yet contain the
+   native `/package/*` proxy. Adding the route made the unsigned request reach
+   the API's expected authentication gate instead of the default site handler.
+7. The Debian build still generated CLI completion and manpage artifacts from
+   action maps that have been removed. The package build now relies on Typer's
+   runtime help and completion support instead.
+
+The VM's test-domain Caddy file is a hand-maintained fixture and retained its
+older static route through package regeneration; the test explicitly
+reconciled the domain through the current route builder before checking the
+admin UI. A signed browser request with an admin NIP-07 signer remains the
+next end-to-end check.
