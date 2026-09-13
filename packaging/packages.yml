@@ -145,6 +145,7 @@ packages:
     summary: NostrHost Python runtime venv (bundled manylinux cp311 wheels)
     depends:
       - python3-venv
+      - ca-certificates
       - python3-pip
     source:
       requirements: packaging/runtime/requirements.txt
@@ -218,6 +219,24 @@ packages:
       - init-system-helpers
       - nostrhost-control
       - systemd
+    provides: []
+    breaks: []
+
+  # Client-side NIP-98 stdio bridge. This is intentionally a standalone
+  # package: installing the server meta-packages must not install client
+  # credentials or tooling on the host.
+  - name: yunohost-mcp-connect
+    kind: python-cli
+    version: "0.8.50"
+    summary: Local stdio bridge for authenticated YunoHost MCP connections
+    source:
+      repo: imattau/yunohost-mcp
+      submodule: libs/yunohost-mcp
+      requirements: packaging/runtime/yunohost-mcp-connect-requirements.txt
+      command: yunohost-mcp-connect
+      venv: /opt/yunohost-mcp-connect/venv
+    depends:
+      - python3-venv
     provides: []
     breaks: []
 
@@ -328,6 +347,7 @@ packages:
 # External Debian packages these entries depend on, so verify-dependencies can
 # distinguish "our" packages from upstream ones. Only used for validation.
 external_deps:
+  - ca-certificates
   - adduser
   - init-system-helpers
   - systemd

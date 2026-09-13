@@ -76,7 +76,7 @@ libraries:
     repo: imattau/nostrhost-auth
     path: libs/nostrhost-auth
     branch: main
-    pin_commit: 633e743a9d98b1fa1bb7881dd1225292f49c1f6b
+    pin_commit: a168c3d6e454348294fdb4bad0ad608aa1208d90
     extracted_from: imattau/yunohost-nostr-auth
 
   - component: policy          # roles/scopes/NIP-98/delegation/approvals/owner/audit
