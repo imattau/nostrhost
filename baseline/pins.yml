@@ -27,7 +27,7 @@ forks:
     branch: nostrhost          # derivative branch (first fork modification, Phase 3)
     derivative: true
     pin: debian/12.1.41.2      # upstream baseline the branch was cut from
-    pin_commit: 165299595ac52d284c321ca9f70528d2f5a55bdb
+    pin_commit: 146c7026fd39059b2dd1b34b75799a13e39eab83
     live_server: 12.1.41.2
 
   - component: portal          # Nuxt/Vue/TypeScript user portal
