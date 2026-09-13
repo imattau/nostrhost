@@ -146,14 +146,23 @@ this revision. What's left is narrower than originally scoped:
    callers) and deleted `share/actionsmap.yml`/`actionsmap-portal.yml`
    (unread by anything). Session-cookie methods and `user_is_allowed_on_domain`
    were left untouched — they're still live and not part of this phase.
-3. **Phase 2 — NIP-51 permission projection (not started).** Define the
-   NIP-51 list shape(s) for app permission membership, and build the
-   projector that turns signed NIP-51 events into the authd
-   permission-projection file, replacing `_sync_permissions_with_ldap()`
-   (row 6) as the sole mechanism, and replacing the LDAP read inside
-   `user_is_allowed_on_domain()` (row 4) with the same projection. Delete
-   both LDAP paths once the projector is proven. This is the real remaining
-   architectural work — no code for it exists yet anywhere in the repo.
+3. **Phase 2 — NIP-51 permission projection (◑ additive projector landed).**
+   `nostrhost.nip51_permissions` defines the list shape (kind 30000, `d` tag
+   = permission name, `p` tags = member pubkeys, optional `public` tag) and
+   a `PermissionStore` + `merge_projection()` that unions NIP-51-resolved
+   usernames into the existing projection; `nostr_permissiond` is the relay
+   projector daemon (mirrors `nostr_identityd`'s structure), wired into
+   `nostrhost.permissions.build_permissions_projection()` so every
+   projection rebuild picks up NIP-51 grants automatically. **Deliberately
+   additive**: it unions on top of the LDAP-sourced membership from
+   `user_permission_list()`/row 6 and never removes access or unsets
+   `public` — this is a safe, gradually-adoptable path, not the cutover
+   itself. Still open: (a) `user_is_allowed_on_domain()` (row 4) still reads
+   LDAP directly and isn't merged with NIP-51 yet; (b) nothing publishes
+   permission-list events yet — no CLI/Admin UI to author a kind-30000
+   grant; (c) the actual cutover (stop writing/reading LDAP membership once
+   grants have moved to NIP-51 in practice) is not done, by design, until
+   NIP-51 is the primary path in real use.
 4. **Phase 3 — Unix account store cleanup (mostly done already).** The
    identity projector already treats Nostr identity as authoritative and
    LDAP as a derived fallback (row 7); once Phase 2 lands, nothing needs
@@ -174,7 +183,7 @@ this revision. What's left is narrower than originally scoped:
 |---|---|
 | 0 — Inventory | ✓ maintained (this document) |
 | 1 — Delete dead moulinette auth code | ✓ done (this revision) |
-| 2 — NIP-51 permission projection | ⏳ not started — no code exists yet |
+| 2 — NIP-51 permission projection | ◑ additive projector landed (`nip51_permissions.py`, `nostr_permissiond`); `user_is_allowed_on_domain()` LDAP read + grant-authoring UI/CLI + actual LDAP cutover remain |
 | 3 — Unix account store cleanup | ◑ mostly done — identity projector already treats LDAP as a derived fallback; remaining work is removing that fallback + `user.py`'s direct LDAP CRUD |
 | 4 — Delete `slapd` and config | ⏳ not started |
 | 5 — Cleanup migration + policy update | ⏳ not started |
