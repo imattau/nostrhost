@@ -25,22 +25,35 @@ Treat community contributions as a shared, model-agnostic improvement loop: a re
 
 Keep this work in `libs/nostrhost-agent` and the umbrella APT release manifest.
 
-1. Add a systemd unit that runs `/usr/bin/nostrhost-agent` as a dedicated unprivileged `nostrhost-agent` account, has no shell or home directory, restarts on ordinary failure, handles SIGTERM cleanly, and applies systemd hardening. Only the audit/state directory should be writable by the service.
-2. Define first-run behavior. APT must not generate an operator identity, invent trusted server keys, or enable autonomous operation. Installation should leave the service disabled until the operator has supplied a valid configuration and explicitly enables it.
-3. Resolve secret-file access with the current strict config loader. It requires a regular file with no group/other permissions. The installed design must let the service read the secret without letting the service rewrite its own policy/config; test the chosen root-managed credential handoff (for example, systemd credentials) on Debian 12 before adopting it.
-4. Create the private audit/state directory with stable ownership and restrictive permissions. Do not include VM logs, trace captures, or model files in the package.
-5. Add build and package checks: Go tests, binary build, package-content inspection, `systemd-analyze verify`, config-permission tests, and install/remove/upgrade tests in a disposable Debian 12 NostrHost VM.
+1. Add `deploy/nostrhost-agent.service` to the component. Run `/usr/bin/nostrhost-agent` as a dedicated unprivileged `nostrhost-agent` account with no shell or home directory; apply systemd hardening, clean SIGTERM handling, and restart-on-failure. Grant write access only to the agent's audit/state directory. Do not give it broad access to NostrHost's root-owned platform configuration or keys.
+2. Make service setup safe on all package transitions. The `.deb` should create the system account and empty `/var/lib/nostrhost-agent` with restrictive ownership/mode, install the unit, and run `systemctl daemon-reload`; it must not enable or start the service. Handle upgrades without replacing operator data. On removal, stop/disable the service and remove the unit, but retain the account and audit/state data so ownership stays stable. On purge only, remove the audit/state directory and then the system account. Keep maintainer scripts idempotent and avoid restarting a service that is not configured.
+3. Keep agent provisioning out of APT `postinst`. APT must not generate identities, grant relay capabilities, invent trusted server keys, download models, or enable autonomous operation. Provide an explicit root-only `nostrhost agent init` (or equivalent) after platform `postinstall --new`/`--restore`: validate that NostrHost is initialized, provision a *separate* agent identity, bind the trusted server key and configured control relay, and write an Observe-mode configuration by default. Any capability grant or move to a proposal/write-capable policy must be a separate explicit operator action with bounded scopes. Do not add agent setup to the default bootstrap path until this opt-in flow has passed VM acceptance.
+4. Resolve secret delivery without weakening `LoadRuntimeConfig`: its config file must be a regular file with no group/other permissions. Keep the source config root-owned and unreadable to the service account; test a systemd `LoadCredential=` handoff and confirm the daemon can read the credential copy while the service cannot alter its source. If the current single-file config shape prevents safe credential handoff, make the smallest reviewed loader change before packaging. Test this on Debian 12.
+5. Add build and package checks: Go tests, binary build, package-content inspection, `systemd-analyze verify`, config/credential permission tests, and install/upgrade/remove/purge tests in a disposable current NostrHost VM. Assert that a fresh install does not create config or enable/start the service, that explicit initialization produces Observe mode, and that removal retains audit/state until purge.
 
 The package should be a separate optional `nostrhost-agent` package at first. Do not add it as a dependency of the default `nostrhost` or `nostrhost-core-system` meta-package until setup and operational support are mature.
 
 ## Phase 2 — Add and verify the APT package
 
-1. Add a `golang` entry to `packaging/packages.yml` using the pinned `libs/nostrhost-agent` submodule and the existing `packaging/scripts/build-package` Go build path.
-2. Add the systemd unit and any narrowly scoped config/state setup to the package staging rules. Keep `nostrhost-agent-eval`, training scripts, datasets, and adapters out of the server package.
-3. Verify dependency edges and generated package contents. Test a clean install, an upgrade, removal with retained audit data, service-disabled behavior, and explicit operator enablement on the latest NostrHost VM.
-4. Keep this package change on a review branch until the whole APT workflow is known to pass. The current APT workflow publishes on pushes to `main`, so merging the manifest entry is also a repository publication action.
+1. Extend `packaging/packages.yml` with an optional `nostrhost-agent` Go package sourced from the pinned `libs/nostrhost-agent` submodule. Do not add it to either meta-package. Depend only on the platform interfaces the agent actually uses; avoid introducing a cycle through `nostrhost-control`.
+2. Extend `packaging/scripts/build-package` to fail the build if a declared unit is missing, stage the unit, and install reviewed `postinst`, `prerm`, and `postrm` lifecycle scripts (including systemd helper use and purge-only data removal). The binary package should contain only the daemon, service unit, required defaults/documentation, and maintainer scripts. Exclude eval/export/model utilities, training scripts, datasets, adapters, and model weights unless separately justified and reviewed.
+3. Add CLI/bootstrap integration in the NostrHost core only after the explicit provisioning contract is implemented: `nostrhost agent init`, `status`, and `disable` (names may change during implementation). `postinstall --new` and `--restore` should report that the optional agent is unconfigured; they must not silently create credentials, grants, enablement, or model downloads. Document the operator path from apt install → explicit init → inspect config/scopes → explicit enable.
+4. Verify dependency edges and generated package contents. On the latest NostrHost VM, test a clean install, postinstall-before-and-after agent installation, explicit initialization, service disabled before explicit enable, Observe mode without inference, upgrade with config and audit retained, remove with audit retained, purge behavior, and recovery after failed configuration. Also verify default NostrHost meta-package installs do not pull the agent.
+5. Keep the package change on a review branch until the whole APT workflow and VM acceptance pass. The current APT workflow publishes on pushes to `main`, so merging the manifest entry is also a repository publication action.
 
 Acceptance: an operator can install the daemon without downloading model weights, without granting it root, and without it starting before valid configuration is installed. Observe mode can run without an inference server; write-capable modes remain subject to NostrHost's registered-operation, approval, and fresh-verification controls.
+
+### Integration sequence and ownership
+
+| Step | Owner | Deliverable | Gate |
+|---|---|---|---|
+| A | `nostrhost-agent` component | hardened unit, service-account assumptions, credential loading validated on Debian 12 | daemon tests + unit/config permission tests pass |
+| B | umbrella packaging | optional `.deb`, unit staging, idempotent maintainer scripts, package-content check | built `.deb` installs disabled with no operator config |
+| C | NostrHost core (`forks/yunohost`) | explicit `nostrhost agent init/status/disable` lifecycle and scoped capability setup; no implicit `postinstall` activation | tests prove identity separation, Observe default, and no accidental grants |
+| D | VM acceptance | clean install, initialize, enable, observe, upgrade, remove, purge and recovery checks on current NostrHost | all checks pass from a clean snapshot |
+| E | release | publish optional package and operator docs; keep default meta-packages unchanged | review of package contents, security boundary, and APT workflow |
+
+Do not start step C by directly coupling the agent daemon to platform internals. Keep the boundary at explicit config generation and the existing relay/operation protocol. If postinstall integration is later desired, make it an opt-in flag that invokes the same tested provisioning path and leaves service enablement as a distinct operator decision.
 
 ## Phase 3 — Publish model artifacts on Hugging Face
 

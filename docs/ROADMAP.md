@@ -96,9 +96,10 @@ the **working specifications**; the plan, its phases and its status live here.
 | §22 | YNH package migration analyser | ⏳ | manifest + Bash-AST analyser, deterministic migration, AI repair loop |
 | §23 | Behavioural equivalence testing | ⏳ | VM A/B comparison + confidence attestation |
 | §24 | Native vs compatibility boundary | ⏳ | measurable shrink (122→87→41→0 helpers) |
-| §25 | LDAP dependency inventory / reduction | ◑ | dead moulinette LDAP-bind code + unread actionsmap config deleted; NIP-51 permission projection + CLI authoring (`grant-nostr`/`clear-nostr`) + `nostr_permissiond` + native admin check landed; the email-domain LDAP read, Admin (web) UI, and actual LDAP cutover remain — plan in `docs/LDAP-RETIREMENT.md` |
+| §25 | LDAP dependency inventory / reduction | ✓ | LDAP retired outright: native account store (`nostrhost/accounts.py`, real Unix accounts + JSON metadata) replaces LDAP as the user/group directory; `slapd`/`python-ldap`/libnss-ldapd/libpam-ldapd removed from core; NIP-51 permission projection (`grant-nostr`/`clear-nostr`, `nostr_permissiond`, `is_admin_user`) covers the authz layer; `_sync_permissions_with_ldap` now regenerates the native projection — plan in `docs/LDAP-RETIREMENT.md` |
 | §26 | Native DNS management | ⏳ | later phase (alpha) |
 | §27 | Secrets / key lifecycle | ◑ | node-key inventory + safe keeping landed (POSTINSTALL-KEYS); rotation + Restic/DB/external/DNS/Caddy/agent secret classes remain |
+| §28 | Nsites (NIP-5A hosting) | ⏳ | post-alpha gateway/component spike, owner-signed publishing, safe public serving, MCP/Admin agent integration, domains and catalogue — plan in `docs/NSITES-PLAN.md` |
 | MCP 0–4 | MCP transition: registry, skeleton, identity, signed mutations, approval flow | ✅ | — |
 | MCP 5 | Resource Engine integration (catalog surface) | ✓ | `catalog.list/get/publish/verify` + the full backlog landed (updates/migrations/service.history/logs/backup.delete/domain.cert/users/groups/permissions/audit) — 69 ops; legacy `package_*` mapping + compat path dropped by direction |
 | MCP 6 | Client integrations + packaging | ⏳ | port claude-code/codex/gemini/hermes/openclaw/opencode configs, skill rename, deb + PyPI |
@@ -121,7 +122,7 @@ the **working specifications**; the plan, its phases and its status live here.
 The near-term path to a shippable 0.1 alpha is the **alpha plan** (docs truth →
 runtime deb → native bootstrap → end-to-end native app lifecycle), then the
 **MCP transition tail** (catalog surface, client integrations), then the
-**platform-close** items (§19–§27) that turn YunoHost into a pure
+**platform-close** items (§19–§28) that turn YunoHost into a pure
 compatibility/migration source:
 
 ```text
@@ -133,6 +134,7 @@ compatibility/migration source:
 6.  §17/§19   distribution + native self-update
 7.  §22–§24   package migration analyser + behavioural equivalence + boundary shrink
 8.  §25–§27   LDAP demotion, native DNS, secrets lifecycle   (later phase)
+9.  §28       Nsites gateway/component spike                 (post-alpha)
 ```
 
 ---
@@ -1856,6 +1858,64 @@ identifier in ngit state, never stored in plaintext (§7.2).
 
 ---
 
+# 28. Nsites (NIP-5A Hosting) — ⏳ (post-alpha)
+
+Nsites give NostrHost a Nostr-native static website hosting capability: a
+site owner's signed NIP-5A manifest maps paths to content-addressed Blossom
+blobs, and a gateway resolves and serves those assets over HTTPS. This is a
+platform capability, not a conventional backend application and not an
+extension of the private control-plane relay.
+
+The current 0.1 alpha path remains native bootstrap plus the signed lifecycle
+for a conventional native app (§19, §21). Nsites begin with a bounded
+component/VM spike after that gate. Full implementation phases, security gates
+and acceptance criteria are tracked in [`docs/NSITES-PLAN.md`](NSITES-PLAN.md).
+
+Target separation:
+
+```text
+Owner's signer ── signs manifest ──► public Nostr relays
+Owner/Admin ───── uploads files ───► selected Blossom servers
+Visitor ──HTTPS──► Caddy ──────────► Nsite Gateway ──► relays + Blossom
+
+NostrHost local relay ── private control-plane events only
+```
+
+The first milestone evaluates and packages an existing gateway on a test VM;
+it proves manifest/path/hash handling, origin isolation, separation from the
+control relay, and a viable hostname/TLS strategy before NostrHost adds a
+gateway package or publishing UI. The gateway is independently versioned and
+optional. The local control relay remains loopback-only; public nsite traffic
+does not get an administrative route or relay access.
+
+Subsequent phases add bounded public serving and cache policy; safe NIP-5A
+manifest and Blossom resolution; Admin publishing with the owner's NIP-07
+signature and no server-held user key; snapshots and lifecycle operations;
+verified custom-domain mapping; and catalogue linkage through NIP-5A's
+optional application reference. Git-based publishing, a NostrHost-operated
+public Blossom upload service, wildcard DNS-01 and the default-package
+decision are later choices gated by the initial spike and operational proof.
+
+AI assistance is part of this workstream through both the MCP adapter and the
+Admin agent experience. Add nsite tools and JSON schemas to the same native
+operation catalogue used to generate MCP tools and Admin forms; both surfaces
+must submit the same typed plans through policy, approval, execution and audit.
+The AI may inspect sites, explain validation and propose a manifest or plan.
+Publishing, mirroring, changing relay/domain settings and removing mappings
+remain explicit owner-authorized actions; the agent has no shell or direct
+provider access and cannot sign for the site owner. The Admin agent must show
+the file inventory, content hashes, target identity, relays, Blossom servers
+and exact event tags before it asks the owner's signer to sign. The resident
+`nostrhost-agent` stays optional and uses its existing typed operation and
+verification boundary; no nsite-specific model or training data is required.
+
+Security gates include separate Admin/Portal and nsite origins, no
+parent-domain management cookies, SSRF-safe Blossom fetching, path and hash
+validation, response/upload/cache limits, domain ownership verification, and
+reconstructable gateway configuration with disposable cache contents.
+
+---
+
 # Recommended Implementation Order
 
 The order matters. The internal relay + event model (§3) was the
@@ -1891,7 +1951,7 @@ on identity, policy and execution semantics, which now exist.
 
 The core architecture is now largely complete. The next phase stops adding
 subsystems and instead closes NostrHost's own platform loops so YunoHost
-becomes purely a compatibility/migration source (§19–§27):
+becomes purely a compatibility/migration source (§19–§28):
 
 ```text
 18. Caddy P7 cleanup + residual nginx/SSO reference removal  ⏳ (§20)
@@ -1905,8 +1965,9 @@ becomes purely a compatibility/migration source (§19–§27):
 26. LDAP dependency inventory / reduction                   ⏳ (§25)
 27. Native DNS resource + provider adapters                  ⏳ (§26)
 28. Secrets / key lifecycle architecture                    ⏳ (§27)
-29. Native NostrHost release/update process                 ⏳ (§17)
-30. Gradual YunoHost compatibility retirement               ⏳ (§24)
+29. Nsites protocol/component spike + gateway proof          ⏳ (§28; post-alpha)
+30. Native NostrHost release/update process                 ⏳ (§17)
+31. Gradual YunoHost compatibility retirement               ⏳ (§24)
 ```
 
 Do not begin by rewriting SSOwat (retired — §12) or rebuilding the admin
@@ -1952,7 +2013,8 @@ acceptance loop.
 Later phase (not near-term): **§25 LDAP demotion** (native user/group store,
 optional `LDAPInterface`, native authenticator, slapd/nslcd hooks optional) and
 **§26/§27 native DNS + secrets** (`DnsResource` + provider adapters; SecretBroker
-consolidation on systemd credentials).
+consolidation on systemd credentials), then **§28 Nsites** (post-alpha gateway,
+publishing and MCP/Admin agent integration).
 
 ---
 
@@ -2224,6 +2286,10 @@ request → Caddy → forward_auth → authd → policy engine → ALLOW / DENY
     measurably**, with behavioural equivalence as the migration gate (§22–§24).
 22. **DNS, secrets and the platform's own update are first-class native
     resources**, not Bash helpers (§17.1, §26, §27).
+23. **Treat Nsites as a public content-serving plane separate from host
+    administration.** Site manifests are signed by their owners, Blossom
+    bytes are content-addressed, and untrusted site code never shares the
+    Admin/Portal origin or the private control relay (§28).
 
 ---
 
@@ -2263,6 +2329,7 @@ NostrHost natively provides:
 application lifecycle (declarative package.toml resources + bounded execution)
 domains
 web serving + automatic TLS (Caddy)
+optional NIP-5A nsite gateway + owner-controlled site publishing (§28)
 CrowdSec intrusion detection + security events
 configuration state (ngit / NIP-34) + data recovery (Restic)
 services
