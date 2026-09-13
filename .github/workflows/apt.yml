@@ -12,9 +12,8 @@ name: apt
 # Configure Pages source to "GitHub Actions" (Settings -> Pages) — the
 # deploy-pages step below publishes the packaging/pages artifact.
 #
-# Signing: add the apt signing key id + armor to the APT_GPG_KEYID and
-# APT_GPG_KEY secrets. Without them the repo is published unsigned (clients
-# must add `[trusted=yes]`), which is fine for a testbed but not a release.
+# Signing: APT_GPG_KEYID and APT_GPG_KEY are required Actions secrets. The
+# matching public key is published as debian/nostrhost.asc for apt clients.
 
 on:
   push:
@@ -187,28 +186,28 @@ jobs:
           APT_GPG_KEY: ${{ secrets.APT_GPG_KEY }}
         run: |
           set -euo pipefail
+          if [ -z "${APT_GPG_KEY:-}" ] || [ -z "${APT_GPG_KEYID:-}" ]; then
+            echo "APT_GPG_KEY and APT_GPG_KEYID are required to publish the repository" >&2
+            exit 1
+          fi
           debs=( packaging/build/*.deb )
           if [ ${#debs[@]} -eq 0 ]; then
             echo "no .debs produced" >&2; exit 1
           fi
           ls -lh "${debs[@]}"
-          if [ -n "${APT_GPG_KEY:-}" ]; then
-            umask 077
-            mkdir -p .gnupg && chmod 700 .gnupg
-            echo "$APT_GPG_KEY" | gpg --homedir .gnupg --import --batch --yes
-            packaging/scripts/publish-deb --repo packaging/repository \
-              --gpg-gnupghome "$(pwd)/.gnupg" --gpg-keyid "$APT_GPG_KEYID" \
-              "${debs[@]}"
-          else
-            echo "::warning::no APT_GPG_KEY secret — publishing unsigned repo"
-            packaging/scripts/publish-deb --repo packaging/repository "${debs[@]}"
-          fi
+          umask 077
+          mkdir -p .gnupg && chmod 700 .gnupg
+          echo "$APT_GPG_KEY" | gpg --homedir .gnupg --import --batch --yes
+          packaging/scripts/publish-deb --repo packaging/repository \
+            --gpg-gnupghome "$(pwd)/.gnupg" --gpg-keyid "$APT_GPG_KEYID" \
+            "${debs[@]}"
 
       - name: Stage repo under debian/ for Pages
         run: |
           set -euo pipefail
           mkdir -p packaging/pages/debian
           cp -r packaging/repository/dists packaging/repository/pool packaging/pages/debian/
+          cp packaging/nostrhost-archive-keyring.asc packaging/pages/debian/nostrhost.asc
           find packaging/pages -type f | sort | head -40
 
       - name: Configure Pages

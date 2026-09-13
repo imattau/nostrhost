@@ -114,19 +114,26 @@ external Debian packages: crowdsec · crowdsec-firewall-bouncer
 
 ## Publishing to GitHub Pages
 
-The workflow commits the assembled repo to GitHub Pages under `debian/`, so
-the sources line is:
+The workflow publishes the assembled repo to GitHub Pages under `debian/`.
+Install its public signing key, then add this sources line:
+
+```bash
+sudo install -d -m 0755 /etc/apt/keyrings
+curl -fsSL https://imattau.github.io/nostrhost/debian/nostrhost.asc \
+  | sudo tee /etc/apt/keyrings/nostrhost.asc >/dev/null
+```
 
 ```text
 deb [signed-by=/etc/apt/keyrings/nostrhost.asc] \
     https://imattau.github.io/nostrhost/debian/ bookworm main
 ```
 
-Set the Pages source to "Deploy from a branch" → `gh-pages` / (root).
+GitHub Pages must use "GitHub Actions" as its deployment source.
 
-**Signing:** add the apt signing key id + armored private key to the
-`APT_GPG_KEYID` and `APT_GPG_KEY` repository secrets. Without them the repo is
-published unsigned and clients must add `[trusted=yes]`.
+**Signing:** the workflow requires the `APT_GPG_KEYID` and `APT_GPG_KEY`
+repository secrets and fails closed if either is missing. The matching public
+key is checked in at `nostrhost-archive-keyring.asc` and published at the URL
+above. Never commit the private key or use `[trusted=yes]`.
 
 ## Local workflow
 
