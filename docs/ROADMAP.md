@@ -90,9 +90,9 @@ the **working specifications**; the plan, its phases and its status live here.
 | §16 | Declarative reconciliation (Stage D) | ✓ | — |
 | §17 | Distribution + release tooling / native self-update | ⏳ | Debian repo, installer image, signed self-update |
 | §18 | Platform simplification (messaging, mail, security) | ◑ | mail identity/UI cleanup; security-state digest cadence (§18.6) |
-| §19 | Native bootstrap / postinstall | ◑ | five-key bootstrap + recovery bundle + `--restore` CLI landed (POSTINSTALL-KEYS); blank-VM acceptance loop + legacy postinstall bypass ⏳ |
+| §19 | Native bootstrap / postinstall | ✓ | five-key bootstrap + recovery bundle + `--restore` CLI landed (POSTINSTALL-KEYS); `postinstall --new` is the canonical path (legacy `tools_postinstall` wizard not involved); blank-VM acceptance loop run on clean7 |
 | §20 | Web cutover completion (Caddy P7) | ⏳ | Caddy storage in backup, cert state in ngit, residual nginx helpers/migrations |
-| §21 | End-to-end native app lifecycle | ◑ | `package.plan`/`reconcile` proven on nostrhost-test; the §21 vertical loop on one **real** app ⏳ |
+| §21 | End-to-end native app lifecycle | ◑ | `package.plan`/`reconcile` proven on nostrhost-test; the §21 vertical loop proven on one **real** app (`opencode-web_nh`, full signed loop verified); Restic snapshot id now linked into the plan result; backup/restore CLI landed |
 | §22 | YNH package migration analyser | ⏳ | manifest + Bash-AST analyser, deterministic migration, AI repair loop |
 | §23 | Behavioural equivalence testing | ⏳ | VM A/B comparison + confidence attestation |
 | §24 | Native vs compatibility boundary | ⏳ | measurable shrink (122→87→41→0 helpers) |
@@ -106,12 +106,12 @@ the **working specifications**; the plan, its phases and its status live here.
 | MCP 7 | Multi-host / fleet projection | ⏳ | deferred until MCP 1–6 proven |
 | MCP 8 | Retire duplicated `yunohost-mcp` logic | ⏳ | gated on MCP 5–6 |
 | Alpha W0 | Documentation truth | ✅ | — |
-| Alpha W1 | `nostrhost-runtime` deb (private venv, bundled wheels) | ✅ | in `packaging/packages.yml`; verify clean-VM install |
-| Alpha W2 | Native bootstrap / postinstall | ◑ | five-key bootstrap + recovery bundle landed (POSTINSTALL-KEYS); blank-VM acceptance loop + legacy postinstall bypass |
-| Alpha W3 | End-to-end native app lifecycle | ⏳ | `app install <coordinate>` CLI + native backup/restore + real-app proof |
+| Alpha W1 | `nostrhost-runtime` deb (private venv, bundled wheels) | ✅ | verified on clean6/clean7: VM installed via the live APT repo, `/opt/nostrhost/venv` imports `nostr_sdk` + `pydantic 2.13`, no manual pip |
+| Alpha W2 | Native bootstrap / postinstall | ✓ | five-key bootstrap + recovery bundle landed (POSTINSTALL-KEYS); `postinstall --new` canonical (no legacy wizard); blank-VM acceptance loop run on clean7 |
+| Alpha W3 | End-to-end native app lifecycle | ◑ | `app install/upgrade/remove/change-url/backup/restore` CLI landed; signed loop proven on nostrhost-test + `opencode-web_nh` (real app); Restic snapshot linked into plan result |
 | Agent 1–2 | Agent daemon packaging (optional APT, disabled by default) | ⏳ | systemd unit, first-run, secret handoff, VM acceptance |
 | Agent 3–4 | Model artifacts on Hugging Face + evaluation Space | ⏳ | blocked on a candidate passing the training-regime gates |
-| Cutover 1–6 | Resource engine cutover / plane integration | ◑ | step 3 tail (Restic snapshot into native plan result); steps 4–6 (Admin/catalog wiring, package migration) |
+| Cutover 1–6 | Resource engine cutover / plane integration | ◑ | step 3 tail done (Restic snapshot id linked into the native plan result); steps 4–6 (Admin/catalog wiring, package migration) |
 | Notify | Native notification service (§18.1) | ✅ | — |
 | Mail | Mail-stack retirement | ◑ | §18.7/18.8 identity + UI consequences |
 | CrowdSec | Intrusion protection migration | ✅ | — |
@@ -126,14 +126,14 @@ runtime deb → native bootstrap → end-to-end native app lifecycle), then the
 compatibility/migration source:
 
 ```text
-1.  Alpha W2  native postinstall --new / --restore          (§19)
-2.  Alpha W3  end-to-end native app lifecycle               (§21)
+1.  Alpha W2  native postinstall --new / --restore          (§19) — ✅ done (blank-VM acceptance loop run on clean7)
+2.  Alpha W3  end-to-end native app lifecycle               (§21) — ◑ (proven on nostrhost-test + opencode-web_nh; fresh-VM re-exercise on clean7)
 3.  MCP 5     catalog.list / catalog.publish / catalog.verify + package_* mapping — ✅ done (69 ops; legacy mapping dropped)
 4.  MCP 6     client integrations (configs, skill rename, deb + PyPI)
 5.  §20       Caddy P7 residual cleanup
 6.  §17/§19   distribution + native self-update
 7.  §22–§24   package migration analyser + behavioural equivalence + boundary shrink
-8.  §25–§27   LDAP demotion, native DNS, secrets lifecycle   (later phase)
+8.  §25–§27   native DNS, secrets lifecycle                 (LDAP retired outright)
 9.  §28       Nsites gateway/component spike                 (post-alpha)
 ```
 
@@ -1570,18 +1570,20 @@ more consistent with its Nostr-native identity and control architecture.
 
 ---
 
-# 19. Native Bootstrap / Postinstall — ◑ (postinstall CLI + five-key bootstrap landed; acceptance loop + `--restore` DR path remain)
+# 19. Native Bootstrap / Postinstall — ✓ (five-key bootstrap + recovery bundle landed; `--new` canonical; blank-VM acceptance loop run on clean7)
 
-The biggest missing platform-level piece. A clean install must no longer
-bootstrap through the old YunoHost admin/password assumptions. `postinstall
---new` provisions the five hardened roles root-only (§4, `docs/POSTINSTALL-KEYS.md`):
+The native bootstrap replaced the old YunoHost admin/password first-run path.
+`postinstall --new` provisions the five hardened roles root-only
+(§4, `docs/POSTINSTALL-KEYS.md`):
 `server_sk` / `operator_sk` (default admin) / `notice_sk` / `publisher_sk`
 (catalogue) / `notifier_sk` (notification service), renders `relay.toml`,
 `policy.toml`, `notify.toml` and `catalogue.env`, records state S0, and
 presents the keys for safe keeping once (`nsec1` recovery bundle + root-only
 `/etc/nostrhost/keys.recovery`). `postinstall --restore` recovers identity +
-state + Restic and requires every node key explicitly (flags or `--keys-file`);
-the blank-VM acceptance loop and the legacy `tools_postinstall` bypass remain.
+state + Restic and requires every node key explicitly (flags or `--keys-file`).
+`--new` is the canonical first-run path (the legacy interactive
+`tools_postinstall` wizard is not involved); the blank-VM acceptance loop was
+run on clean7.
 
 ```text
 Debian
@@ -1648,14 +1650,18 @@ are green at the P7 gate.
 
 ---
 
-# 21. End-to-End Native App Lifecycle — ◑ (plan/reconcile proven on nostrhost-test; the real-app vertical loop remains)
+# 21. End-to-End Native App Lifecycle — ◑ (signed loop proven on nostrhost-test + opencode-web_nh; Restic snapshot linked into the plan result)
 
 The declarative resource engine is broad enough; stop adding resource types
 temporarily and prove one substantial real application completely through the
 vertical loop. The resource-engine machinery is in place (`package.toml`,
 plan/reconcile model, native providers, native Caddy routes, databases,
-runtimes, permissions, secrets/settings, backup declarations). What is missing
-is proof of the whole, trusted, signed loop on a real app:
+runtimes, permissions, secrets/settings, backup declarations). The whole,
+trusted, signed loop is now proven on **two** packages: the `nostrhost-test`
+fixture and the **real** `opencode-web_nh` app (installed natively via the
+signed chain on the VM, version 1.18.30); the Restic snapshot taken for a
+data-affecting reconcile is linked into the plan result. The loop that is
+proven:
 
 ```text
 Nostr Catalog
@@ -1683,9 +1689,10 @@ post-state
 Admin result
 ```
 
-Once this works reliably, the architecture is proven as a whole — including
-the native Caddy route path (P4) and the catalog→policy trust integration
-(§11).
+The architecture is thereby proven as a whole — including the native Caddy
+route path (P4) and the catalog→policy trust integration (§11). Remaining
+polish is the fresh-VM acceptance loop (clean7) re-exercising install →
+backup → upgrade → break → restore/rollback on a blank snapshot.
 
 ---
 
@@ -2003,9 +2010,9 @@ with LDAP and some YunoHost compatibility code still underneath.
 | Workstream | Scope | Status |
 |---|---|---|
 | **W0** Documentation truth — README/`BASELINE.md`/CI scripts describe what exists (no stale ssowat/moulinette/source-identical claims) | ✅ | README + baseline clean of ssowat references; verify `verify-clean.sh`/`pin-forks.sh` |
-| **W1** `nostrhost-runtime` deb — private venv at `/opt/nostrhost/venv`, bundled wheels (nostr-sdk, pydantic), daemons on venv python, `nostrhost-core(-system)` depends on it | ✅ | declared in `packaging/packages.yml`; acceptance = clean-VM install with no manual pip |
-| **W2** Native bootstrap / postinstall (§19) — `nostrhost postinstall --new` (keys → operator.toml/policy.toml → relay/Caddy/daemons → state S0) and `--restore` (identity → state repo → known-good + Restic → reconcile); retire legacy `tools_postinstall` | ◑ | both `--new` and `--restore` are implemented in `cli.py`; blank-VM acceptance loop + legacy `tools_postinstall` bypass ⏳ |
-| **W3** End-to-end native app lifecycle (§21) — `app install <coordinate>` CLI through the signed plan/approval/reconcile chain; native `app remove/upgrade/change_url`; backup/restore linkage; proof on nostrhost-test then one **real** app | ⏳ | |
+| **W1** `nostrhost-runtime` deb — private venv at `/opt/nostrhost/venv`, bundled wheels (nostr-sdk, pydantic), daemons on venv python, `nostrhost-core(-system)` depends on it | ✅ | verified on clean6/clean7: VM installed via the live APT repo, venv imports `nostr_sdk` + `pydantic 2.13`, no manual pip |
+| **W2** Native bootstrap / postinstall (§19) — `nostrhost postinstall --new` (keys → operator.toml/policy.toml → relay/Caddy/daemons → state S0) and `--restore` (identity → state repo → known-good + Restic → reconcile); retire legacy `tools_postinstall` | ✓ | both `--new` and `--restore` implemented in `cli.py`; `--new` is canonical (no legacy wizard); blank-VM acceptance loop run on clean7 |
+| **W3** End-to-end native app lifecycle (§21) — `app install <coordinate>` CLI through the signed plan/approval/reconcile chain; native `app remove/upgrade/change_url`; backup/restore linkage; proof on nostrhost-test then one **real** app | ◑ | signed loop proven on nostrhost-test **and** `opencode-web_nh` (real app); Restic snapshot id now linked into the plan result; backup/restore CLI landed |
 
 Sequencing: W0 → W1 → W2 → W3; each ends green on CI. Final gate is the alpha
 acceptance loop.

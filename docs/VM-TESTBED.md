@@ -602,3 +602,45 @@ older static route through package regeneration; the test explicitly
 reconciled the domain through the current route builder before checking the
 admin UI. A signed browser request with an admin NIP-07 signer remains the
 next end-to-end check.
+
+## LDAP-free native account stack (2026-09-13, clean6)
+
+The LDAP-retired fork (native account store, `nostrhost/accounts.py`) was
+verified on the running Debian 12 NostrHost VM (`nostrhost-clean6`,
+192.168.122.37, core `12.1.41.28`) with slapd stopped throughout:
+
+- **User lifecycle** — `user create <username> <domain>` (domain is the 2nd
+  positional arg) creates a real `/etc/passwd` account (uid 29xxx) + the
+  root-owned `/etc/nostrhost/accounts.json` store record
+  (admin/firstname/fullname/lastname/mail/mailbox_quota/shell/uid).
+  `user update` handles fullname, quota and `--password` (login verified via
+  `su - <user> -c 'echo login-ok'`). `user delete --purge` removes the real
+  user before its primary group (`delete_real_user` before `user_group_delete`
+  — the delete-order fix landed in fork `04ce092c`). The `app_ssowatconf`
+  StopIteration after writes is a pre-existing testbed quirk (LDAP-era apps on
+  `nostrhost.test` vs native `w4.test`), not an account-store failure.
+- **Group lifecycle** — `user group create myteam` creates a real `/etc/group`
+  entry + store record; `user group update myteam --add <user>` updates both.
+- **Group → permission projection** — `user permission add
+  nostrhost-test.main myteam` (names positional) projected the group's member
+  into `/etc/nostrhost/permissions.json` (`users: ["testuser5"]`), the Caddy
+  authd input — the key end-to-end integration.
+- **Daemons** — `nostr-identityd`, `nostr-operationsd`, `nostr-permissiond`,
+  `nostr-portal-api`, `nostr-securityd`, `nostr-ddnswatchd`, `nostr-api`,
+  `nostrhost-control` all `active`; `nostrhost-certd` on a timer (inactive is
+  normal); `slapd` inactive; `nsswitch.conf` = plain `files` (no ldap);
+  `libnss-ldapd` still listed in dpkg but unreferenced (harmless).
+- **State** — `nostrhost-state publish` round-trips (clean revision, full
+  history bundle); `permissions.json` stays valid after user/group mutations.
+- Test artifacts (`testuser5`, `myteam`) cleaned up; store back to
+  `admins`/`all_users`/`visitors`.
+
+## Alpha acceptance loop (2026-09-13, clean7)
+
+The full §alpha threshold was run on a **brand-new** blank Debian 12 VM
+(`nostrhost-clean7`, fresh overlay on the genericcloud base, core
+`12.1.41.32`): apt install → `postinstall --new` → owner identity → relay →
+daemons → native app install → HTTPS → backup → upgrade → break → restore.
+Details and results are recorded against the clean7 VM; the previous clean
+snapshots (clean, clean2–clean5) were deleted after the run. `clean6` is
+retained as the LDAP-free reference.

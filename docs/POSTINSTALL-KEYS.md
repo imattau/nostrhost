@@ -105,4 +105,10 @@ allowlisted on the control relay.
   means node takeover — warn in the bundle.
 - `catalog.publish` (MCP Phase 5) reads `publisher_sk` from `operator.toml`.
 - Confirm `nostrhost-notify.service` packaging wires `-config /etc/nostrhost/notify.toml`
-  (tracked under alpha W2).
+  — **confirmed**: `libs/nostrhost-control/deploy/nostrhost-notify.service`
+  (`ExecStart=/usr/bin/nostrhost-notify -config /etc/nostrhost/notify.toml`,
+  `ConditionPathExists=/etc/nostrhost/notify.toml`, hardened) is shipped by the
+  published `nostrhost-notify` deb; `cmd/nostrhost-notify` accepts `-config`;
+  `postinstall --new`/`--restore` render both `notify.toml` and `catalogue.env`.
+  Runtime verification (configs present, unit inactive until config exists) is
+  part of the alpha acceptance loop (clean7).
