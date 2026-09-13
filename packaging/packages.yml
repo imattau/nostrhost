@@ -141,7 +141,7 @@ packages:
   # packaging/runtime/requirements.txt changes, bump the version here.
   - name: nostrhost-runtime
     kind: runtime
-    version: "0.1.4"
+    version: "0.1.5"
     summary: NostrHost Python runtime venv (bundled manylinux cp311 wheels)
     depends:
       - python3-venv
@@ -236,6 +236,29 @@ packages:
       command: yunohost-mcp-connect
       venv: /opt/yunohost-mcp-connect/venv
     depends:
+      - python3-venv
+    provides: []
+    breaks: []
+
+  # Server-side MCP adapter. Installs the nostrhost_mcp wheel into the shared
+  # /opt/nostrhost/venv (which bundles the mcp SDK wheels via
+  # nostrhost-runtime) and ships the loopback HTTP systemd unit. Not part of
+  # either meta-package: like nostrhost-agent, it is enabled per deployment
+  # after the operator provisions DNS + the Caddy route for the endpoint.
+  - name: python3-nostrhost-mcp
+    kind: python-adapter
+    version: "0.1.1"
+    summary: NostrHost MCP protocol adapter (thin operation client, loopback streamable HTTP)
+    source:
+      repo: imattau/nostrhost-mcp
+      submodule: libs/nostrhost-mcp
+      app_wheel: nostrhost-mcp
+      command: nostrhost-mcp
+      venv: /opt/nostrhost/venv
+      systemd: nostrhost-mcp.service
+    depends:
+      - nostrhost-runtime
+      - nostrhost-core
       - python3-venv
     provides: []
     breaks: []

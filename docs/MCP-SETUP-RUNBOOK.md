@@ -46,24 +46,39 @@ the only way a remote client reaches it.
 
 ## 2. Server side: nostrhost-mcp on the node
 
-1. Install the adapter into the node's venv (it is not yet an APT package):
+1. Install the adapter package (it provisions `/opt/nostrhost/venv` with the
+   MCP SDK wheels via `nostrhost-runtime` and installs the adapter into it):
 
    ```bash
-   /opt/nostrhost/venv/bin/pip install "mcp[cli]>=2.1.1" "nostr-sdk>=0.45.1"
-   # copy the nostrhost-mcp source tree into the venv site-packages, or
-   # install it as a normal package once it is packaged
+   apt install python3-nostrhost-mcp
    ```
 
-   The adapter needs the installed fork (`yunohost.nostr_operations`),
-   `nostrhost-policy`, and a running control relay + `nostr-operationsd`.
+   (Manual/development path: `pip install "mcp[cli]>=2.1.1" "nostr-sdk>=0.45.1"`
+   into the venv and copy the `nostrhost_mcp` source tree into the venv
+   site-packages.) The adapter needs the installed fork
+   (`yunohost.nostr_operations`), `nostrhost-policy`, and a running control
+   relay + `nostr-operationsd`.
 
-2. Verify the tool catalogue before serving:
+2. The package ships `nostrhost-mcp.service` (loopback HTTP on 127.0.0.1:8930)
+   but does not auto-enable it. To run it under the public endpoint, set the
+   proxy Host name in `/etc/nostrhost/mcp.env`:
+
+   ```bash
+   echo 'NOSTRHOST_MCP_ALLOWED_HOSTS=mcp.nostrhost.test' > /etc/nostrhost/mcp.env
+   chmod 600 /etc/nostrhost/mcp.env
+   systemctl enable --now nostrhost-mcp
+   ```
+
+   Without `NOSTRHOST_MCP_ALLOWED_HOSTS`, the MCP SDK's DNS-rebinding
+   protection rejects proxied requests with 421 (see Issue 2).
+
+3. Verify the tool catalogue before serving:
 
    ```bash
    /opt/nostrhost/venv/bin/nostrhost-mcp list-tools
    ```
 
-3. Run it over loopback HTTP:
+4. Run it over loopback HTTP (equivalent of what the unit does):
 
    ```bash
    /opt/nostrhost/venv/bin/nostrhost-mcp serve --http 8930 \
@@ -73,7 +88,7 @@ the only way a remote client reaches it.
    `--http-allowed-hosts` is **required** when any reverse proxy fronts the
    adapter. See Issue 2 below for why.
 
-4. Confirm the listener:
+5. Confirm the listener:
 
    ```bash
    ss -tlnp | grep 8930

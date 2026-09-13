@@ -261,6 +261,105 @@ exit 0
         shutil.rmtree(staging, ignore_errors=True)
 
 
+def build_python_adapter(pkg: dict, version: str, outdir: Path) -> Path:
+    """Build a server-side Python adapter that installs into the shared runtime venv.
+
+    Unlike ``python-cli`` (self-contained venv + its own wheel set), the
+    adapter's pip-only dependencies (mcp SDK, nostr-sdk, pydantic v2) are
+    provisioned by ``nostrhost-runtime`` into ``/opt/nostrhost/venv``
+    (``--system-site-packages``). This package installs only its own
+    (pure-Python) wheel into that venv with ``--no-deps``, plus a
+    ``/usr/bin`` launcher and an optional systemd unit from the submodule's
+    ``deploy/`` directory. The unit is shipped but not auto-enabled.
+    """
+    name = pkg["name"]
+    src = pkg["source"]
+    sub = UMBRELLA / src["submodule"]
+    command = src["command"]
+    venv = src["venv"]
+    app_wheel = src.get("app_wheel") or name
+    unit = src.get("systemd")
+    if not (sub / "pyproject.toml").is_file():
+        raise SystemExit(f"build-package: Python adapter source has no pyproject.toml: {sub}")
+    if not command or "/" in command or not venv.startswith("/opt/"):
+        raise SystemExit("build-package: invalid Python adapter command or venv path")
+    if not app_wheel or "/" in app_wheel:
+        raise SystemExit("build-package: invalid app_wheel name")
+
+    arch = "all"  # the adapter wheel is pure-Python; binary deps come from runtime
+    staging = Path(tempfile.mkdtemp(prefix="nostrhost-python-adapter-deb-"))
+    try:
+        share = staging / "usr" / "share" / name
+        wheels = share / "wheels"
+        wheels.mkdir(parents=True)
+        run(["python3", "-m", "build", "--wheel", "--outdir", str(wheels)], sub)
+
+        if unit:
+            unit_src = sub / "deploy" / unit
+            if not unit_src.is_file():
+                raise SystemExit(f"build-package: declared systemd unit not found: {unit_src}")
+            unit_dir = staging / "lib" / "systemd" / "system"
+            unit_dir.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(unit_src, unit_dir / unit)
+
+        bindir = staging / "usr" / "bin"
+        bindir.mkdir(parents=True)
+        launcher = bindir / command
+        launcher.write_text(
+            "#!/bin/sh\n"
+            f'exec "{venv}/bin/{command}" "$@"\n',
+            encoding="utf-8",
+        )
+        launcher.chmod(0o755)
+
+        write_control(staging, name, version, arch, pkg.get("summary", ""),
+                      pkg.get("depends", []), pkg.get("provides", []),
+                      pkg.get("conflicts", []), pkg.get("replaces", []))
+
+        norm = app_wheel.replace("-", "_")
+        debian = staging / "DEBIAN"
+        postinst = f'''#!/bin/sh
+set -e
+
+VENV={venv}
+WHEELS=/usr/share/{name}/wheels
+
+case "$1" in
+  configure)
+    if [ ! -x "$VENV/bin/python" ]; then
+      rm -rf "$VENV"
+      python3 -m venv --system-site-packages "$VENV"
+    fi
+    app_wheel=""
+    for wheel in "$WHEELS"/*.whl; do
+      [ -e "$wheel" ] || continue
+      case "$wheel" in *{norm}-*.whl) app_wheel=$wheel ;; esac
+    done
+    test -n "${{app_wheel:-}}"
+    "$VENV/bin/pip" install --no-index --no-deps \\
+      --disable-pip-version-check "$app_wheel"
+    ;;
+  abort-upgrade|abort-remove|abort-deconfigure|'')
+    ;;
+esac
+exit 0
+'''
+        (debian / "postinst").write_text(postinst, encoding="utf-8")
+        (debian / "postinst").chmod(0o755)
+
+        # The venv is owned by nostrhost-runtime; removal leaves it in place
+        # (a removed adapter just stops being invoked).
+        postrm = '#!/bin/sh\nset -e\nexit 0\n'
+        (debian / "postrm").write_text(postrm, encoding="utf-8")
+        (debian / "postrm").chmod(0o755)
+
+        out = outdir / f"{name}_{version}_{arch}.deb"
+        deb_build(staging, out)
+        return out
+    finally:
+        shutil.rmtree(staging, ignore_errors=True)
+
+
 def build_spa(pkg: dict, version: str, outdir: Path) -> Path:
     name = pkg["name"]
     src = pkg["source"]
@@ -445,6 +544,7 @@ BUILDERS = {
     "golang": build_golang,
     "python": build_python,
     "python-cli": build_python_cli,
+    "python-adapter": build_python_adapter,
     "spa": build_spa,
     "config": build_config,
     "caddy": build_caddy,
