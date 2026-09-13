@@ -27,7 +27,7 @@ forks:
     branch: nostrhost          # derivative branch (first fork modification, Phase 3)
     derivative: true
     pin: debian/12.1.41.2      # upstream baseline the branch was cut from
-    pin_commit: 5c2049b7ed53bb7d33b24930212d657634abefff
+    pin_commit: 0995062870858e13e115ecfb68b3f4b3c27aede7
     live_server: 12.1.41.2
 
   - component: portal          # Nuxt/Vue/TypeScript user portal
@@ -49,7 +49,7 @@ forks:
     branch: dev               # Tailwind/shadcn-vue redesign (app shell, PR #1)
     derivative: true
     pin: debian/12.1.15
-    pin_commit: 3e41503657cc9534dcc73bba753fd2275187e300
+    pin_commit: 0c10d419b5e27cf5e0914fe492ff7b3e23329a1c
     live_server: 12.1.15
 
   - component: installer       # Debian ISO graphical installer image builder
