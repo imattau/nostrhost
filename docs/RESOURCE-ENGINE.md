@@ -83,9 +83,13 @@ the provider reconciles those values through the existing permission API and
 regenerates the SSO policy projection.
 
 Settings resources may declare typed fields (`string`, `integer`, `number`,
-`boolean`, or `enum`) with defaults. Values are validated before planning and
-persisted state is checksum-compared during reconciliation; secret settings
-must use the dedicated secret resource.
+`boolean`, or `enum`) with labels, help text, groups, choices, and defaults.
+Values are validated before planning and persisted state is checksum-compared
+during reconciliation; secret settings must use the dedicated secret resource.
+Native applications can use `{{ settings.<name> }}` in a declared
+`template_content` config resource. Settings changes produce config-file
+operations and an explicit service restart when the package declares both
+managed config and a service. No Bash config-panel hooks are run.
 
 Backup resources persist validated `nostrhost-backup-v1` manifests. The
 provider registers filesystem/database inputs but deliberately leaves the

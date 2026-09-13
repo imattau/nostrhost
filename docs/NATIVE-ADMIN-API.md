@@ -28,6 +28,16 @@ together by the admin packaging tests.
 | Method and path | Request | Result |
 | --- | --- | --- |
 | `GET /healthz` | none; loopback probe | Service health and API version |
+| `GET /app/management` | none | Trusted catalogue joined with installed inventory; unlisted installations remain visible |
+| `GET /app/{id}/settings` | none | Native app's non-secret typed settings schema and current values |
+| `POST /app/{id}/install/plan` | `{}` | Verified catalogue package and deterministic read-only install plan |
+| `POST /app/{id}/install/apply` | `{ "plan_sha256": "…" }` | Re-resolves the trusted package, checks the reviewed digest, and submits through the signed policy lifecycle |
+| `POST /app/{id}/upgrade/plan` | `{}` | Verified catalogue release plan with compatible local setting values carried forward |
+| `POST /app/{id}/upgrade/apply` | `{ "plan_sha256": "…" }` | Revalidates the plan digest and submits through the signed policy lifecycle |
+| `POST /app/{id}/remove/plan` | `{}` | Removal plan derived from the locally recorded native manifest |
+| `POST /app/{id}/remove/apply` | `{ "plan_sha256": "…" }` | Revalidates the installed state and submits through the signed policy lifecycle |
+| `POST /app/{id}/settings/plan` | `{ "values": { ... } }` | Validated settings diff plus generated config and service operations |
+| `POST /app/{id}/settings/apply` | `{ "values": { ... }, "plan_sha256": "…" }` | Recomputes the plan and applies only if it still matches the reviewed digest |
 | `POST /package/plan` | `{ "package": { ... } }` | Validated package identity, manifest digest, plan digest, and resource operations |
 
 The package object follows the checked-in [JSON Schema](../schema/package.schema.json).
@@ -35,14 +45,17 @@ Invalid declarations return an API error envelope with `error` and `code`.
 The request contains data only; it cannot provide a local path, shell command,
 or arbitrary operation envelope.
 
-Package installation and reconciliation are separate write operations. They
-must use the native policy and approval path; a plan returned by this endpoint
-is not authorization to apply it.
+All app writes re-resolve local state and the trusted catalogue where relevant,
+then submit a server-derived plan through the signed operation and policy
+lifecycle. A plan returned by a planning endpoint is not authorization to apply
+it. Settings updates accept only declared, non-secret values; package config
+templates receive those values under the reserved `settings` context.
 
 ## Follow-up contract work
 
 - Publish typed OpenAPI contracts and generate the admin TypeScript client.
-- Add system-health, catalogue, and operation-status screens against existing
-  native endpoints.
+- Add system-health and operation-history screens against existing native
+  endpoints.
 - Test NIP-07 request signing and denial behavior through Caddy on Debian 12.
-- Add plan refresh and durable local draft handling to the package screen.
+- Add plan refresh and durable local draft handling to the package authoring
+  screen.

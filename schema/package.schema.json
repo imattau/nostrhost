@@ -109,6 +109,10 @@
         "template": {
           "title": "Template",
           "type": "string"
+        },
+        "template_content": {
+          "title": "Template Content",
+          "type": "string"
         }
       },
       "required": [
@@ -594,6 +598,19 @@
         },
         "default": {
           "title": "Default"
+        },
+        "description": {
+          "default": "",
+          "title": "Description",
+          "type": "string"
+        },
+        "group": {
+          "title": "Group",
+          "type": "string"
+        },
+        "label": {
+          "title": "Label",
+          "type": "string"
         },
         "secret": {
           "default": false,
