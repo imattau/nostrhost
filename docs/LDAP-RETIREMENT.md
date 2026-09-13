@@ -125,7 +125,7 @@ Classification per dependency:
 | 4 | Portal authorization read (`user_is_allowed_on_domain`) | `ldap_ynhuser.py:92-159` | ◑ admin-group LDAP read demoted; email-domain LDAP read remains | The admins-group check now tries `is_admin_user()` (native, no LDAP) first and only falls back to the LDAP `cn=admins,ou=groups` read for admins with no linked identity yet -- additive, same philosophy as row 6/the NIP-51 merge. The other LDAP read in this function (matching a user's email address to the domain) is untouched: it's a mail/account concept, not a membership-list concept NIP-51 fits, and mail is being retired separately (`docs/MAIL-RETIREMENT.md`) -- out of scope here. |
 | 5 | Low-level LDAP client (`LDAPInterface`) | `forks/yunohost/src/utils/ldap.py` | Delete outright (infra) | Removable once rows 4, 6, 7 no longer call it. |
 | 6 | App permission sync (`ou=permission`) | `forks/yunohost/src/permission.py:616` `_sync_permissions_with_ldap()`, called from lines 332, 453, 610 | Replace with NIP-51 projection, then delete | The authd JSON permission file used by Caddy `forward_auth` is sourced from this LDAP sync today. No NIP-51 projector code exists anywhere in the repo yet. Build the NIP-51-list -> permission-projection path first, cut it over as the only writer, then delete `_sync_permissions_with_ldap()` and its call sites. |
-| 7 | User/group CRUD (Unix account store) | `forks/yunohost/src/user.py` | Mostly done — LDAP already secondary | `nostr_identityd.py` already treats the kind-31102 identity event as authoritative and materializes it into the native `nostrhost_auth.identity.mappings` projection store; the LDAP/Unix account (`YnhAccountBackend.ensure_user`) is only created as a *derived* compatibility artifact when a not-yet-existing username is named (`handle_identity_event`, lines 86–156). Remaining work is `user.py`'s own direct CRUD surface. |
+| 7 | User/group CRUD (Unix account store) | `forks/yunohost/src/user.py` | Correction: genuinely load-bearing, not a cleanup target | `nostr_identityd.py` treats the kind-31102 identity event as authoritative for pubkey↔username *linking* — that part is Nostr-native. But `user.py`'s own `user_create`/`delete`/`update` LDAP writes are the actual Unix account (uid, home dir, shell) that `libnss-ldapd`/`libpam-ldapd` need for real Unix login — this is NOT redundant with the identity projector (the projector calls into this same machinery to provision the account it needs), and won't be removable until LDAP is replaced as the Unix directory service itself (Phase 4/5), not before. An earlier revision of this doc mischaracterized this as "mostly done, just needs cleanup" — corrected here. What *was* real, safe cleanup: `user_create`/`delete`/`update`/`import` and `user_permission_update()` regenerated the legacy `/etc/ssowat/conf.json` (`app_ssowatconf()`) but never refreshed the native `/etc/nostrhost/permissions.json` the Caddy authd and this plan's NIP-51 merge actually read — a real staleness bug, now fixed (`_regen_native_permissions_projection()` alongside every `app_ssowatconf()` call site). |
 | 8 | LDAPS certificate reload (`slapd`) | `forks/yunohost/src/nostr_certd.py`, `docs/CADDY-MIGRATION.md:118-135` | Delete outright (infra) | No `slapd` process to reload once it's uninstalled; remove the reload logic. |
 | 9 | LDAP schema/config | `forks/yunohost/conf/slapd/*.ldif`, `conf/slapd/ldap.conf`, `conf/yunohost/services.yml` (registers `slapd` service) | Delete outright (infra) | Remove the schema/config and drop the `slapd` service registration. `python3-ldap`/`slapd` are still hard `Depends:` in `debian/control` today. |
 | 10 | Mail stack LDAP lookups | `forks/yunohost/conf/dovecot/dovecot-ldap.conf`, `conf/postfix/plain/ldap-*.cf` | Delete outright | Subsumed by mail retirement (`docs/MAIL-RETIREMENT.md`); Postfix/Dovecot are already dropped from core's `Depends:`, so this config has no consumer already — verify and delete the leftover files. |
@@ -168,11 +168,17 @@ this revision. What's left is narrower than originally scoped:
    actual cutover (stop writing/reading LDAP membership once grants have
    moved to NIP-51 in practice) is not done, by design, until NIP-51 is the
    primary path in real use.
-4. **Phase 3 — Unix account store cleanup (mostly done already).** The
-   identity projector already treats Nostr identity as authoritative and
-   LDAP as a derived fallback (row 7); once Phase 2 lands, nothing needs
-   that fallback to exist, so remove the LDAP compat-account write and any
-   remaining direct LDAP CRUD in `user.py`.
+4. **Phase 3 — Unix account store: identity linking is native, the account
+   itself is not (corrected scope).** Pubkey↔username *linking* is already
+   Nostr-native (the identity projector). The Unix/LDAP account
+   (`user.py`'s `user_create`/`delete`/`update`) is genuinely load-bearing —
+   real Unix login goes through `libnss-ldapd`/`libpam-ldapd` against LDAP —
+   and isn't a "remove the fallback" cleanup; it's blocked on Phase 4/5
+   replacing LDAP as the Unix directory service itself, a system-level
+   change (NSS/PAM), not a code cleanup. What *is* done: `user.py`'s
+   permission-affecting call sites now also refresh the native permission
+   projection (`_regen_native_permissions_projection()`), closing a real
+   staleness gap that predates this plan.
 5. **Phase 4 — Delete `slapd` and its config from core.** Remove
    `slapd`/`python-ldap` from core's dependency set entirely (not opt-in —
    deleted), drop the schema/config (row 9), the cert-reload logic (row 8),
@@ -189,7 +195,7 @@ this revision. What's left is narrower than originally scoped:
 | 0 — Inventory | ✓ maintained (this document) |
 | 1 — Delete dead moulinette auth code | ✓ done (this revision) |
 | 2 — NIP-51 permission projection | ◑ additive projector + CLI authoring + native admin check landed (`nip51_permissions.py`, `nostr_permissiond`, `user permission grant-nostr`/`clear-nostr`, `is_admin_user()`); the email-domain LDAP read, Admin (web) UI, and actual LDAP cutover remain |
-| 3 — Unix account store cleanup | ◑ mostly done — identity projector already treats LDAP as a derived fallback; remaining work is removing that fallback + `user.py`'s direct LDAP CRUD |
+| 3 — Unix account store | ◑ scope corrected — identity *linking* is native (done); the Unix/LDAP account itself is load-bearing and blocked on Phase 4/5 (NSS/PAM), not a cleanup target. Fixed instead: `user.py` now refreshes the native permission projection on every CRUD call, closing a real staleness bug |
 | 4 — Delete `slapd` and config | ⏳ not started |
 | 5 — Cleanup migration + policy update | ⏳ not started |
 
