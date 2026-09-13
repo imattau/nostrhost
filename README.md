@@ -78,6 +78,11 @@ references keep resolving.
   (`deb [signed-by=…] https://imattau.github.io/nostrhost/debian/ bookworm main`).
 - The core engine (`nostrhost-core`) and the native framework/CLI/API
   (`python3-nostrhost`) come from the fork's own `debian/` tree.
+- `yunohost-mcp-connect` is a separate APT-installable client-side bridge
+  (`sudo apt install yunohost-mcp-connect`); it is not installed by the
+  NostrHost server meta-packages. Its locked Python wheels are bundled for
+  offline setup, and `/usr/bin/yunohost-mcp-connect` can be used directly in
+  Codex, Claude Desktop, or another stdio MCP client.
 - `nostrhost` (meta) → `nostrhost-core-system` → `nostrhost-core` +
   `nostrhost-control` + `nostrhost-catalog` + `nostrhost-caddy` +
   `nostrhost-security-config` + `python3-nostrhost{-auth,-policy}` +

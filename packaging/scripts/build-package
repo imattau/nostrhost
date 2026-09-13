@@ -166,6 +166,101 @@ def build_python(pkg: dict, version: str, outdir: Path) -> Path:
         shutil.rmtree(staging, ignore_errors=True)
 
 
+def build_python_cli(pkg: dict, version: str, outdir: Path) -> Path:
+    """Build a self-contained Python CLI package with offline-installed wheels."""
+    name = pkg["name"]
+    src = pkg["source"]
+    sub = UMBRELLA / src["submodule"]
+    reqfile = UMBRELLA / src["requirements"]
+    command = src["command"]
+    venv = src["venv"]
+    if not reqfile.is_file():
+        raise SystemExit(f"build-package: Python CLI requirements not found: {reqfile}")
+    if not (sub / "pyproject.toml").is_file():
+        raise SystemExit(f"build-package: Python CLI source has no pyproject.toml: {sub}")
+    if not command or "/" in command or not venv.startswith("/opt/"):
+        raise SystemExit("build-package: invalid Python CLI command or venv path")
+
+    arch = "amd64"  # the locked wheel set is CPython 3.11 manylinux amd64
+    staging = Path(tempfile.mkdtemp(prefix="nostrhost-python-cli-deb-"))
+    try:
+        share = staging / "usr" / "share" / name
+        wheels = share / "wheels"
+        wheels.mkdir(parents=True)
+
+        run(["python3", "-m", "build", "--wheel", "--outdir", str(wheels)], sub)
+        run(
+            ["python3", "-m", "pip", "download", "--only-binary=:all:",
+             "--dest", str(wheels), "--platform", "manylinux_2_17_x86_64",
+             "--python-version", "3.11", "--implementation", "cp", "--abi", "cp311",
+             "-r", str(reqfile)],
+            UMBRELLA,
+        )
+        shutil.copy2(reqfile, share / "requirements.txt")
+
+        bindir = staging / "usr" / "bin"
+        bindir.mkdir(parents=True)
+        launcher = bindir / command
+        launcher.write_text(
+            "#!/bin/sh\n"
+            f'exec "{venv}/bin/{command}" "$@"\n',
+            encoding="utf-8",
+        )
+        launcher.chmod(0o755)
+
+        write_control(staging, name, version, arch, pkg.get("summary", ""),
+                      pkg.get("depends", []), pkg.get("provides", []),
+                      pkg.get("conflicts", []), pkg.get("replaces", []))
+        debian = staging / "DEBIAN"
+        postinst = f'''#!/bin/sh
+set -e
+
+VENV={venv}
+WHEELS=/usr/share/{name}/wheels
+REQS=/usr/share/{name}/requirements.txt
+
+case "$1" in
+  configure)
+    if [ ! -x "$VENV/bin/python" ]; then
+      rm -rf "$VENV"
+      python3 -m venv "$VENV"
+    fi
+    "$VENV/bin/pip" install --no-index --ignore-installed \\
+      --find-links="$WHEELS" --disable-pip-version-check -r "$REQS"
+    set -- "$WHEELS"/*.whl
+    for wheel in "$@"; do
+      case "$wheel" in *yunohost_mcp_connect-*.whl) app_wheel=$wheel ;; esac
+    done
+    test -n "${{app_wheel:-}}"
+    "$VENV/bin/pip" install --no-index --no-deps \\
+      --disable-pip-version-check "$app_wheel"
+    ;;
+  abort-upgrade|abort-remove|abort-deconfigure|'')
+    ;;
+esac
+exit 0
+'''
+        (debian / "postinst").write_text(postinst, encoding="utf-8")
+        (debian / "postinst").chmod(0o755)
+
+        postrm = f'''#!/bin/sh
+set -e
+case "$1" in
+  purge) rm -rf {venv} ;;
+  remove|upgrade|failed-upgrade|abort-install|abort-upgrade|disappear|'') ;;
+esac
+exit 0
+'''
+        (debian / "postrm").write_text(postrm, encoding="utf-8")
+        (debian / "postrm").chmod(0o755)
+
+        out = outdir / f"{name}_{version}_{arch}.deb"
+        deb_build(staging, out)
+        return out
+    finally:
+        shutil.rmtree(staging, ignore_errors=True)
+
+
 def build_spa(pkg: dict, version: str, outdir: Path) -> Path:
     name = pkg["name"]
     src = pkg["source"]
@@ -349,6 +444,7 @@ def build_caddy(pkg: dict, version: str, outdir: Path) -> Path:
 BUILDERS = {
     "golang": build_golang,
     "python": build_python,
+    "python-cli": build_python_cli,
     "spa": build_spa,
     "config": build_config,
     "caddy": build_caddy,

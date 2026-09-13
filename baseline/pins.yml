@@ -38,7 +38,7 @@ forks:
     branch: dev               # Nostr (NIP-07) login page + Tailwind/shadcn-vue redesign (PR #1)
     derivative: true
     pin: debian/12.1.2
-    pin_commit: 683310a5ff1a0d0fbf4f20c1b29b0e5b7f367446
+    pin_commit: 8d77219f234042b08e670fa3df57a10d8b192461
     live_server: 12.1.2
 
   - component: admin           # Vue/Vite/TypeScript admin interface
@@ -76,7 +76,7 @@ libraries:
     repo: imattau/nostrhost-auth
     path: libs/nostrhost-auth
     branch: main
-    pin_commit: 633e743a9d98b1fa1bb7881dd1225292f49c1f6b
+    pin_commit: a168c3d6e454348294fdb4bad0ad608aa1208d90
     extracted_from: imattau/yunohost-nostr-auth
 
   - component: policy          # roles/scopes/NIP-98/delegation/approvals/owner/audit
