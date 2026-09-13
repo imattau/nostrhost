@@ -24,6 +24,10 @@ pydantic-core==2.46.5
 typing-extensions==4.16.0
 annotated-types==0.8.0
 typing-inspection==0.4.4
-# The daemons + control-plane clients use websockets.sync.client (>=12.0);
+# The daemons + control-plane clients use websockets.sync.client (>=14.2);
 # Debian bookworm ships 10.3 which lacks it, so it must be a bundled wheel too.
-websockets==13.1
+# 14.2 floor: 13.x races receive_eof() in sync close_socket() without the
+# protocol mutex (python-websockets e7a098e), crashing the recv_events thread
+# with `assert self.protocol.state is CLOSED` when a relay connection drops
+# abruptly (operationsd issue). 14.2 ships the mutex fix.
+websockets==14.2
