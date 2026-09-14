@@ -1,17 +1,17 @@
 # Nsites: implementation plan (code-level)
 
-Status: **proposed, 2026-09-14 — awaiting decisions D1–D7 below before
-Phase 0 starts.** This document turns the workstream plan in
+Status: **decided 2026-09-14 — decisions D1–D9 confirmed by the
+maintainer; Phase 0 may start.** This document turns the workstream plan in
 [`NSITES-PLAN.md`](NSITES-PLAN.md) (roadmap §28) into a concrete design
 against the codebase as it stands today. It does not replace that plan: the
 product boundaries, security gates and phase exits there still apply. This
 document records what changed since that plan was written, verifies the
-integration seams it names, proposes the decisions it left open, and breaks
+integration seams it names, records the decisions it left open, and breaks
 each phase into files, tests and exit checks.
 
 The 0.1 alpha gate that §28 waited on is met (roadmap: W2 native bootstrap
 and W3 native app lifecycle are both green on the clean7 VM), so §28 may
-start once the decisions below are confirmed.
+start now; §10 records the confirmed decisions.
 
 ## 1. Review findings
 
@@ -84,16 +84,18 @@ lines below are the exact attachment points.
    `node|python|go|ruby|composer|php` and there is no Deno package kind.
    Shipping the upstream gateway means adding both.
 
-## 2. Decisions proposed (confirm before Phase 0)
+## 2. Decisions (confirmed 2026-09-14)
 
-Each decision below states a recommendation and the alternatives that were
+Each decision below states the choice made and the alternatives that were
 considered. Phase 0 is scoped so that D1 can still be reversed cheaply after
-the spike.
+the spike if the evidence demands it; any such reversal is recorded in the
+decision record, not made silently.
 
 ### D1. Gateway implementation: **native Go component `nostrhost-nsite`**, with `hzrd149/nsite-gateway` as the Phase 0 oracle
 
-Recommended: write the gateway in Go under `libs/nostrhost-nsite` (new
+Decided: write the gateway in Go under `libs/nostrhost-nsite` (new
 submodule, same layout as `nostrhost-catalog`), packaged as `kind: golang`.
+The package and binary are both named `nostrhost-nsite` (D9).
 
 - Fits every existing mechanism: `packages.yml`, `build-package`,
   `CGO_ENABLED=0` static binary, `deploy/*.service` hardening, Go CI job,
@@ -166,8 +168,11 @@ Default limits for hosted mode are in §4.4.
   (BUD-03) when present, else a host-configured default list, always
   editable. The wizard offers to publish an updated `10063` if the user
   picks servers not in their list.
-- Phase 0 tests against two public servers plus a local fake; the specific
-  public servers are an operator choice, not a code constant.
+- Phase 0 tests against two public servers plus a local fake. The spike
+  uses `https://blossom.primal.net` and `https://blossom.band`; they are
+  also the initial host default list. The list is operator-editable
+  configuration, not a code constant, and the spike report records whether
+  either server needs replacing.
 - A NostrHost-hosted Blossom server is a separate optional component with
   its own quota, abuse and retention contract (plan Phase 5). It would also
   make the fetch-boundary rules apply to a loopback destination, which the
@@ -177,7 +182,8 @@ Default limits for hosted mode are in §4.4.
 
 - Publish targets default to the owner's kind `10002` write relays, unioned
   with a host default list (operator-editable, initially the two lookup
-  relays plus `nos.lol` / `relay.damus.io`). Per-relay OK/failed results are
+  relays plus `wss://nos.lol` and `wss://relay.damus.io`). No
+  operator-specific relays are added at this stage. Per-relay OK/failed results are
   part of the operation result; a publish that reaches at least one relay
   succeeds with a warning list, one that reaches none fails.
 - Gateway resolution: configured lookup relays (defaults `purplepag.es`,
@@ -573,26 +579,20 @@ gateway mode with wildcard DNS-01.
   server and Git deployment are all explicitly later phases with their own
   gates.
 
-## 10. Decisions required from the maintainer
+## 10. Decision log (confirmed by the maintainer, 2026-09-14)
 
-1. **D1** Native Go gateway (`nostrhost-nsite`) with the upstream Deno
-   gateway as the Phase 0 oracle — or package upstream?
-2. **D2** Dedicated gateway domain plus Caddy On-Demand TLS with an `ask`
-   endpoint, wildcard DNS-01 deferred — agreed?
-3. **D3** Disabled by default; `hosted` (allowlisted) mode when enabled;
-   `open` mode deferred to Phase 5 — agreed? Are the §4.4 default limits
-   acceptable?
-4. **D4** External Blossom servers only in the first release; which two
-   public servers should the spike test against?
-5. **D5** Relay defaults as listed; any operator-specific relays to include?
-6. **D6** Browser directory upload first, agent draft area second, Git
-   later — agreed?
-7. **D7** NIP-07 first, NIP-46 via the portal's connector later, MCP submits
-   a pre-signed manifest — agreed?
-8. Should portal users (non-admins) be able to publish their own sites in a
-   later phase, or is nsite publishing admin-only for the foreseeable
-   future? This affects whether `nsites.publish` is modelled as an admin
-   scope or a per-user capability from the start.
-9. Package naming: `nostrhost-nsite` (component) versus the plan's
-   `nostrhost-nsite-gateway`. The shorter name is proposed because the
-   component will also carry the `tls-ask` and status roles.
+| # | Decision | Outcome |
+|---|---|---|
+| D1 | Gateway implementation | Native Go component `nostrhost-nsite`; upstream Deno gateway is the Phase 0 oracle only. |
+| D2 | Hostname and TLS | Dedicated gateway domain; Caddy On-Demand TLS with the gateway's `tls-ask` endpoint; wildcard DNS-01 deferred to open mode. |
+| D3 | Exposure | Disabled by default; `hosted` allowlisted mode when enabled; `open` mode deferred to Phase 5. §4.4 default limits accepted. |
+| D4 | Blossom | External servers only. Spike and initial defaults: `https://blossom.primal.net`, `https://blossom.band`. No local Blossom service before Phase 5. |
+| D5 | Relays | Lookup: `wss://purplepag.es`, `wss://user.kindpag.es`. Publish defaults: those two plus `wss://nos.lol`, `wss://relay.damus.io`, unioned with the owner's NIP-65 write relays. No operator-specific relays. |
+| D6 | Source | Browser directory upload (Phase 3a), agent draft area (Phase 3b), Git/NIP-34 (Phase 5). |
+| D7 | Signing | NIP-07 in Admin first; NIP-46 via the portal's existing connector later; MCP and CLI submit a pre-signed manifest; the server never holds a user key. |
+| D8 | Who may publish | `nsites.publish` is a per-subject capability scope from day one (the registry already grants scopes per subject through kind `31100` capability events). Phases 3–4 grant it to admins only. A portal "My site" surface for non-admin users is a Phase 5 item, gated on the same operation and policy path; no schema change is expected. |
+| D9 | Package name | `nostrhost-nsite` for the package, binary, systemd unit and system user; the component carries the gateway, `tls-ask` and status roles. |
+
+Changes to any row above go through a new entry in
+`docs/NSITES-DECISION-RECORD.md` (created in Phase 0 task 0.1) with the
+evidence that prompted them.
