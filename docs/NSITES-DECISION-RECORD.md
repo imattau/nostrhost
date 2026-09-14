@@ -58,34 +58,65 @@ imports the `fail2ban` system package, which this system does not use
 
 ## 0.4 Upstream gateway spike
 
-Pending. Harness under `testbed/nsites/`. Target: the pinned upstream gateway
-behind Caddy with `tls internal` on `sites.nostrhost.test`, a local fake relay
-and fake Blossom, the corpus site published with `nsyte v0.28.1`. Checks:
-hash verification, path rules, hostile inputs, private-IP hints, restart/cache
-behaviour, control-relay isolation.
+Harness: `testbed/nsites/` (see its `README.md`). The pinned upstream gateway
+(`558326ae`, v3.6.5) ran as a plain Deno 2.7.7 process — **no Docker**, per the
+project's no-Docker constraint — behind Caddy 2.11.4 with `tls internal` on
+`sites.nostrhost.test` + `*.`, against a local fake NIP-01 relay and fake
+BUD-01/02 Blossom seeded with the conformance corpus and a real signed site.
+
+Results (full table in `testbed/nsites/README.md`):
+
+| Check | Result |
+|---|---|
+| Root/named/snapshot serve over HTTPS; `/` index fallback; `/missing` → site `/404.html` | pass |
+| Content-Type/Length forwarded from Blossom; `ETag`, `Cache-Control: public, max-age=3600`; no `Set-Cookie` | pass |
+| Traversal/encoded/`//`/`\`/NUL paths, bad/over-long labels, unknown npub | 404 |
+| `/nostrhost/*`, `/package/*`, `/.well-known/nostr.json` on the gateway origin | 404 (no control-plane exposure) |
+| Restart with warm cache; control relay `:4848` never configured or contacted | pass |
+| **Hash mismatch** | **first request served the wrong bytes (200)**, verifier logged the mismatch *after*; later requests 502; bad-source record persists across restart |
+| **Private-IP `server` hint** (`http://127.0.0.1:9`) | **fetch attempted**, then 404 |
+| Apex `/status` | public page enumerating known sites |
+
+Findings that matter for D1:
+
+1. **Verify-after-serve.** The upstream gateway streams a blob before its hash
+   is verified, so a malicious Blossom server can serve wrong bytes to a
+   visitor once before the source is marked bad. NIP-5A and the implementation
+   plan (§2, §4.1) require verification before any byte is served or cached.
+2. **No SSRF boundary.** Loopback/private `server` hints are fetched; Phase 2's
+   resolve-time IP policy is required.
+3. Permissive blanket CORS (`Access-Control-Allow-Origin: *`) and a public
+   status page listing sites — acceptable for an open public gateway, not for
+   the NostrHost posture.
+4. Replaceable-event resolution with equal `created_at` is non-deterministic;
+   the native resolver needs a defined tie-break.
+
+Not exercised this pass: `MAX_FILE_SIZE`/rate limits, CNAME custom domains,
+`10063` discovery ordering, multi-Blossom fallback under partial failure. The
+VM leg should confirm `tls internal` on :443 and the same checks against the
+host Caddy.
 
 ## 0.5 Decision outcome
 
-D1–D3 are confirmed in the implementation plan §10 and are not reversed by the
-spike unless the evidence demands it; any reversal is recorded here with the
-evidence.
+Confirmed 2026-09-14 on the spike evidence above; no reversal.
 
-| # | Decision | Status |
+| # | Decision | Outcome |
 |---|---|---|
-| D1 | Native Go `nostrhost-nsite`; upstream Deno gateway is the Phase 0 oracle | confirmed pending spike |
-| D2 | Dedicated gateway domain; Caddy On-Demand TLS with the gateway `tls-ask` endpoint; wildcard DNS-01 deferred | confirmed pending spike |
-| D3 | Disabled by default; `hosted` allowlisted mode when enabled; `open` mode deferred to Phase 5 | confirmed pending spike |
+| D1 | Native Go `nostrhost-nsite`; upstream Deno gateway is the Phase 0 oracle | **Confirmed.** The spike shows the upstream gateway does not meet the verify-before-serve and SSRF bars and cannot be packaged without Docker; it stays a behavioural oracle. The "package upstream" alternative is rejected. |
+| D2 | Dedicated gateway domain; Caddy On-Demand TLS with the gateway `tls-ask` endpoint; wildcard DNS-01 deferred | **Confirmed.** `tls internal` wildcard serving for the dedicated domain works end to end; the ACME `ask` endpoint and real issuance are Phase 1 work. |
+| D3 | Disabled by default; `hosted` allowlisted mode when enabled; `open` mode deferred to Phase 5 | **Confirmed.** The spike ran an unauthenticated gateway; hosted mode is the NostrHost wrapper that bounds it and is unaffected by the findings. |
 
 ## Gate status
 
 - Pins recorded: **yes** (this file, §0.1).
 - Corpus checked in with expected verdicts: **yes** (0.2, 20 cases).
 - Python validator pytest green: **yes** (0.3, 66 passed).
-- Spike report table: **pending** (0.4).
-- D1–D3 sign-off: **pending** (0.5).
+- Spike report table: **yes** (0.4, `testbed/nsites/README.md`).
+- D1–D3 sign-off: **yes** (0.5, confirmed).
 
 ## Verification log
 
 - 2026-09-14 — corpus sanity `python -m pytest -q tools/tests/nsites/test_corpus.py`: 120 passed.
 - 2026-09-14 — validator `PYTHONPATH=src python -m pytest -c /dev/null tests_nostr/test_nsites_manifest.py -q`: 66 passed.
 - 2026-09-14 — full fork suite `tests_nostr/`: 811 passed, 1 failure imports the `fail2ban` system package, which this system does not use (unrelated).
+- 2026-09-14 — spike: Deno 2.7.7 + pinned gateway `558326ae` + Caddy 2.11.4 `tls internal` + fake relay/blossom; results in `testbed/nsites/README.md`.

@@ -1,0 +1,13 @@
+# Phase 0 spike Caddyfile: gateway origin with local-CA TLS for the .test
+# domain. The VM run binds :443 (drop the :8443 port); this file keeps :8443
+# so the spike needs no privileges.
+{
+    local_certs
+    auto_https disable_redirects
+    admin localhost:2019
+}
+
+sites.nostrhost.test:8443, *.sites.nostrhost.test:8443 {
+    tls internal
+    reverse_proxy 127.0.0.1:3000
+}
