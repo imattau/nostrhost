@@ -5,8 +5,23 @@ The diagnosis-related tools exposed by `libs/yunohost-mcp` to MCP clients
 diagnosis engine](diagnosis-engine.md); the rest are new composite
 evidence-gathering tools built *around* it, reading raw OS state
 (`/proc`, `ps`, `ss`, `fail2ban-client`, journald) that the stock engine
-doesn't expose. None of this currently has a UI equivalent — see
-[`../ADMIN-FEATURE-MATRIX.md`](../ADMIN-FEATURE-MATRIX.md).
+doesn't expose. The webadmin console now has a report view covering the
+same read surface as `health_check`/`diagnosis_run` (the Diagnosis screen
+in `forks/admin`); the richer composites below
+(`system_snapshot`, `ssh_diagnose`, `incident_snapshot`, `diagnose_app`,
+`validate_server`) remain agent/CLI-only.
+
+**No MCP tool ignores or unignores an issue.** The ignore-filter workflow
+([diagnosis-engine.md](diagnosis-engine.md#the-ignore-filter-workflow)) is
+only reachable through the webadmin console or the CLI, both of which go
+through `nostr_operations.py`'s `SCOPE_DIAGNOSIS_WRITE` and the owner
+co-signature chain — a separate authorization layer from this page's MCP
+`Scope` enum entirely. That's why `Scope.DIAGNOSIS_READ` is the only
+diagnosis scope defined in `libs/yunohost-mcp/src/yunohost_mcp/policy/scopes.py`
+(and in `libs/nostrhost-policy`'s copy): there's no `DIAGNOSIS_WRITE`
+because no MCP tool needs to check one yet. If a `diagnosis_ignore`/
+`diagnosis_unignore` MCP tool is ever added, *that's* when a matching
+scope belongs here — not before.
 
 Every tool is defined in
 [`../../libs/yunohost-mcp/src/yunohost_mcp/server.py`](../../libs/yunohost-mcp/src/yunohost_mcp/server.py)
