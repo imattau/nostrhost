@@ -276,3 +276,44 @@ plan's Phase 3a list is implemented:
 Not yet done (Phase 3b+): draft area + `nsite.mirror`, MCP redaction +
 parity, agent allowlist for read tools, Playwright wizard run (NIP-07 shim)
 and anonymous retrieval from a second client.
+
+## Phase 3b acceptance appendix (MCP + agent surfaces, draft area + mirror)
+
+`forks/yunohost` `1bc4bdb43`, `libs/nostrhost-mcp` `37b9427`,
+`libs/nostrhost-agent` `bad0a3a`. Every item on the plan's Phase 3b list is
+implemented:
+
+- **Draft area (D6/§3.2)** — `/var/lib/nostrhost/nsites/drafts/<site>/` is
+  the one fixed server-side path: `draft_inventory` lists files with hashes
+  (paths validated with the manifest rules, so a draft can never escape its
+  dir), `draft_clear` removes them, and `publish_plan` accepts `site=` to
+  build the unsigned manifest from the draft inventory ("shown to the user
+  before signing").
+- **`nsite.mirror`** (`nsites.publish`, approval-gated, low, reversible) —
+  reads the site's recorded path→hash list, re-uploads blobs the target
+  server lacks from the draft area (BUD-01 HEAD skip, one kind-24242 auth
+  event per batch of 20, BUD-02/03), reports per-server
+  uploaded/skipped/missing-from-draft/failed. Site records now persist their
+  `paths` for mirror to consume.
+- **MCP redaction** — nsite tool results replace manifest `content` (arbitrary
+  free text) and `title` (untrusted manifest title tag) string values with
+  `[REDACTED]` before reaching a client, preserving identity (pubkey/label/
+  kind/d/hashes). Non-nsite tools unaffected. Generated schemas verified
+  against the real fork catalogue (all 12 nsite tools, incl. mirror).
+- **Agent** — new `nsites.read` capability; the 7 nsite read tools are
+  registered as `RiskRead` operations (observable in every autonomy level);
+  every `nsite.*` write stays absent from the registry so a proposal for one
+  is denied (unknown operation) even at autonomous. The default Observe
+  config's `observation_queries` gains `nsite.gateway.status` and
+  `nsite.list`.
+- **Parity** — `nsite.publish` arguments (signed event, `plan_sha256`,
+  relays) pass through the MCP adapter verbatim (identical to what the Admin
+  wizard submits); a stale plan digest is rejected by the fork's digest
+  check (covered in the Phase 3a tests); a read-only session cannot cause a
+  write because the write tools are approval-gated and the agent registry
+  excludes them.
+
+Not yet done (Phase 4+): lifecycle/custom domains
+(`nsite.domain.attach/detach`, ownership proof, on-demand `ask` extension);
+Phase 5 catalogue/ecosystem; the Playwright wizard run (NIP-07 shim) and
+anonymous second-client retrieval, deferred to the VM acceptance leg.
