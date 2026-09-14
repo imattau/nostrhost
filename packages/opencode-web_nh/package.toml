@@ -53,10 +53,15 @@ environment = { OPENCODE_CONFIG_DIR = "/var/lib/opencode" }
 read_write_paths = ["/var/lib/opencode"]
 
 [web]
-domain = "nostrhost.test"
-path = "/opencode/"
+domain = "opencode.nostrhost.test"
+path = "/"
 upstream = "127.0.0.1:35353"
 auth = "nostrhost"
+# opencode's own backend (`opencode serve`) has no base-path/subpath option
+# at all - its bundled UI always references absolute root paths, so it can
+# never share a domain with another app. Confirmed live: installed at
+# /opencode it 404'd on every asset.
+full_domain = true
 
 [permissions.main]
 url = "/"
