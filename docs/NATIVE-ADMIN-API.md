@@ -2,60 +2,86 @@
 
 **Platform baseline:** Debian 12 (Bookworm)
 **Native API:** `127.0.0.1:8190`
-**Admin SPA:** `/admin/`
+**Admin SPA:** `/nostrhost/admin/`
 
-The admin SPA uses native NostrHost endpoints and does not call the YunoHost
-admin API. The package screen sends a JSON package object to the native package
-planner. Planning validates declarations and returns a deterministic,
-read-only operation plan; it does not apply changes.
+The admin SPA uses native NostrHost endpoints exclusively and does not call
+the YunoHost admin API. Caddy serves the SPA from `/usr/share/nostrhost/admin`
+at `/nostrhost/admin/` and proxies `/package/*` on the same host to the
+loopback native API at port 8190, preserving the request URL, method, and
+scheme for NIP-98 verification.
 
 ## Authentication
 
-API routes require an `Authorization: Nostr <base64-event>` header containing
-a signed NIP-98 event. The server verifies the event, resolves its public key
-to a linked identity, and requires admin authority. Browser requests are
-signed by a NIP-07 extension. The app keeps only the public key in component
-memory and never receives or stores the private key.
+Two mutually exclusive paths, handled by `default_authorizer()` in
+`forks/yunohost/src/nostrhost/api.py`:
 
-Caddy serves the SPA from `/usr/share/nostrhost/admin` at `/admin/`. It proxies
-`/package/*` on the same host to the loopback
-native API at port 8190, preserving the request URL and method used by NIP-98.
-The Vite production base path, release manifest, and Caddy route are checked
-together by the admin packaging tests.
+- **Portal session (primary).** The admin SPA is single sign-on: once a user
+  signs in at the portal (`/nostrhost/sso/login`), the `nostrhost.portal`
+  session cookie authenticates every native API request. The server resolves
+  the session's linked identities and requires one to be an admin (the
+  operator or a configured admin npub).
+- **NIP-98 (`Authorization: Nostr <base64-event>`, fallback).** Used when
+  there is no portal session (e.g. a CLI-style caller). The signed event is
+  verified, the signer pubkey resolved to a linked identity, and that
+  identity must be an admin. The app keeps only the public key in memory and
+  never receives or stores a private key.
 
-## Current endpoints
+`GET /package/session` is the one route excluded from this gate — it is how
+the SPA decides whether to show the console, redirect to the portal login, or
+refuse a signed-in non-admin. It never leaks anything beyond the session
+user's username, pubkey, and admin flag.
 
-| Method and path | Request | Result |
-| --- | --- | --- |
-| `GET /healthz` | none; loopback probe | Service health and API version |
-| `GET /app/management` | none | Trusted catalogue joined with installed inventory; unlisted installations remain visible |
-| `GET /app/{id}/settings` | none | Native app's non-secret typed settings schema and current values |
-| `POST /app/{id}/install/plan` | `{}` | Verified catalogue package and deterministic read-only install plan |
-| `POST /app/{id}/install/apply` | `{ "plan_sha256": "…" }` | Re-resolves the trusted package, checks the reviewed digest, and submits through the signed policy lifecycle |
-| `POST /app/{id}/upgrade/plan` | `{}` | Verified catalogue release plan with compatible local setting values carried forward |
-| `POST /app/{id}/upgrade/apply` | `{ "plan_sha256": "…" }` | Revalidates the plan digest and submits through the signed policy lifecycle |
-| `POST /app/{id}/remove/plan` | `{}` | Removal plan derived from the locally recorded native manifest |
-| `POST /app/{id}/remove/apply` | `{ "plan_sha256": "…" }` | Revalidates the installed state and submits through the signed policy lifecycle |
-| `POST /app/{id}/settings/plan` | `{ "values": { ... } }` | Validated settings diff plus generated config and service operations |
-| `POST /app/{id}/settings/apply` | `{ "values": { ... }, "plan_sha256": "…" }` | Recomputes the plan and applies only if it still matches the reviewed digest |
-| `POST /package/plan` | `{ "package": { ... } }` | Validated package identity, manifest digest, plan digest, and resource operations |
+## Route groups
 
-The package object follows the checked-in [JSON Schema](../schema/package.schema.json).
-Invalid declarations return an API error envelope with `error` and `code`.
-The request contains data only; it cannot provide a local path, shell command,
-or arbitrary operation envelope.
+The route table in `forks/yunohost/src/nostrhost/api.py` (`build_app()`) is
+the source of truth — this is a summary of what exists per resource, not an
+exhaustive list. Reads generally execute directly (`_run_tool`); writes with
+real consequences go through the signed operation and policy lifecycle
+(`_run_lifecycle`) — the response's `ok: false` (rejected, failed, or pending
+approval) must be checked, HTTP 200 does not mean success.
 
-All app writes re-resolve local state and the trusted catalogue where relevant,
-then submit a server-derived plan through the signed operation and policy
-lifecycle. A plan returned by a planning endpoint is not authorization to apply
-it. Settings updates accept only declared, non-secret values; package config
-templates receive those values under the reserved `settings` context.
+| Prefix | Covers |
+| --- | --- |
+| `/package/session`, `/package/healthz`, `/package/events/<id>` | Session probe (public), health probe (public), SSE operation progress |
+| `/package/operations` | Audit history (`GET /package/operations[/<id>]`), approve/reject a pending operation |
+| `/package/system` | Version, status (host snapshot), updates check/refresh/apply, migrations, reboot/shutdown |
+| `/package/app` | Catalogue+installed inventory, install/upgrade/remove/settings plan-and-apply |
+| `/package/catalog` | Catalogue list/get |
+| `/package/user` | User and group CRUD, permissions |
+| `/package/identity` | Linked-identity list/link/revoke |
+| `/package/domain` | Domain list/inspect/add/remove |
+| `/package/dns` | DNS record plan/apply/verify, provider credential refs |
+| `/package/credential` | Stored DNS credential list |
+| `/package/firewall` | Port/UPnP list, open, close, reload |
+| `/package/backup` | Archive list, info (contents), create, restore, delete |
+| `/package/diagnosis` | Run, ignored list, ignore/unignore |
+| `/package/service` | Status, control (start/stop/restart) |
+| `/package/settings` | Global settings list/get/set/reset/reset-all |
+| `/package/agent` | Resident admin agent status/mode, MCP capability grants, local model management, contribution export/submit |
+| `/package/mcp` | MCP endpoint config, CA bundle export |
+| `/package/capability` | Capability grant/list/revoke, delegation |
+| `/package/plan` | Package manifest planning (read-only; `docs/../schema/package.schema.json`) |
+| `/package/network`, `/package/reconcile` | Public IP lookup, state reconciliation |
+
+## Package planning
+
+`POST /package/plan` validates a package manifest against the checked-in
+[JSON Schema](../schema/package.schema.json) and returns a deterministic,
+read-only resource plan (identity, manifest digest, plan digest, operations).
+It never applies anything — the request contains data only, never a shell
+command, local path, or arbitrary operation envelope. App install/upgrade/
+remove/settings follow the same plan-then-apply shape: an `apply` call
+revalidates local state and the trusted catalogue, checks the reviewed plan
+digest, and only then submits through the signed operation and policy
+lifecycle.
 
 ## Follow-up contract work
 
-- Publish typed OpenAPI contracts and generate the admin TypeScript client.
-- Add system-health and operation-history screens against existing native
-  endpoints.
+- Publish typed OpenAPI contracts and generate the admin TypeScript client
+  (currently hand-written adapters per resource in `forks/admin/app/src/api`).
+- Logs (`logs.read`, `logs.web`, `service.history` tools exist) and
+  certificates (`domain.cert.info`/`install`) have no HTTP route yet.
+- `Idempotency-Key` is sent by the client on every write
+  ([client.ts](../forks/admin/app/src/api/client.ts)) but not yet
+  deduplicated server-side.
 - Test NIP-07 request signing and denial behavior through Caddy on Debian 12.
-- Add plan refresh and durable local draft handling to the package authoring
-  screen.
