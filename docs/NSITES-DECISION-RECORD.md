@@ -238,3 +238,41 @@ Fork + corpus: `manifest.py` now rejects any `..` substring
 - 2026-09-14 — VM acceptance (task 1.6): clean install → reviewed-plan enable → HTTPS on `sites.nostrhost.test` (internal CA) → isolation checks → upgrade → disable → remove; three lifecycle defects fixed (appendix above).
 - 2026-09-14 — Phase 2 Go suite: `go test ./...` all 7 packages green; fuzzers ~1M execs clean each (`FuzzDecodeLabel`, `FuzzBase36Decode50`, `FuzzNormalisePath`). Corpus sanity 126 passed; Python validator 69 passed.
 - 2026-09-14 — Phase 2 VM leg: warm-cache restart on clean7 (`cache_bytes` 0 → 19 across restart); `/internal/metrics` loopback-only (404 via Caddy).
+- 2026-09-14 — Phase 3a fork suite: `tests_nostr/` 854 passed (incl. 24 new publish/registry tests). Admin: type-check + eslint + prettier + 40 tests green, `vite build` ok.
+
+## Phase 3a acceptance appendix (owner-controlled publishing)
+
+`forks/yunohost` `83cdf4dca`, `forks/admin` `1d7e3778`. Every item on the
+plan's Phase 3a list is implemented:
+
+- **Registry** — 10 new tools, one per plan row: `nsite.list`, `nsite.inspect`,
+  `nsite.resolve`, `nsite.validate_manifest`, `nsite.reachability`,
+  `nsite.publish.plan` (all `nsites.read`, no approval); `nsite.register`,
+  `nsite.unregister` (`nsites.admin`, approval-gated); `nsite.publish`,
+  `nsite.snapshot` (`nsites.publish`, approval-gated, strict input models).
+  `nsites.publish` stays confirmation-gated in `DEFAULT_POLICY`.
+- **Publish pipeline (D5/D6/D7)** — `publish_plan` builds the unsigned
+  manifest + `plan_sha256` binding kind/`d`/sorted path/server tags.
+  `publish` verifies signature, recomputes `id`, host-key signer
+  (`signer_guard.py`, derived from `operator.toml`'s `server_sk`/`operator_sk`/
+  `publisher_sk`), plan-digest match, aggregate, hosted allowlist — **before**
+  any broadcast or record; broadcasts with per-relay results; at least one
+  relay OK succeeds (with warnings), none fails. `snapshot` records a
+  client-signed kind-5128 on the site its `a` tag references.
+- **Admin wizard** (`src/lib/nsite/` + `NsitesView.vue`) — browser directory
+  upload with Web-Crypto hashing (site-root-relative paths, `..`/backslash/
+  oversize rejected), Blossom upload straight from the browser (BUD-01,
+  one kind-24242 auth event per batch of up to 20 blobs via `x` tags, HEAD
+  skip, retry by hash), plan review with the exact digest, NIP-07 signing
+  (server never sees a key), submit → poll. `manifest.ts` `plan_digest`/
+  `aggregateHash` are pinned byte-for-byte to the fork's Python
+  (`test/manifest parity` vs the corpus: root digest
+  `293efea3…`, named `be4336c1…`).
+- **No record or broadcast after a failed upload** — every rejected publish
+  (digest mismatch, bad signature, host-key signer, unregistered pubkey in
+  hosted mode, no relay reached) is asserted to skip `_broadcast` and leave
+  the site record unmodified (24 tests in `test_nsites_publish.py`).
+
+Not yet done (Phase 3b+): draft area + `nsite.mirror`, MCP redaction +
+parity, agent allowlist for read tools, Playwright wizard run (NIP-07 shim)
+and anonymous retrieval from a second client.
