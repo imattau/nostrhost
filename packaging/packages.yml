@@ -203,7 +203,7 @@ packages:
   # packages until its provisioning and operational lifecycle is mature.
   - name: nostrhost-agent
     kind: golang
-    version: "0.1.0"
+    version: "0.1.1"
     source:
       repo: imattau/nostrhost-agent
       submodule: libs/nostrhost-agent
@@ -260,7 +260,7 @@ packages:
   # after the operator provisions DNS + the Caddy route for the endpoint.
   - name: python3-nostrhost-mcp
     kind: python-adapter
-    version: "0.1.1"
+    version: "0.1.2"
     summary: NostrHost MCP protocol adapter (thin operation client, loopback streamable HTTP)
     source:
       repo: imattau/nostrhost-mcp
@@ -307,7 +307,7 @@ packages:
   # ------------------------------------------------------------- web SPA ----
   - name: nostrhost-admin
     kind: spa
-    version: "0.1.1"
+    version: "0.1.2"
     source:
       repo: imattau/nostrhost-admin
       submodule: forks/admin
