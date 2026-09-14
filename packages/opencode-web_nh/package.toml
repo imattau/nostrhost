@@ -35,7 +35,6 @@ system = true
 destination = "/opt/opencode-web/run.sh"
 mode = 0o755
 content = """#!/bin/sh
-chmod +x /opt/opencode-web/opencode
 export HOME=/var/lib/opencode
 export OPENCODE_CONFIG_DIR=/var/lib/opencode
 exec /opt/opencode-web/opencode serve --hostname 127.0.0.1 --port 35353
