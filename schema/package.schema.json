@@ -943,7 +943,7 @@
     },
     "settings": {
       "$ref": "#/definitions/SettingResource",
-      "description": "Typed non-secret package settings and defaults. Store credentials with secrets instead."
+      "description": "Typed non-secret package settings and defaults. Store credentials with secrets instead. Post-install, these fields become the app's config panel (app.config.read/set, webadmin); values flow into managed config templates as the `settings` context."
     },
     "source": {
       "additionalProperties": {
