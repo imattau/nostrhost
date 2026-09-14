@@ -1,0 +1,25 @@
+{
+  "name": "invalid-bad-id",
+  "description": "Event id no longer matches the (tampered) serialized fields.",
+  "event": {
+    "id": "7d2c22e6a02167b7fff502defa6750bc22670a841cc8e004edad6204283c3b52",
+    "pubkey": "b6c048759734c1ef1b3ba0acfd1cd862b394eaab1bc15b7bf6c7f357986d9732",
+    "created_at": 1750000000,
+    "kind": 15128,
+    "tags": [
+      [
+        "path",
+        "/index.html",
+        "186ea5fd14e88fd1ac49351759e7ab906fa94892002b60bf7f5a428f28ca1c99"
+      ]
+    ],
+    "content": "tampered-after-signing",
+    "sig": "3648673802683abad0a0337b2cc24a9e02b2e83f14989bfa8f51b417311d0d9299f39770d5d1a9c3320b6d98e1e6fc5f19ff3f533d1992ca6f50d9fedd23a79a"
+  },
+  "expect": {
+    "valid": false,
+    "errors": [
+      "bad_id"
+    ]
+  }
+}

@@ -1,42 +1,66 @@
 # Native Admin Feature Matrix
 
-**Status:** first-release scope decision, based on the current checkout
-**Target:** Debian 12; native NostrHost UI and API only
+**Status:** current as of the UI rectification pass (see
+[`UI-REVIEW-AND-RECTIFICATION-PLAN.md`](UI-REVIEW-AND-RECTIFICATION-PLAN.md)).
+**Target:** Debian 12; native NostrHost UI and API only.
 
-The former route inventory in `forks/admin/app/src/router/routes.ts` informed
-this review. The shipped route table now contains only the native
-package-authoring view. Native capability references are from
-`forks/yunohost/src/nostrhost/api.py`,
-the CLI `ToolSpec` registry, the package engine, and the portal identity
-routes. A capability listed as “core/CLI” is not yet available to the browser
-through `/api/v1`.
+The admin console (`forks/admin/app`) is a single-sign-on SPA: the portal
+session cookie (`nostrhost.portal`) authenticates every native API request,
+with a NIP-07 browser signer as a fallback. Its route table
+(`forks/admin/app/src/router/routes.ts`) is the source of truth for what
+ships; this table tracks each routed screen against the native capability it
+exercises (`forks/yunohost/src/nostrhost/api.py`, the `ToolSpec` registry in
+`native_ops.py`).
 
-| Current UI area | Current native capability in this checkout | First native admin decision | Delivery state |
+| Screen | Route | Native capability | State |
 | --- | --- | --- | --- |
-| Login and post-install | Portal has Nostr login/link routes; native identity bootstrap is a CLI operation. The legacy admin login sent username/password to `/yunohost/api/`. | Use a signer connection for the admin SPA. Keep first-run server bootstrap outside the package screen; do not port the password flow. | Legacy login/post-install screens are no longer routed or shipped. NIP-07 signing, linked-admin confirmation, and current identity display are implemented; recovery remains. |
-| Home | The former home linked to YunoHost-specific user, domain, app, update, diagnosis, and backup screens. Native v1 exposes system status, identity, catalogue, and version reads, plus a link to the new Diagnosis screen. | Add a native overview with health, identity, operation, and catalogue summaries. | Deferred; v1 read endpoints exist, an overview UI exists (`SystemOverviewView.vue`) but doesn't yet aggregate every read into one summary. |
-| Users and groups | Native operation registry has user list/create/update/delete and permission tools; no complete admin `/api/v1` identity/user surface. | Implement user administration only after a Nostr identity-to-system-user authorization model is specified. Do not carry password or LDAP UI assumptions forward. | Deferred pending auth and API contract. |
-| Domains and DNS | Native domain list/inspect/add/remove, DNS plan/apply/verify, credential, and certificate operations exist in the CLI/control plane. | Build typed domain and DNS screens after API methods expose dry-run plans, provider status, and approval outcomes. | Deferred; no YunoHost form/API adapter. |
-| Applications and catalogue | Native catalogue list/get/publish and app lifecycle operations exist in the operation registry. Package declarations are validated into typed resource plans; installed native manifests are retained locally. | Join trusted catalogue provenance with local installation state; keep unlisted installed apps visible and route install/upgrade/remove/settings changes through digest-bound policy plans. | Implemented: combined inventory endpoint and UI filters; install/upgrade/remove plan and apply routes; native typed settings read/plan/apply. Legacy config-panel scripting is not part of the new UI contract. |
-| Package authoring | Python package library, Typer CLI, schema, diagnostics, and deterministic plan are present. | Keep authoring separate from installed-app management; editing and inspection remain read-only. | Implemented: NIP-07 signing, JSON manifest editor, validation through planning, and read-only plan review. |
-| Services | Native service status/control/restart tools exist; event streaming is implemented for operation progress. | Expose allowlisted service health and operation-linked restart controls only after approval and result contracts are explicit. | Deferred; API/UI contract not implemented. |
-| Updates and migrations | Native operation registry has update check/refresh and migration inspection/run tools. | Separate read-only available updates from privileged apply/migration review; show co-signature and recovery needs before submission. | Deferred; operations currently exist below the browser API. |
-| Diagnosis | `yunohost diagnosis` (run/show/ignore/unignore) is fully exposed at `/package/diagnosis/{run,ignored,ignore,unignore}`. | Ship a typed report view with per-category status and ignore-filter controls, gated to admin sessions for the two mutating actions. | Implemented: `DiagnosisView.vue` — category list, severity summary, ignore/unignore. See [`reference/diagnosis-engine.md`](reference/diagnosis-engine.md) and [`reference/mcp-diagnosis-tools.md`](reference/mcp-diagnosis-tools.md) for the underlying contract. |
-| Logs, firewall, power, settings, and webadmin tools | Some native read/write tools exist in the operation registry, but not all current screens have an exact typed equivalent. Power and webadmin include host actions with significant risk. | Review each tool against policy, bounded output, and a corresponding plan. Exclude legacy-only screens and do not recreate a generic command console. | Deferred pending feature-level API review. |
-| Backups and restore | Native backup create/list/restore tools exist in the operation registry. | Expose archive inventory and backup verification first; gate restore/delete through explicit plan, backup selection, approval, and operation result. | Deferred; browser endpoints not yet implemented. |
-| Operation history and progress | Native API exposes a versioned event stream; operation requests, approval, execution, and state events are handled by the control plane. | Every submitted mutation must have an idempotency key and a durable operation ID; provide reconnectable progress and a history/detail view. | Event infrastructure and v1 SSE endpoint exist; submit/status endpoints and UI remain. |
+| Overview | `/` | `system.status`, `/package/healthz`, `system.version`, identity list, `audit.list` | Host status strip, recent operations, versions, linked identities. |
+| Applications | `/apps` | catalogue + installed inventory, install/upgrade/remove/settings plan-and-apply | Combined trusted-catalogue/installed view; typed plan review before apply. |
+| Catalogue | `/catalogue` | `catalog.list`/`catalog.get` | Read-only browse; installs hand off to Applications. |
+| Package authoring | `/packages` | `package.plan` | Read-only manifest editor + deterministic resource plan; never installs. |
+| Users | `/users` | `user.list/create/update/delete`, identity linking | Create/edit/delete accounts; link a Nostr identity per account. |
+| Identities | `/identities` | `identity.list`, link/revoke | Linked-identity administration independent of the owning user. |
+| Groups & permissions | `/groups` | `user.group.*`, `user.permission.*` | Group membership and per-permission access; core groups protected from deletion. |
+| Domains & DNS | `/domains` | `domain.*`, `dns.*`, credential store | Domain lifecycle, DNS records, free-hostname claims, credential refs. |
+| Firewall | `/firewall` | `firewall.list/open/close/reload` | Port/UPnP management; closing 22/80/443 requires typing the port to confirm. |
+| Services | `/services` | `service.status/control` | Status-aware start/stop/restart; disruptive actions confirm first. |
+| Updates | `/updates` | `updates.check/refresh/apply`, `system.migrations/migrate` | Pending package updates and platform migrations. |
+| Backups | `/backups` | `backup.list/create/info/restore/delete` | Archive inventory, contents (apps/system), create/restore/delete. |
+| Diagnosis | `/diagnosis` | `diagnosis.run/ignored/ignore/unignore` | Per-category health checks; admin-gated ignore-filter controls. |
+| Settings | `/settings` | `settings.list/get/set/reset/reset_all` | Global YunoHost settings; reset-all requires typed confirmation. |
+| Power | `/power` | `system.reboot/shutdown` | Reboot (disruptive) and shutdown (destructive, typed confirmation). |
+| History & approvals | `/operations` | `audit.list/get`, approve/reject | Every submitted operation with its outcome; approve or reject anything parked pending approval. |
+| AI management | `/ai` | agent status/mode, MCP capability grants, model download, contribution settings | Resident admin agent control, MCP-connected agent scopes, local model management, data-sharing settings. |
 
-## First native release slice
+## Known gaps
 
-1. NIP-07 signer connection with no browser key persistence.
-2. Package schema discovery, local manifest editing, validation diagnostics,
-   and a deterministic resource plan.
-3. System identity/health and trusted catalogue provenance as the next
-   read-only surfaces.
-4. Policy-authorized operation submission, approval, progress, verification,
-   and history after those contracts are published.
+These native capabilities exist (CLI/`ToolSpec` registry or core) but have no
+browser route or screen yet:
 
-The current implementation intentionally ends before any package apply
-button. Validation and planning are signed, read-only requests. The native API
-must not expose arbitrary commands or accept the browser's proposed operation
-objects as authority.
+- **Logs** — `logs.read`, `logs.web`, `service.history` tools exist; no
+  `/package/logs/*` route or `/logs` screen.
+- **Certificates** — `domain.cert.info`/`domain.cert.install` exist; no route
+  or Domains tab.
+- **Legacy app operations** — `app.change_url`, `app.config.read/set` exist
+  for apps installed outside the catalogue; Applications has no actions for
+  `installed-unlisted` apps.
+- **Mail-optional user creation** — `user.create` still requires a mail
+  domain and password even though sign-in is Nostr-only
+  (`docs/MAIL-RETIREMENT.md`); blocked on the native account model described
+  in `docs/LDAP-RETIREMENT.md`.
+- **Capability-aware navigation** — the session response carries `admin`
+  only, not a capability list, so the sidebar and route guard are all-or-
+  nothing rather than gated per capability (`docs/ROLE-AND-APP-ACCESS-DESIGN.md`
+  §UI).
+
+## Design constraints carried forward
+
+1. No browser key persistence — the portal session cookie or a NIP-07/NIP-46
+   signer authenticates every request.
+2. Package authoring stays read-only: manifest validation and planning only,
+   never an install button.
+3. Every write goes through the signed operation chain
+   (`nostr_operations.run_signed_chain`); the API never accepts the browser's
+   proposed operation objects as authority, and a lifecycle response's
+   `ok: false` (rejected, failed, or pending approval) is surfaced to the
+   operator rather than treated as success.

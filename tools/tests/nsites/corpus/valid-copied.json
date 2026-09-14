@@ -1,0 +1,52 @@
+{
+  "name": "valid-copied",
+  "description": "Copied named site with a/A lineage tags.",
+  "event": {
+    "id": "2316a23b7696a5cd5fd5a49b5241fb01b5579cfee52e140fc7c17f260abf8f10",
+    "pubkey": "b6c048759734c1ef1b3ba0acfd1cd862b394eaab1bc15b7bf6c7f357986d9732",
+    "created_at": 1750000000,
+    "kind": 35128,
+    "tags": [
+      [
+        "d",
+        "blog"
+      ],
+      [
+        "a",
+        "35128:266815e0c9210dfa324c6cba3573b14bee49da4209a9456f9484e5106cd408a5:blog"
+      ],
+      [
+        "A",
+        "35128:266815e0c9210dfa324c6cba3573b14bee49da4209a9456f9484e5106cd408a5:blog"
+      ],
+      [
+        "path",
+        "/index.html",
+        "186ea5fd14e88fd1ac49351759e7ab906fa94892002b60bf7f5a428f28ca1c99"
+      ],
+      [
+        "path",
+        "/post.html",
+        "deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef"
+      ],
+      [
+        "x",
+        "11e6ec45320a826dd8ae29a94a897a85c37beda9db642e13cd45839a21394268",
+        "aggregate"
+      ],
+      [
+        "title",
+        "Conformance Copied Blog"
+      ]
+    ],
+    "content": "",
+    "sig": "3a3fd66755e83474679293b944e3ffcd961984dd9ea8fd5b939020d0184cdeffdb7f4b13fdb0c2488ee235e72f366e328d623bfd3df59d842b6e71a06a1012bc"
+  },
+  "expect": {
+    "valid": true,
+    "site_type": "named",
+    "d": "blog",
+    "aggregate_hash": "11e6ec45320a826dd8ae29a94a897a85c37beda9db642e13cd45839a21394268",
+    "label": "4jz47tivkyl3kyv6w0b4ogj6a9qfag8hbc3femhny6te89rn76blog"
+  }
+}

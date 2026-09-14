@@ -1,0 +1,29 @@
+{
+  "name": "invalid-d-on-root",
+  "description": "Kind 15128 root site MUST NOT carry a d tag.",
+  "event": {
+    "id": "1227da8f942fbeb961e8fba75a6684dce9eda9f66b90bb8bf65f8b6831d93fa3",
+    "pubkey": "b6c048759734c1ef1b3ba0acfd1cd862b394eaab1bc15b7bf6c7f357986d9732",
+    "created_at": 1750000000,
+    "kind": 15128,
+    "tags": [
+      [
+        "d",
+        "blog"
+      ],
+      [
+        "path",
+        "/index.html",
+        "186ea5fd14e88fd1ac49351759e7ab906fa94892002b60bf7f5a428f28ca1c99"
+      ]
+    ],
+    "content": "",
+    "sig": "cf899fe38f190ef0921ad09b406b3d2a2004cf682a241300b8dbfcf2555e29456a91151ed9189682bc78561b8c06646bf22d359a24ced72ee45300d61daac216"
+  },
+  "expect": {
+    "valid": false,
+    "errors": [
+      "d_on_root"
+    ]
+  }
+}

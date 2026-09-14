@@ -1,0 +1,9 @@
+# Generated spike artifacts (regenerate with make_site.py).
+site/
+seed/
+blobs/
+tamper/
+.cache/
+
+# Pinned upstream checkout (clone with build-gateway.sh).
+upstream/

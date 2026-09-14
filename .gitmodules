@@ -33,3 +33,6 @@
 	path = forks/installer
 	url = https://github.com/imattau/nostrhost-custom-debian-iso.git
 	branch = main
+[submodule "libs/nostrhost-nsite"]
+	path = libs/nostrhost-nsite
+	url = https://github.com/imattau/nostrhost-nsite.git

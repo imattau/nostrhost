@@ -1,0 +1,51 @@
+{
+  "name": "invalid-oversize-path-count",
+  "description": "More path tags than the validator's max_paths (5 in this fixture).",
+  "event": {
+    "id": "5652f00c781e3176d6a29ce16eff5abbbad7019c350d121cbfed770b7536afb5",
+    "pubkey": "b6c048759734c1ef1b3ba0acfd1cd862b394eaab1bc15b7bf6c7f357986d9732",
+    "created_at": 1750000000,
+    "kind": 15128,
+    "tags": [
+      [
+        "path",
+        "/file00000.html",
+        "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9"
+      ],
+      [
+        "path",
+        "/file00001.html",
+        "6b86b273ff34fce19d6b804eff5a3f5747ada4eaa22f1d49c01e52ddb7875b4b"
+      ],
+      [
+        "path",
+        "/file00002.html",
+        "d4735e3a265e16eee03f59718b9b5d03019c07d8b6c51f90da3a666eec13ab35"
+      ],
+      [
+        "path",
+        "/file00003.html",
+        "4e07408562bedb8b60ce05c1decfe3ad16b72230967de01f640b7e4729b49fce"
+      ],
+      [
+        "path",
+        "/file00004.html",
+        "4b227777d4dd1fc61c6f884f48641d02b4d121d3fd328cb08b5531fcacdabf8a"
+      ],
+      [
+        "path",
+        "/file00005.html",
+        "ef2d127de37b942baad06145e54b0c619a1f22327b2ebbcfbec78f5564afe39d"
+      ]
+    ],
+    "content": "",
+    "sig": "f8a4bf798966f5f1f3d107b8612a4bec8a6387a56e702e2191795145126ec31bb59fdcd1c8f86ce0d04bb0c538e79d88191441b6f335b3a365efdfa6f7ea7ec5"
+  },
+  "expect": {
+    "valid": false,
+    "errors": [
+      "oversize_path_count"
+    ],
+    "max_paths": 5
+  }
+}

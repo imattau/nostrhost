@@ -1,0 +1,25 @@
+{
+  "name": "invalid-no-extension",
+  "description": "Absolute path must end with a filename and extension.",
+  "event": {
+    "id": "3ddc93dd7801c13cdc56c16984a2549e4eefc3dc6f09c54c8d6d04256511bffe",
+    "pubkey": "b6c048759734c1ef1b3ba0acfd1cd862b394eaab1bc15b7bf6c7f357986d9732",
+    "created_at": 1750000000,
+    "kind": 15128,
+    "tags": [
+      [
+        "path",
+        "/index",
+        "186ea5fd14e88fd1ac49351759e7ab906fa94892002b60bf7f5a428f28ca1c99"
+      ]
+    ],
+    "content": "",
+    "sig": "ca4a0fee2d398f1001b70d53929e3ee6daa44268dbcdee91b16956d0144557d99f15e93251ff45bfd721f838f6ac6f663f8d326c7f6e24f83555c65825f15d17"
+  },
+  "expect": {
+    "valid": false,
+    "errors": [
+      "no_extension"
+    ]
+  }
+}

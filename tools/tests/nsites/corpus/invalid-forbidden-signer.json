@@ -1,0 +1,25 @@
+{
+  "name": "invalid-forbidden-signer",
+  "description": "Manifest signed by a pubkey the validator treats as a host key.",
+  "event": {
+    "id": "64fcdeb2b731427ecbb7f621b7f61f9ff7f24cb6b4964d44dd35e6f8b08affa7",
+    "pubkey": "c6b754b20826eb925e052ee2c25285b162b51fdca732bcf67e39d647fb6830ae",
+    "created_at": 1750000000,
+    "kind": 15128,
+    "tags": [
+      [
+        "path",
+        "/index.html",
+        "186ea5fd14e88fd1ac49351759e7ab906fa94892002b60bf7f5a428f28ca1c99"
+      ]
+    ],
+    "content": "",
+    "sig": "c3752f10f6cddf28fc2608a548141559e4d2367908c92c49a5eb848a9c5f9899469e89d181e79e220f3c8d875c7df35c15e9bbc3853ce9d47132852d420340eb"
+  },
+  "expect": {
+    "valid": false,
+    "errors": [
+      "forbidden_signer"
+    ]
+  }
+}
