@@ -82,10 +82,10 @@ reference logic).
 `yunohost-mcp` (held as a frozen reference under `libs/yunohost-mcp`) keeps
 working for stock YunoHost during the migration. Its useful surface —
 NIP-98 authentication, agent keys, delegation, owner co-signatures, audit,
-the MCP protocol itself, package-development tools, diagnostics — is
-preserved; only the *implementation* moves onto NostrHost's native
-registry, policy and control plane rather than duplicating that logic in
-the MCP layer itself.
+the MCP protocol itself, package-development tools, [diagnostics
+tools](mcp-diagnosis-tools.md) — is preserved; only the *implementation*
+moves onto NostrHost's native registry, policy and control plane rather
+than duplicating that logic in the MCP layer itself.
 
 ## Approval flow for privileged operations
 

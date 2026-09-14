@@ -17,6 +17,8 @@ overview](../dev/architecture-overview.md).
 |---|---|
 | [Control-plane event reference](control-plane-events.md) | The operation request/approval/execution kind chain (2200–2205), notice kinds, kind-range discipline, and the standard NIPs used instead of custom kinds |
 | [MCP integration](mcp-integration.md) | Using `yunohost-mcp-connect` and the native `nostrhost-mcp` adapter from an MCP client (Claude Desktop, Codex, etc.), and why MCP is an interface rather than an authority boundary |
+| [Diagnosis engine](diagnosis-engine.md) | How `yunohost diagnosis` works: diagnoser discovery, report format, caching, the ignore-filter workflow, and the CLI/API surface |
+| [MCP diagnosis tools](mcp-diagnosis-tools.md) | The 7 diagnosis/health-adjacent MCP tools (`health_check`, `diagnosis_run`, `system_snapshot`, `ssh_diagnose`, `incident_snapshot`, `diagnose_app`, `validate_server`) — what each wraps or adds beyond the core engine |
 
 ## Use the source directly (no separate reference page planned)
 
