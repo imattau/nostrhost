@@ -1,0 +1,24 @@
+{
+  "name": "invalid-no-paths",
+  "description": "Manifest MUST include one or more path tags.",
+  "event": {
+    "id": "fa504ea2c78ff2ea9885729ae96cb677bf55fe9f4c072a7e7843ef4f3e770a9a",
+    "pubkey": "b6c048759734c1ef1b3ba0acfd1cd862b394eaab1bc15b7bf6c7f357986d9732",
+    "created_at": 1750000000,
+    "kind": 15128,
+    "tags": [
+      [
+        "title",
+        "empty"
+      ]
+    ],
+    "content": "",
+    "sig": "0aac413adfcdbb1df375930cca3a3d67f7ff9d9f405d9bfa16699bf978d5f11ba3517111f3852926fc6c8d70f8558a77108cfb5bf6cd1a8d02c84008080889f5"
+  },
+  "expect": {
+    "valid": false,
+    "errors": [
+      "no_paths"
+    ]
+  }
+}

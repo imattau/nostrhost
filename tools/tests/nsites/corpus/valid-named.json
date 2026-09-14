@@ -1,0 +1,52 @@
+{
+  "name": "valid-named",
+  "description": "Kind 35128 named site with a canonical d tag.",
+  "event": {
+    "id": "c68a54ee23602e7103ec0d8af05d94ec95f0801837e1324e6fa3c15ba34d6396",
+    "pubkey": "b6c048759734c1ef1b3ba0acfd1cd862b394eaab1bc15b7bf6c7f357986d9732",
+    "created_at": 1750000000,
+    "kind": 35128,
+    "tags": [
+      [
+        "d",
+        "blog"
+      ],
+      [
+        "path",
+        "/index.html",
+        "186ea5fd14e88fd1ac49351759e7ab906fa94892002b60bf7f5a428f28ca1c99"
+      ],
+      [
+        "path",
+        "/post.html",
+        "deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef"
+      ],
+      [
+        "x",
+        "11e6ec45320a826dd8ae29a94a897a85c37beda9db642e13cd45839a21394268",
+        "aggregate"
+      ],
+      [
+        "server",
+        "https://blossom.example.com"
+      ],
+      [
+        "title",
+        "Conformance Blog"
+      ],
+      [
+        "description",
+        "Valid named nsite"
+      ]
+    ],
+    "content": "",
+    "sig": "26ae865e829655ff9e32de9df40ae725ede7b4f4e63326984fe39dd6722a53d18541a1fbc1576fcfb069cfda18586ab038e1a23b6b1fb0f9335c607f034e999f"
+  },
+  "expect": {
+    "valid": true,
+    "site_type": "named",
+    "d": "blog",
+    "aggregate_hash": "11e6ec45320a826dd8ae29a94a897a85c37beda9db642e13cd45839a21394268",
+    "label": "4jz47tivkyl3kyv6w0b4ogj6a9qfag8hbc3femhny6te89rn76blog"
+  }
+}

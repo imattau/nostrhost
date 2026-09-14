@@ -1,0 +1,43 @@
+{
+  "name": "valid-snapshot",
+  "description": "Kind 5128 snapshot capturing a named site; a and x tags as required.",
+  "event": {
+    "id": "f31703ed0fcfa4750181bc073efae231ba24b3d0b65fc3e8a529c7e525b0f4b4",
+    "pubkey": "b6c048759734c1ef1b3ba0acfd1cd862b394eaab1bc15b7bf6c7f357986d9732",
+    "created_at": 1750000000,
+    "kind": 5128,
+    "tags": [
+      [
+        "a",
+        "35128:b6c048759734c1ef1b3ba0acfd1cd862b394eaab1bc15b7bf6c7f357986d9732:blog"
+      ],
+      [
+        "path",
+        "/index.html",
+        "186ea5fd14e88fd1ac49351759e7ab906fa94892002b60bf7f5a428f28ca1c99"
+      ],
+      [
+        "path",
+        "/post.html",
+        "deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef"
+      ],
+      [
+        "x",
+        "11e6ec45320a826dd8ae29a94a897a85c37beda9db642e13cd45839a21394268",
+        "aggregate"
+      ],
+      [
+        "title",
+        "Conformance Blog v1"
+      ]
+    ],
+    "content": "",
+    "sig": "ed7c02c8d3de0c9831614d0f0e9c22640e845b4f767008da458a96ea4c9727c3e089ae8a73472ea34c307875e320555a5373e8436e4b66efe480b8cde3153084"
+  },
+  "expect": {
+    "valid": true,
+    "site_type": "snapshot",
+    "aggregate_hash": "11e6ec45320a826dd8ae29a94a897a85c37beda9db642e13cd45839a21394268",
+    "label": "v62457wizfbg8l5aag13svhj7m0tz3xvoc4ky0cels5yhfo0ywk"
+  }
+}

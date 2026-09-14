@@ -1,0 +1,29 @@
+{
+  "name": "invalid-bad-d",
+  "description": "Named site whose d tag violates ^[a-z0-9-]{1,13}$.",
+  "event": {
+    "id": "a3b64d80a5f3747e3aa54305a2141ccfa9f9cf33bc4c21742e10dbf328455004",
+    "pubkey": "b6c048759734c1ef1b3ba0acfd1cd862b394eaab1bc15b7bf6c7f357986d9732",
+    "created_at": 1750000000,
+    "kind": 35128,
+    "tags": [
+      [
+        "d",
+        "Blog!"
+      ],
+      [
+        "path",
+        "/index.html",
+        "186ea5fd14e88fd1ac49351759e7ab906fa94892002b60bf7f5a428f28ca1c99"
+      ]
+    ],
+    "content": "",
+    "sig": "84499f2bad753d917160afed095798280a00903247a1cb6664ff7341a76ae9385d2160eec62afe49b96a3d5dacdc53e31fabc571f5a3236d2a8d0f910478ba48"
+  },
+  "expect": {
+    "valid": false,
+    "errors": [
+      "bad_d"
+    ]
+  }
+}

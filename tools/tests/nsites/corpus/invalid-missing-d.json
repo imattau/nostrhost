@@ -1,0 +1,25 @@
+{
+  "name": "invalid-missing-d",
+  "description": "Kind 35128 named site MUST include a d tag.",
+  "event": {
+    "id": "fc792ba8cfe8263594f1226e765a35d268c851c8c69ba9ef6212c0a9fcd97c48",
+    "pubkey": "b6c048759734c1ef1b3ba0acfd1cd862b394eaab1bc15b7bf6c7f357986d9732",
+    "created_at": 1750000000,
+    "kind": 35128,
+    "tags": [
+      [
+        "path",
+        "/index.html",
+        "186ea5fd14e88fd1ac49351759e7ab906fa94892002b60bf7f5a428f28ca1c99"
+      ]
+    ],
+    "content": "",
+    "sig": "2c96f79be683d876f62b4417f290598f01e2218b20350581b1bd6d4af6d390ef98ead534b2a3c18e51778996dc114e7129e5ea12744f0e9c56f6972bef93e56e"
+  },
+  "expect": {
+    "valid": false,
+    "errors": [
+      "missing_d"
+    ]
+  }
+}

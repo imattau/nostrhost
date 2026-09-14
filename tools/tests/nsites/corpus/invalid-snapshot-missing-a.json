@@ -1,0 +1,30 @@
+{
+  "name": "invalid-snapshot-missing-a",
+  "description": "Kind 5128 snapshot MUST include exactly one a tag.",
+  "event": {
+    "id": "4f44006d16eaf4d7934b46560197bc5e038742c32f3c9c440816f8e4ca2413bf",
+    "pubkey": "b6c048759734c1ef1b3ba0acfd1cd862b394eaab1bc15b7bf6c7f357986d9732",
+    "created_at": 1750000000,
+    "kind": 5128,
+    "tags": [
+      [
+        "path",
+        "/index.html",
+        "186ea5fd14e88fd1ac49351759e7ab906fa94892002b60bf7f5a428f28ca1c99"
+      ],
+      [
+        "x",
+        "90b6940c3e3c63e27f3cc43cd997b4a3b0e50c85eb8b2b5013c71315adb8bcdd",
+        "aggregate"
+      ]
+    ],
+    "content": "",
+    "sig": "8810b68487c36458a1f3db1f65648cc9b612d3de6a17353c9e273f531bb7eecadc70052a0d4d4f211cb94c3a0bad3d1239f403897113b0923885ab6bad78157d"
+  },
+  "expect": {
+    "valid": false,
+    "errors": [
+      "missing_a"
+    ]
+  }
+}

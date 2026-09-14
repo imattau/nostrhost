@@ -1,0 +1,25 @@
+{
+  "name": "invalid-non-hex-hash",
+  "description": "path tag hash is not lowercase hex.",
+  "event": {
+    "id": "9784cd948f0c9ba6d4607c71fc216a84f3949bc95e3a86cd0b435ca90cda3f4c",
+    "pubkey": "b6c048759734c1ef1b3ba0acfd1cd862b394eaab1bc15b7bf6c7f357986d9732",
+    "created_at": 1750000000,
+    "kind": 15128,
+    "tags": [
+      [
+        "path",
+        "/index.html",
+        "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz"
+      ]
+    ],
+    "content": "",
+    "sig": "037da2daa009a7a364d5aecf5b2fa531ebb3b3e1a1c49d3be929bfec5b575a54c53f6241a641abc8ef6116c4771424d9a49abf918362fd17d06832b1a4df9731"
+  },
+  "expect": {
+    "valid": false,
+    "errors": [
+      "bad_hash_hex"
+    ]
+  }
+}

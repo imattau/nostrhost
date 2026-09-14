@@ -1,0 +1,52 @@
+{
+  "name": "valid-root",
+  "description": "Kind 15128 root site with two paths, aggregate x tag, server hint and metadata.",
+  "event": {
+    "id": "26892e612a388529223d5435fdfb466e1c6fa753d790d56725da28815e752552",
+    "pubkey": "b6c048759734c1ef1b3ba0acfd1cd862b394eaab1bc15b7bf6c7f357986d9732",
+    "created_at": 1750000000,
+    "kind": 15128,
+    "tags": [
+      [
+        "path",
+        "/index.html",
+        "186ea5fd14e88fd1ac49351759e7ab906fa94892002b60bf7f5a428f28ca1c99"
+      ],
+      [
+        "path",
+        "/about.html",
+        "a1b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef123456"
+      ],
+      [
+        "x",
+        "865c10178f4b4d49a65b4e7d945460385a99e243931620e9630c0e6883be4271",
+        "aggregate"
+      ],
+      [
+        "server",
+        "https://blossom.example.com"
+      ],
+      [
+        "title",
+        "Conformance Root Site"
+      ],
+      [
+        "description",
+        "Valid root nsite for the conformance corpus"
+      ],
+      [
+        "source",
+        "https://github.com/example/my-nostr-site"
+      ]
+    ],
+    "content": "",
+    "sig": "1e503ed8927fdfeb6b059d1b82b0b7de06bacdd63a5fbb48338a6566b71f8694d78a9e088920f8ac472851174ad2e910e2d5f3e24f12ab34f0748a208a4c9379"
+  },
+  "expect": {
+    "valid": true,
+    "site_type": "root",
+    "aggregate_hash": "865c10178f4b4d49a65b4e7d945460385a99e243931620e9630c0e6883be4271",
+    "label": "npub1kmqysavhxnq77xem5zk068xcv2eef64tr0q4k7lkcle40xrdjueqcug4j3",
+    "canonical_url": "npub1kmqysavhxnq77xem5zk068xcv2eef64tr0q4k7lkcle40xrdjueqcug4j3.sites.example.org"
+  }
+}

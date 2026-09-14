@@ -1,0 +1,30 @@
+{
+  "name": "invalid-duplicate-path",
+  "description": "Two path tags mapping the same absolute path.",
+  "event": {
+    "id": "84c9eab16d1ceb8952d32a98c6763c20d635ed38987122a1077a8d9545a92133",
+    "pubkey": "b6c048759734c1ef1b3ba0acfd1cd862b394eaab1bc15b7bf6c7f357986d9732",
+    "created_at": 1750000000,
+    "kind": 15128,
+    "tags": [
+      [
+        "path",
+        "/index.html",
+        "186ea5fd14e88fd1ac49351759e7ab906fa94892002b60bf7f5a428f28ca1c99"
+      ],
+      [
+        "path",
+        "/index.html",
+        "a1b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef123456"
+      ]
+    ],
+    "content": "",
+    "sig": "825192cf0f7983832b34dcdd2230f4a71d634c641abc825654a8fda8603bc81670895f6384b9466eb78db98ff98132bed13f11e05337449315140f7d253b49ee"
+  },
+  "expect": {
+    "valid": false,
+    "errors": [
+      "duplicate_path"
+    ]
+  }
+}

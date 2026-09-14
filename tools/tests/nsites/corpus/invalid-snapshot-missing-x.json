@@ -1,0 +1,29 @@
+{
+  "name": "invalid-snapshot-missing-x",
+  "description": "Kind 5128 snapshot MUST include exactly one x aggregate tag.",
+  "event": {
+    "id": "0b4e20bf384c933ad106608f79cc36c6c9216d2438d7c9dbff7f93a9d301c543",
+    "pubkey": "b6c048759734c1ef1b3ba0acfd1cd862b394eaab1bc15b7bf6c7f357986d9732",
+    "created_at": 1750000000,
+    "kind": 5128,
+    "tags": [
+      [
+        "a",
+        "35128:b6c048759734c1ef1b3ba0acfd1cd862b394eaab1bc15b7bf6c7f357986d9732:blog"
+      ],
+      [
+        "path",
+        "/index.html",
+        "186ea5fd14e88fd1ac49351759e7ab906fa94892002b60bf7f5a428f28ca1c99"
+      ]
+    ],
+    "content": "",
+    "sig": "5bc302b6f15c96aeb8325103f64cf5df8a4fa30e5b807aebe01c266e0cbd9b186f9ae207c689f6a4dd755d198b83e5778da6b350b4f0685196a7b767af61fb3d"
+  },
+  "expect": {
+    "valid": false,
+    "errors": [
+      "missing_aggregate_x"
+    ]
+  }
+}
