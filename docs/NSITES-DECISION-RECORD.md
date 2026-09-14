@@ -114,9 +114,75 @@ Confirmed 2026-09-14 on the spike evidence above; no reversal.
 - Spike report table: **yes** (0.4, `testbed/nsites/README.md`).
 - D1–D3 sign-off: **yes** (0.5, confirmed).
 
+## Phase 1 acceptance appendix (task 1.6)
+
+**Environment.** `nostrhost-clean7` VM (Debian 12, KVM/libvirt,
+192.168.122.174), core 12.1.41.46, main domain `nostrhost.test`, gateway
+domain `sites.nostrhost.test`. The current fork overlay (with the nsites
+gateway operations) was deployed over `/usr/lib/python3/dist-packages` per the
+VM-TESTBED convention; Caddy 2.11.4 with `on_demand_tls { ask … }` and
+`caddy_nsite.conf` in the base template.
+
+**1.6a — clean install of the optional package.** `nostrhost-nsite_0.1.0`
+built by `packaging/scripts/build-package` (kind golang) and `dpkg -i`.
+Verified: unit shipped but **disabled + inactive by default** (D3), system
+user `nostrhost-nsite` (uid 107, gid 114) created, `/var/cache/nostrhost-nsite`
+0700 owned by that user, `Depends: adduser, init-system-helpers, systemd`.
+
+**1.6c — enable through a reviewed plan.** The whole lifecycle ran through
+the signed operation chain (no raw bypass):
+`nostr-opctl grant --pubkey <agent> --scopes domains.write,nsites.admin,nsites.read`
+→ `nostr-opctl request --tool domain.add …` → admin approval → `request
+nsite.gateway.enable` → admin approval. Each chain observed
+`REQUESTED → APPROVED → EXECUTING → DONE` on the control relay with
+`{"ok": true}` and the domain `sites.nostrhost.test` served. D2 (dedicated
+domain) held: enable rejected any registered-subdomain/app collision.
+
+**1.6d — HTTPS on the isolated origin.** After enable the gateway listens on
+`127.0.0.1:8195` (public) and `127.0.0.1:8196` (internal) as
+`nostrhost-nsite`; `GET /internal/status` →
+`{"domain":"sites.nostrhost.test","mode":"hosted","allowlisted_sites":0}`.
+`https://sites.nostrhost.test/` → **200** and `https://abc.sites.nostrhost.test/`
+→ **404** over the Caddy **internal CA** (`Caddy Local Authority - ECC
+Intermediate`), apex + wildcard. Gateway restarted cleanly on package upgrade
+and survived `systemctl reload caddy`.
+
+**1.6e — control-plane isolation.** On the gateway origin,
+`/nostrhost/`, `/package/`, `/nostrhost/admin/` and `/.well-known/nostr.json`
+return only the gateway's own page (`<h1>nsite gateway</h1>`), never the
+admin/API. `/internal/status` is **404** over HTTPS. `:8190` (native API),
+`:4848` (control relay), `:8195`/`:8196` (gateway) all bind `127.0.0.1` only;
+from the host each is connection-refused. Public reads cannot reach the
+control plane.
+
+**1.6f — upgrade / disable / remove.** `nostrhost-nsite` 0.1.0 → 0.1.1
+(`dpkg -i`): clean, unit stayed active, config preserved. `nsite.gateway.disable`
+through the chain: unit stopped + disabled, Caddy route deleted, snippet
+removed, state kept. `dpkg -r`: package `rc` (config retained), unit file
+gone, gateway listeners closed.
+
+**Defects found live and fixed (fork commits `8ccf6e5f2` etc.):**
+1. Executor unit `ProtectSystem=full` lacked `/etc/caddy` in `ReadWritePaths`
+   → enable failed `EROFS` writing the gateway snippet. Added it.
+2. `render_config` wrote `nsite.toml` root:root 0640 → the unprivileged
+   gateway user got `EACCES` on start (crash-loop). Now root:nostrhost-nsite
+   0640.
+3. The `.test` → `tls internal` swap matched a single-line `tls { on_demand }`
+   that never matched the template's multi-line block, so local domains tried
+   ACME (no cert, handshake failed). Now a whitespace-tolerant regex, plus a
+   Caddy reload after writing the snippet so the site-level directives take
+   effect.
+
+**Exit evidence for the Phase-1 gate (§7):** optional package installs
+disabled, enable runs through a reviewed plan, HTTPS on the isolated origin,
+upgrade/disable/remove all exercised, and public reads cannot reach
+`/nostrhost/*`, `/package/*`, `:8190`, `:4848`, `:8196`.
+
 ## Verification log
 
 - 2026-09-14 — corpus sanity `python -m pytest -q tools/tests/nsites/test_corpus.py`: 120 passed.
 - 2026-09-14 — validator `PYTHONPATH=src python -m pytest -c /dev/null tests_nostr/test_nsites_manifest.py -q`: 66 passed.
 - 2026-09-14 — full fork suite `tests_nostr/`: 811 passed, 1 failure imports the `fail2ban` system package, which this system does not use (unrelated).
 - 2026-09-14 — spike: Deno 2.7.7 + pinned gateway `558326ae` + Caddy 2.11.4 `tls internal` + fake relay/blossom; results in `testbed/nsites/README.md`.
+- 2026-09-14 — fork suite after Phase 1: `tests_nostr/` 826 passed (1 pre-existing fail2ban gap); `test_nsites_ops.py` 15 passed.
+- 2026-09-14 — VM acceptance (task 1.6): clean install → reviewed-plan enable → HTTPS on `sites.nostrhost.test` (internal CA) → isolation checks → upgrade → disable → remove; three lifecycle defects fixed (appendix above).
