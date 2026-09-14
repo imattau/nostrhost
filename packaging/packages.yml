@@ -364,7 +364,7 @@ packages:
   # acquisition/parser/scenario config on top of it.
   - name: nostrhost-security-config
     kind: config
-    version: "0.1.0"
+    version: "0.1.1"
     summary: NostrHost CrowdSec acquisition/scenarios/bouncer configuration
     depends:
       - crowdsec
