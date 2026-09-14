@@ -94,6 +94,15 @@ since the subprocess's return value doesn't carry one either.
 > break without a code change here — there's no compile-time link between
 > the two. Grep both together before touching `src/log.py`'s
 > `is_unit_operation`.
+>
+> A regression test already pins the exact call shape this depends on:
+> [`tests/test_yunohost_adapter_system_python.py::test_diagnosis_run_uses_cli_context_in_system_python`](../../libs/yunohost-mcp/tests/test_yunohost_adapter_system_python.py)
+> asserts `_call_via_system_python` is invoked with
+> `module_name="yunohost.diagnosis"`, `attr="diagnosis_run"`, and
+> `interface_type="cli"`. It won't catch every way this could break — it
+> mocks `_call_via_system_python` itself, so a change to what a CLI-context
+> subprocess actually needs from `is_unit_operation` wouldn't fail here —
+> but a change to the call shape above will.
 
 ## `system_snapshot()`
 
@@ -105,6 +114,16 @@ sorted by CPU, and OOM-related journal entries (`journal_query`,
 `kernel`/`systemd-oomd`, `err..emerg`) directly — richer and more
 granular than `50-systemresources.py`'s pass/fail checks, but computed
 independently of them rather than reusing that diagnoser's logic.
+
+**Left as-is, deliberately, not merged:** `50-systemresources.py` gets its
+numbers from `psutil`, a dependency of the `yunohost` Debian package;
+`libs/yunohost-mcp` is a separately versioned project with no `psutil`
+dependency today. Two independent readers of the same `/proc` data is a
+real but small inconsistency risk; adding a cross-package dependency (or
+threading `system_snapshot()` through the diagnoser's cached, threshold-
+scored output, which is a different job — live raw numbers vs. a cached
+pass/fail verdict) to remove it was judged not worth it for this pair of
+call sites. Revisit if a third caller wants the same numbers a third way.
 
 ```jsonc
 system_snapshot()
