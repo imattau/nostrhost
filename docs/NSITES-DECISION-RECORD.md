@@ -363,3 +363,55 @@ render_config, build_custom_domain_route, registry wiring incl. required_scopes,
 policy), MCP catalog + approval expectations, agent reads/writes-absent,
 Admin gates (type-check, lint, prettier, 41 tests, build). Full fork suite:
 880 passed.
+
+## Phase 5 acceptance appendix (catalogue + ecosystem + open mode)
+
+`libs/nostrhost-nsite` `2c2b3a9`, `forks/yunohost` `3b9fa7d7c`,
+`forks/admin` `cc8a1486`. Every item on the plan's Phase 5 list is
+implemented. Maintainer decisions (2026): **local Blossom is deferred** (D4
+external-only stands) and **open gateway mode ships gateway + render with a
+required operator token** (not deferred).
+
+- **`app` tag linkage to kind 32267 — inside the normal nostrhost catalogue.**
+  An nsite manifest may carry an optional `app` tag (`["app",
+  "<kind:pubkey:d>", "<relay>"]`); a malformed one is a validation error, an
+  absent one is fine. Publish records it on the site record and
+  `nsite.list`/`inspect` surface it. The catalogue list (`catalog.list`,
+  already the custom-catalog projection of kind-32267 declarations) annotates
+  any entry whose address a registered site's `app` tag names with an "open
+  nsite" link. **Nsites are never a separate catalogue** — they appear inside
+  the existing catalogue view (Admin) via the same merge logic the catalogue
+  already uses.
+- **"Create my copy" with `a`/`A` tags.** `nsite.publish.plan` gains
+  `copy_of=<kind:pubkey:d>`: the target kind matches the source, the target
+  `d` defaults to the source's (overridable to fork), the inventory comes from
+  the source's recorded paths (else a relay resolution), and the unsigned
+  event carries `a` (parent) and `A` (origin) tags. `a`/`A` carry no
+  content-integrity meaning, so the plan digest is unchanged and a signed copy
+  validates/publishes exactly like a fresh plan (copier signs with their own
+  key). Admin: a "Create my copy" card builds the plan, reviews it, then
+  signs via NIP-07 and publishes under the operator's pubkey.
+- **Open gateway mode (wildcard DNS-01, token-gated).** `mode=open` is
+  accepted end-to-end: the Go gateway bypasses the allowlist and serves any
+  decodable `*.domain` label (tls-ask answers 200 for any decodable
+  root/named label; snapshots still 403 — their author is unresolvable
+  without a network call). The fork's `GatewayConfig.mode` is `hosted|open`;
+  `enable`/`configure` reject open mode unless `operator.toml` has
+  `acme_dns_provider` + `acme_dns_api_token`, then render the new
+  `caddy_nsite_open.conf` (wildcard DNS-01 via Caddy env substitution — the
+  token never lands in the regenconf-tracked snippet; `.test`/`.local` domains
+  still fall back to `tls internal`). Mode renders into `nsite.toml` and is
+  reported by status; in open mode publish no longer requires registration
+  (hosted mode still does).
+- **Deferred (recorded):** local Blossom component (D4 external-only stays;
+  the gateway's `[blossom]` cache is the on-host blob path), portal "My site"
+  surface for non-admin users (D8 — gated on the same `nsites.publish`
+  operation/policy path, no schema change expected), Git/NIP-34 sources (D6).
+
+Tests: gateway (open config + unknown-mode rejection, tls-ask allow any /
+deny snapshot+garbage, status mode), fork 14 new (app tag valid/malformed +
+recorded, `catalogue_nsite_links` root npub + named labels, copy plans root/
+named + d override + invalid/unresolvable sources + signed-copy publish,
+open-mode token gate + wildcard snippet + local internal-CA + publish-without-
+registration, hosted registration still enforced), Admin gates (type-check,
+lint, prettier, tests, build). Full fork suite: 894 passed.
