@@ -99,7 +99,7 @@ the **working specifications**; the plan, its phases and its status live here.
 | §25 | LDAP dependency inventory / reduction | ✓ | LDAP retired outright: native account store (`nostrhost/accounts.py`, real Unix accounts + JSON metadata) replaces LDAP as the user/group directory; `slapd`/`python-ldap`/libnss-ldapd/libpam-ldapd removed from core; NIP-51 permission projection (`grant-nostr`/`clear-nostr`, `nostr_permissiond`, `is_admin_user`) covers the authz layer; `_sync_permissions_with_ldap` now regenerates the native projection — plan in `docs/LDAP-RETIREMENT.md` |
 | §26 | Native DNS management | ⏳ | later phase (alpha) |
 | §27 | Secrets / key lifecycle | ◑ | node-key inventory + safe keeping landed (POSTINSTALL-KEYS); rotation + Restic/DB/external/DNS/Caddy/agent secret classes remain |
-| §28 | Nsites (NIP-5A hosting) | ⏳ | post-alpha gateway/component spike, owner-signed publishing, safe public serving, MCP/Admin agent integration, domains and catalogue — plan in `docs/NSITES-PLAN.md` |
+| §28 | Nsites (NIP-5A hosting) | ⏳ | post-alpha gateway/component spike, owner-signed publishing, safe public serving, MCP/Admin agent integration, domains and catalogue — plan in `docs/NSITES-PLAN.md`; code-level design and decisions D1–D7 in `docs/NSITES-IMPLEMENTATION-PLAN.md` |
 | MCP 0–4 | MCP transition: registry, skeleton, identity, signed mutations, approval flow | ✅ | — |
 | MCP 5 | Resource Engine integration (catalog surface) | ✓ | `catalog.list/get/publish/verify` + the full backlog landed (updates/migrations/service.history/logs/backup.delete/domain.cert/users/groups/permissions/audit) — 69 ops; legacy `package_*` mapping + compat path dropped by direction |
 | MCP 6 | Client integrations + packaging | ⏳ | port claude-code/codex/gemini/hermes/openclaw/opencode configs, skill rename, deb + PyPI |
@@ -1876,7 +1876,10 @@ extension of the private control-plane relay.
 The current 0.1 alpha path remains native bootstrap plus the signed lifecycle
 for a conventional native app (§19, §21). Nsites begin with a bounded
 component/VM spike after that gate. Full implementation phases, security gates
-and acceptance criteria are tracked in [`docs/NSITES-PLAN.md`](NSITES-PLAN.md).
+and acceptance criteria are tracked in [`docs/NSITES-PLAN.md`](NSITES-PLAN.md);
+the code-level design, verified integration seams and the decisions to
+confirm before Phase 0 are in
+[`docs/NSITES-IMPLEMENTATION-PLAN.md`](NSITES-IMPLEMENTATION-PLAN.md).
 
 Target separation:
 

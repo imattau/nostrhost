@@ -1,6 +1,9 @@
 # Nsites: implementation plan
 
-Status: **proposed; discovery and packaging spike not started**. Nsites are a
+Status: **proposed; discovery and packaging spike not started**.
+The code-level design, the review of this plan against the current codebase
+and the decisions (D1–D7) to confirm before Phase 0 are in
+[`NSITES-IMPLEMENTATION-PLAN.md`](NSITES-IMPLEMENTATION-PLAN.md). Nsites are a
 post-alpha platform workstream. They do not change the current 0.1 alpha gate
 (native bootstrap and an end-to-end conventional native app lifecycle).
 
