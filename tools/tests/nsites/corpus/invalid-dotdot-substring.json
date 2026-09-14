@@ -1,20 +1,20 @@
 {
-  "name": "invalid-dotdot-path",
-  "description": "path contains a .. segment.",
+  "name": "invalid-dotdot-substring",
+  "description": "path segment contains '..' as a substring (defence in depth).",
   "event": {
-    "id": "dcf20ebdde74d9bfd9e44ab1b488c87330e69b481f1f43d20e91c59a3ba0afa7",
+    "id": "ea36e66780456ea4349dfb889560f74b2c841c1235c91d74290398dfdf07847f",
     "pubkey": "b6c048759734c1ef1b3ba0acfd1cd862b394eaab1bc15b7bf6c7f357986d9732",
     "created_at": 1750000000,
     "kind": 15128,
     "tags": [
       [
         "path",
-        "/../index.html",
+        "/dir..0/index.html",
         "186ea5fd14e88fd1ac49351759e7ab906fa94892002b60bf7f5a428f28ca1c99"
       ]
     ],
     "content": "",
-    "sig": "8296382ab36a218471797d49f510256b14b8eba31ed59bf360a53b112f3cd32695bb35cb42101279c33c54e3c5c9b6bc295e346ae8a080a6c7e1d2106837289f"
+    "sig": "fb6a916d0ab1eacb32c4d653427e2d2e82f855c9181a037e742555b12a9b9506558335b7d5a0c269e2fa9604b0cb66d18fccfa8a920fe2c80eb5d9062fad650c"
   },
   "expect": {
     "valid": false,

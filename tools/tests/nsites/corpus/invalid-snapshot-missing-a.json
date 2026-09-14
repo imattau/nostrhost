@@ -19,7 +19,7 @@
       ]
     ],
     "content": "",
-    "sig": "8810b68487c36458a1f3db1f65648cc9b612d3de6a17353c9e273f531bb7eecadc70052a0d4d4f211cb94c3a0bad3d1239f403897113b0923885ab6bad78157d"
+    "sig": "00808244bcd8263ec8eb2772ea71178ae4494c12cd3a1cce5e41d73390775ece5f91c818f5582e3cce40eff9310bc3e32b9aac1ba4685392bbe7ebdfa03a03cb"
   },
   "expect": {
     "valid": false,

@@ -254,6 +254,14 @@ def build() -> None:
         "path contains a .. segment.",
     )
 
+    # --- invalid: dot-dot substring --------------------------------------
+    emit(
+        "invalid-dotdot-substring",
+        sign(TEST_SK, spec.KIND_ROOT, [["path", "/dir..0/index.html", INDEX_H]]),
+        {"valid": False, "errors": ["bad_path_chars"]},
+        "path segment contains '..' as a substring (defence in depth).",
+    )
+
     # --- invalid: oversize path count ------------------------------------
     many_tags = [
         [f"/file{i:05d}.html", hashlib.sha256(f"{i}".encode()).hexdigest()]

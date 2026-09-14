@@ -40,7 +40,7 @@
       ]
     ],
     "content": "",
-    "sig": "3a3fd66755e83474679293b944e3ffcd961984dd9ea8fd5b939020d0184cdeffdb7f4b13fdb0c2488ee235e72f366e328d623bfd3df59d842b6e71a06a1012bc"
+    "sig": "fc8610ed320ff66157153d89e8ac746d5099ac1c1e13fbb550fc982a96fbc0b9eaf2b741e749dbab23f38554cc00b2fce69fa31d7848e708f0bcc52b72c74171"
   },
   "expect": {
     "valid": true,

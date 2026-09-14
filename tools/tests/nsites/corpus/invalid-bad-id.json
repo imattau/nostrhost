@@ -14,7 +14,7 @@
       ]
     ],
     "content": "tampered-after-signing",
-    "sig": "3648673802683abad0a0337b2cc24a9e02b2e83f14989bfa8f51b417311d0d9299f39770d5d1a9c3320b6d98e1e6fc5f19ff3f533d1992ca6f50d9fedd23a79a"
+    "sig": "950faca8170ce04af47fe449670ae53e5f89aaa19b1b37ed6df96361133b23b7d23efa0952c0a11ba7aee16f2622e6db9f1ca3db1a92f84a8a132ecd38b91fb3"
   },
   "expect": {
     "valid": false,

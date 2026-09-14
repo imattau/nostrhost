@@ -39,7 +39,8 @@ expected verdict. Cases (20):
 
 Status: generated and checked in. Sanity gate
 `tools/tests/nsites/test_corpus.py` (schema, aggregate hash, label grammar)
-runs in the `apt.yml` `tools/tests` CI job without `nostr-sdk`; **120 passed**.
+runs in the `apt.yml` `tools/tests` CI job without `nostr-sdk`; **126 passed**
+(21 cases; a `..`-substring case was added in Phase 2).
 
 ## 0.3 Python validator
 
@@ -178,6 +179,55 @@ disabled, enable runs through a reviewed plan, HTTPS on the isolated origin,
 upgrade/disable/remove all exercised, and public reads cannot reach
 `/nostrhost/*`, `/package/*`, `:8190`, `:4848`, `:8196`.
 
+## Phase 2 acceptance appendix (safe resolution hardening)
+
+`libs/nostrhost-nsite` `0ccafb7` (Go gateway). The Phase-2 list (§7) is
+implemented and each item is a named test, plus the fork validator/corpus
+kept in lock-step:
+
+- **Label codec + path normaliser property/fuzz** — `internal/nip5a`
+  `TestBase36CodecProperty`, `TestLabelRoundtripProperty`, `FuzzDecodeLabel`,
+  `FuzzBase36Decode50`; `internal/server` `FuzzNormalisePath`,
+  `TestNormalisePathNoDoubleDecode`, `TestNormalisePathRejectsDotDotSubstring`,
+  `TestParseHostProperty`. ~1M execs clean on each fuzzer.
+  **Fuzzing found a real gap:** `..0` passed the path normaliser (only an
+  exact `..` segment was rejected). Both the Go normaliser and the Python
+  validator now reject any `..` substring, and the corpus gained
+  `invalid-dotdot-substring` (21 cases; corpus sanity 126 passed, validator
+  69 passed).
+- **SSRF table** — `internal/blossom` `TestCheckDialAddr` (loopback v4/v6,
+  RFC 1918 all ranges, ULA, link-local + metadata 169.254.169.254, multicast,
+  unspecified, public allow), `TestDNSRebindingBlocked` (dial-time check on
+  the resolved address is what defeats rebinding),
+  `TestFetchRejectsRedirectToPrivate`, `TestFetchRejectsPrivateServerURL`.
+- **Slow-loris + oversize** — `TestSlowLorisTimeout`,
+  `TestFetchOversizedRejected`. **The slow-loris test surfaced a real
+  defect:** the fetch deadline context was created but never attached to the
+  request (`f.client.Get` uses Background), so `fetch_timeout_seconds` did not
+  bound dial/headers/body. The request now carries the context.
+- **Cache eviction under quota** — `TestBlobStoreQuotaEviction`,
+  `TestBlobStoreEvictsLeastRecentlyUsed` (LRU ordering), `TestBlobStorePersistsAcrossOpen`.
+- **Multi-server fallback ordering** — `internal/server`
+  `TestFetchFirstTriesServersInOrder` (first verified copy wins, servers tried
+  in manifest order), `TestFetchFirstStopsAtFirstVerified`,
+  `TestFetchFirstRejectsPrivateServerHint`.
+- **Metrics + bounded logs** — new `internal/metrics` (dependency-free
+  counters/histograms, Prometheus text format) exposed at loopback
+  `/internal/metrics`: `requests_total{class}`, `cache_hits_total`,
+  `fetch_failures_total{class}` (via `blossom.ClassifyFetchError`),
+  `bytes_served` histogram. `/internal/status` gains `cache_bytes`. Log lines
+  carry only bounded fields (label ≤63, normalised path, counts). Verified on
+  the VM: `/internal/metrics` is 404 over HTTPS and binds loopback-only.
+- **VM leg — restart with a warm cache** (`nostrhost-clean7`): placed a
+  content-addressed blob in `/var/cache/nostrhost-nsite/<sha256>`, restarted
+  the unit; `/internal/status` `cache_bytes` went 0 → 19, so the on-disk blob
+  store is re-scanned on reopen and survives restart.
+
+Fork + corpus: `manifest.py` now rejects any `..` substring
+(`_path_is_bad`), matching the Go normaliser; `gen_corpus.py` emits the
+`invalid-dotdot-substring` case. A latent flaky test (`NewManifestCache(3600,
+60)` passed nanosecond TTLs) was fixed to `time.Hour`/`time.Minute`.
+
 ## Verification log
 
 - 2026-09-14 — corpus sanity `python -m pytest -q tools/tests/nsites/test_corpus.py`: 120 passed.
@@ -186,3 +236,5 @@ upgrade/disable/remove all exercised, and public reads cannot reach
 - 2026-09-14 — spike: Deno 2.7.7 + pinned gateway `558326ae` + Caddy 2.11.4 `tls internal` + fake relay/blossom; results in `testbed/nsites/README.md`.
 - 2026-09-14 — fork suite after Phase 1: `tests_nostr/` 826 passed (1 pre-existing fail2ban gap); `test_nsites_ops.py` 15 passed.
 - 2026-09-14 — VM acceptance (task 1.6): clean install → reviewed-plan enable → HTTPS on `sites.nostrhost.test` (internal CA) → isolation checks → upgrade → disable → remove; three lifecycle defects fixed (appendix above).
+- 2026-09-14 — Phase 2 Go suite: `go test ./...` all 7 packages green; fuzzers ~1M execs clean each (`FuzzDecodeLabel`, `FuzzBase36Decode50`, `FuzzNormalisePath`). Corpus sanity 126 passed; Python validator 69 passed.
+- 2026-09-14 — Phase 2 VM leg: warm-cache restart on clean7 (`cache_bytes` 0 → 19 across restart); `/internal/metrics` loopback-only (404 via Caddy).
