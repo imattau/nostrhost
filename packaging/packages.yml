@@ -35,7 +35,7 @@ repository:
 
 # Version used for the generated meta-packages until a real release process
 # bumps it (overridable via the META_VERSION env in CI).
-meta_version: "0.1.0"
+meta_version: "0.1.1"
 
 packages:
   # ---------------------------------------------------------------- metas ----
@@ -141,7 +141,7 @@ packages:
   # packaging/runtime/requirements.txt changes, bump the version here.
   - name: nostrhost-runtime
     kind: runtime
-    version: "0.1.5"
+    version: "0.1.6"
     summary: NostrHost Python runtime venv (bundled manylinux cp311 wheels)
     depends:
       - python3-venv
@@ -158,7 +158,7 @@ packages:
   # independent packages even though they share a source repository.
   - name: nostrhost-control
     kind: golang
-    version: "0.1.1"                     # agent writer allowlist reconciliation
+    version: "0.1.2"                     # agent writer allowlist reconciliation
     source:
       repo: imattau/nostrhost-control
       submodule: libs/nostrhost-control
@@ -172,7 +172,7 @@ packages:
 
   - name: nostrhost-notify
     kind: golang
-    version: "0.1.0"                     # from tag notify/v0.1.0 in CI
+    version: "0.1.1"                     # from tag notify/v0.1.0 in CI
     source:
       repo: imattau/nostrhost-control
       submodule: libs/nostrhost-control
@@ -187,7 +187,7 @@ packages:
 
   - name: nostrhost-catalog
     kind: golang
-    version: "0.1.0"
+    version: "0.1.1"
     source:
       repo: imattau/nostrhost-catalog
       submodule: libs/nostrhost-catalog
@@ -203,7 +203,7 @@ packages:
   # and disabled by default; enabled per deployment (D3 hosted mode, §28).
   - name: nostrhost-nsite
     kind: golang
-    version: "0.1.0"
+    version: "0.2.0"
     source:
       repo: imattau/nostrhost-nsite
       submodule: libs/nostrhost-nsite
@@ -225,7 +225,7 @@ packages:
   # packages until its provisioning and operational lifecycle is mature.
   - name: nostrhost-agent
     kind: golang
-    version: "0.1.2"
+    version: "0.1.3"
     source:
       repo: imattau/nostrhost-agent
       submodule: libs/nostrhost-agent
@@ -282,7 +282,7 @@ packages:
   # after the operator provisions DNS + the Caddy route for the endpoint.
   - name: python3-nostrhost-mcp
     kind: python-adapter
-    version: "0.1.2"
+    version: "0.1.3"
     summary: NostrHost MCP protocol adapter (thin operation client, loopback streamable HTTP)
     source:
       repo: imattau/nostrhost-mcp
@@ -301,7 +301,7 @@ packages:
   # -------------------------------------------------------- python libs ----
   - name: python3-nostrhost-auth
     kind: python
-    version: "0.1.0"
+    version: "0.1.1"
     source:
       repo: imattau/nostrhost-auth
       submodule: libs/nostrhost-auth
@@ -314,7 +314,7 @@ packages:
 
   - name: python3-nostrhost-policy
     kind: python
-    version: "0.1.1"
+    version: "0.1.2"
     source:
       repo: imattau/nostrhost-policy
       submodule: libs/nostrhost-policy
@@ -329,7 +329,7 @@ packages:
   # ------------------------------------------------------------- web SPA ----
   - name: nostrhost-admin
     kind: spa
-    version: "0.1.5"
+    version: "0.1.6"
     source:
       repo: imattau/nostrhost-admin
       submodule: forks/admin
@@ -348,7 +348,7 @@ packages:
 
   - name: nostrhost-portal
     kind: spa
-    version: "0.1.2"
+    version: "0.1.3"
     source:
       repo: imattau/nostrhost-portal
       submodule: forks/portal
@@ -386,7 +386,7 @@ packages:
   # acquisition/parser/scenario config on top of it.
   - name: nostrhost-security-config
     kind: config
-    version: "0.1.1"
+    version: "0.1.2"
     summary: NostrHost CrowdSec acquisition/scenarios/bouncer configuration
     depends:
       - crowdsec
