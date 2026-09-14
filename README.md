@@ -44,8 +44,12 @@ close we are.
 - A server or virtual machine running **Debian 12**, or a spare computer
   you're happy to wipe and dedicate to this.
 - A domain name (even a free dynamic one works while you're trying it out).
-- A Nostr key — any Nostr app or browser extension can create one for you
-  in a few seconds.
+- Your own Nostr key (an `npub`/`nsec` pair) to log in with — any Nostr app
+  or browser extension can create one for you in a few seconds. The key you
+  sign in with the first time becomes the server's owner. (The server also
+  generates its own separate Nostr identity automatically on first run, for
+  its internal control-plane relay — that one's not for you to log in with,
+  it's the server talking to itself.)
 
 ## Installing it
 
