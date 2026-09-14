@@ -814,6 +814,11 @@
           "title": "File Root",
           "type": "string"
         },
+        "full_domain": {
+          "default": false,
+          "title": "Full Domain",
+          "type": "boolean"
+        },
         "https": {
           "default": "automatic",
           "enum": [
