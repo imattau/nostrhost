@@ -105,12 +105,22 @@ def build_golang(pkg: dict, version: str, outdir: Path) -> Path:
         binname = name  # nostrhost-control -> /usr/bin/nostrhost-control
         run(["go", "build", "-o", str(bindir / binname), "."], cmd_dir,
             env={**os.environ, "CGO_ENABLED": "0"})
+        # Extra binaries built from the same module/version, e.g. optional
+        # model/export/contribute helpers that ship alongside the daemon
+        # without being separately versioned packages.
+        for extra in src.get("extra_cmds", []):
+            extra_dir = sub / extra["path"]
+            run(["go", "build", "-o", str(bindir / extra["binary"]), "."], extra_dir,
+                env={**os.environ, "CGO_ENABLED": "0"})
+        systemd_units = list(src.get("systemd_units", []))
         if src.get("systemd"):
-            unit = sub / "deploy" / src["systemd"]
+            systemd_units.append(src["systemd"])
+        for unit_name in systemd_units:
+            unit = sub / "deploy" / unit_name
             if not unit.is_file():
                 raise SystemExit(f"build-package: declared systemd unit not found: {unit}")
             (staging / "lib" / "systemd" / "system").mkdir(parents=True, exist_ok=True)
-            shutil.copy2(unit, staging / "lib" / "systemd" / "system" / src["systemd"])
+            shutil.copy2(unit, staging / "lib" / "systemd" / "system" / unit_name)
         write_control(staging, name, version, arch, pkg.get("summary", ""),
                       pkg.get("depends", []), pkg.get("provides", []),
                       pkg.get("conflicts", []), pkg.get("replaces", []))

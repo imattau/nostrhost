@@ -209,6 +209,19 @@ packages:
       submodule: libs/nostrhost-agent
       cmd: ./cmd/nostrhost-agent
       systemd: nostrhost-agent.service
+      systemd_units:
+        - nostrhost-agent-llm.service
+      extra_cmds:
+        # Model download/select and contribution-export helpers. These are
+        # never invoked by the daemon itself, only by an operator/admin
+        # action (see docs/AGENT-DISTRIBUTION-PLAN.md); packaged here so the
+        # admin UI works after a plain `apt install nostrhost-agent`.
+        - path: ./cmd/nostrhost-agent-model
+          binary: nostrhost-agent-model
+        - path: ./cmd/nostrhost-agent-export
+          binary: nostrhost-agent-export
+        - path: ./cmd/nostrhost-agent-contribute
+          binary: nostrhost-agent-contribute
       maintainer_scripts:
         postinst: deploy/postinst
         prerm: deploy/prerm
