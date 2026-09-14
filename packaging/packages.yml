@@ -199,6 +199,28 @@ packages:
     provides: []
     breaks: []
 
+  # Optional NIP-5A nsite gateway. Deliberately absent from both meta-packages
+  # and disabled by default; enabled per deployment (D3 hosted mode, §28).
+  - name: nostrhost-nsite
+    kind: golang
+    version: "0.1.0"
+    source:
+      repo: imattau/nostrhost-nsite
+      submodule: libs/nostrhost-nsite
+      cmd: ./cmd/nostrhost-nsite
+      systemd: nostrhost-nsite.service
+      maintainer_scripts:
+        postinst: deploy/postinst
+        prerm: deploy/prerm
+        postrm: deploy/postrm
+    summary: Optional NostrHost NIP-5A nsite gateway (disabled by default)
+    depends:
+      - adduser
+      - init-system-helpers
+      - systemd
+    provides: []
+    breaks: []
+
   # Optional resident assistant. It is deliberately absent from both meta-
   # packages until its provisioning and operational lifecycle is mature.
   - name: nostrhost-agent
