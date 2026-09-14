@@ -313,7 +313,53 @@ implemented:
   write because the write tools are approval-gated and the agent registry
   excludes them.
 
-Not yet done (Phase 4+): lifecycle/custom domains
-(`nsite.domain.attach/detach`, ownership proof, on-demand `ask` extension);
-Phase 5 catalogue/ecosystem; the Playwright wizard run (NIP-07 shim) and
-anonymous second-client retrieval, deferred to the VM acceptance leg.
+Not yet done (Phase 5+): catalogue/ecosystem (app tag → kind 32267, "open
+nsite"/"create my copy", local Blossom, open gateway mode with wildcard
+DNS-01); the Playwright wizard run (NIP-07 shim) and anonymous
+second-client retrieval, deferred to the VM acceptance leg.
+
+## Phase 4 acceptance appendix (lifecycle + custom domains)
+
+`libs/nostrhost-nsite` `78d5a39`, `forks/yunohost` `6918a1c96`,
+`libs/nostrhost-mcp` `c1474e0`, `libs/nostrhost-agent` `b7e7c3d`,
+`libs/nostrhost-policy` `d85e2eb`, `forks/admin` `84bd45d9`. Every item on the
+plan's Phase 4 list is implemented:
+
+- **`nsite.domain.attach`** (`nsites.admin` + `domains.write`, approval-gated,
+  medium, reversible) — proves ownership against live DNS *before* touching
+  anything: a CNAME from the FQDN to the gateway domain, or a
+  `nostrhost-site:<pubkey>` TXT record under `_nostrhost-site.<fqdn>` (checked
+  with the platform's `yunohost.utils.dns.dig` helper). Because the TXT proof
+  names the pubkey, a domain can only ever be attached to the site it names.
+  Uniqueness is enforced across `state/nsites/domains`, and the gateway-domain
+  overlap/parent cases are rejected.
+- **`nsite.domain.detach`** — removes the Caddy route and the state marker
+  only; the site itself is untouched. **`nsite.domain.list`** is read-only
+  (`nsites.read`, no approval).
+- **Gateway (`ask` extension)** — `nsite.toml` gains a `[[custom_domains]]`
+  section (fqdn → registered site pubkey/d) rendered from fork state. The Go
+  gateway maps an attached FQDN to its site identity in `parseHost`, so
+  `tls-ask` answers 200 for it and the public handler serves it as the mapped
+  site. A custom FQDN gets an *exact-host* Caddy route (never a wildcard — the
+  operator's CNAME only reaches this host for that name), and config is
+  re-rendered + the gateway SIGHUP'd + Caddy reloaded on attach/detach.
+- **Multi-scope authorization** — `ToolSpec` gains `required_scopes`; the
+  OperationEngine now requires every scope, so attach/detach demand both
+  `nsites.admin` and `domains.write`. Policy: `nsite.domain.write` is
+  confirmation-gated like `domains.write`.
+- **Admin** — the Sites view gains a "Custom domains" card (list/attach/
+  detach per registered site, CNAME or TXT proof selector) and notes that
+  root/named manifests are mutable while snapshots are immutable history.
+- **Agent** — `nsite.domain.list` joins the read surface (RiskRead, observable
+  in every autonomy level); `nsite.domain.attach/detach` stay absent from the
+  registry so proposals for them are denied even at autonomous.
+
+Tests: gateway (config validation incl. overlap/subdomain/parent/short-pubkey/
+duplicate; parseHost root+named mapping; tls-ask allow/deny; public
+site-vs-reject via the metrics counters), fork (19 new: ownership proof ok/fail
+for both methods, attach/detach flows with fake DNS + Caddy, invalid-fqdn/
+overlap/duplicate/not-registered/not-enabled rejections, named-site d binding,
+render_config, build_custom_domain_route, registry wiring incl. required_scopes,
+policy), MCP catalog + approval expectations, agent reads/writes-absent,
+Admin gates (type-check, lint, prettier, 41 tests, build). Full fork suite:
+880 passed.
