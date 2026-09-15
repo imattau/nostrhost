@@ -49,7 +49,7 @@ forks:
     branch: dev               # Tailwind/shadcn-vue redesign (app shell, PR #1)
     derivative: true
     pin: debian/12.1.15
-    pin_commit: b0a713c9359198b9ba7fce1cb99215b6fcefd9c4
+    pin_commit: a9c15c1c349d10102dfdb51f9e6d0c531e31da1a
     live_server: 12.1.15
 
   - component: installer       # Debian ISO graphical installer image builder
