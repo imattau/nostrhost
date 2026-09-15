@@ -27,8 +27,8 @@ forks:
     branch: nostrhost          # derivative branch (first fork modification, Phase 3)
     derivative: true
     pin: debian/12.1.41.2      # upstream baseline the branch was cut from
-    pin_commit: ade99cf10f6caa78aa059e61ef94f33a0d2fd1e2
-    live_server: 12.1.41.2
+    pin_commit: e0a58606d3f2ec2222400dbf58d164c2e337830a
+    live_server: 12.1.41.54
 
   - component: portal          # Nuxt/Vue/TypeScript user portal
     upstream_repo: YunoHost/yunohost-portal
@@ -38,7 +38,7 @@ forks:
     branch: dev               # Nostr (NIP-07) login page + Tailwind/shadcn-vue redesign (PR #1)
     derivative: true
     pin: debian/12.1.2
-    pin_commit: 62e8f0f003d7a86dda75af3e934618bb6208a4bc
+    pin_commit: 939e658b2d67a08b1a80bf78b701ed2513b01b1c
     live_server: 12.1.2
 
   - component: admin           # Vue/Vite/TypeScript admin interface
@@ -49,7 +49,7 @@ forks:
     branch: dev               # Tailwind/shadcn-vue redesign (app shell, PR #1)
     derivative: true
     pin: debian/12.1.15
-    pin_commit: a9c15c1c349d10102dfdb51f9e6d0c531e31da1a
+    pin_commit: 40b4418d91852196eff15cf42ffb3a86ac4f09f9
     live_server: 12.1.15
 
   - component: installer       # Debian ISO graphical installer image builder
@@ -76,27 +76,27 @@ libraries:
     repo: imattau/nostrhost-auth
     path: libs/nostrhost-auth
     branch: main
-    pin_commit: a168c3d6e454348294fdb4bad0ad608aa1208d90
+    pin_commit: 6d9c4b1b65e49be25bf95521e9df5e736989f6e3
     extracted_from: imattau/yunohost-nostr-auth
 
   - component: policy          # roles/scopes/NIP-98/delegation/approvals/owner/audit
     repo: imattau/nostrhost-policy
     path: libs/nostrhost-policy
     branch: main
-    pin_commit: de0ea202db8032d30eab9f5e629aa02678b4b4cb
+    pin_commit: 0d82944567b4ef9aad0a0b111f499fe88c0ecac2
     extracted_from: imattau/yunohost-mcp
 
   - component: catalog         # catalogue event schema/relay/publisher/attestation/trust/repository
     repo: imattau/nostrhost-catalog
     path: libs/nostrhost-catalog
     branch: main
-    pin_commit: 45351cb9dc44abd9c691de836ff48482d83fba3b
+    pin_commit: 1f74499011d9f70329271af1677496bab6d42a4f
 
   - component: control         # control plane: local relay + event model (Phase 2)
     repo: imattau/nostrhost-control
     path: libs/nostrhost-control
     branch: main
-    pin_commit: 5fa6588252366045ab5ddcdc600221ae52176cde
+    pin_commit: 235d77d89c05ffbbb452f65b7777db8c86ed6bfa
     stack: khatru-based Go relay (NIP-11/42/77/86/98)
     event_protocol: libs/nostrhost-control/EVENT-PROTOCOL.md
     selection: docs/RELAY-SELECTION.md
@@ -105,19 +105,19 @@ libraries:
     repo: imattau/nostrhost-agent
     path: libs/nostrhost-agent
     branch: main
-    pin_commit: 764bcc829e848fdaf172a71f45864282d2e27f91
+    pin_commit: 3397b7adc374b5c1215ce5212aadb7e16222cf1e
     stack: Go
 
   - component: yunohost-mcp    # FROZEN reference implementation (MCP transition §2, docs/MCP-TRANSITION.md)
     repo: imattau/yunohost-mcp
     path: libs/yunohost-mcp
     branch: master
-    pin_commit: 51fc2e7b231b281dfd82bc3cf91d8197d15cdd78
+    pin_commit: 8904f3cfa0de00e0cd092be0765dabed3c5552e8
     frozen: true               # no new platform logic; feature inventory + migration base only
 
   - component: mcp              # thin MCP protocol adapter (MCP transition Phase 1, docs/MCP-TRANSITION.md)
     repo: imattau/nostrhost-mcp
     path: libs/nostrhost-mcp
     branch: main
-    pin_commit: 1378850c1f5a1234c8341b3751400a3ca299e1f1
+    pin_commit: 5486bbeddca2bc0198ad5abf7d7469d24a716713
     stack: Python (mcp SDK v2)
