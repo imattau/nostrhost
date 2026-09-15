@@ -404,9 +404,8 @@ required operator token** (not deferred).
   reported by status; in open mode publish no longer requires registration
   (hosted mode still does).
 - **Deferred (recorded):** local Blossom component (D4 external-only stays;
-  the gateway's `[blossom]` cache is the on-host blob path), portal "My site"
-  surface for non-admin users (D8 — gated on the same `nsites.publish`
-  operation/policy path, no schema change expected), Git/NIP-34 sources (D6).
+  the gateway's `[blossom]` cache is the on-host blob path), Git/NIP-34
+  sources (D6).
 
 Tests: gateway (open config + unknown-mode rejection, tls-ask allow any /
 deny snapshot+garbage, status mode), fork 14 new (app tag valid/malformed +
@@ -415,3 +414,41 @@ named + d override + invalid/unresolvable sources + signed-copy publish,
 open-mode token gate + wildcard snippet + local internal-CA + publish-without-
 registration, hosted registration still enforced), Admin gates (type-check,
 lint, prettier, tests, build). Full fork suite: 894 passed.
+
+## Phase 5 continuation appendix — portal "My site" (D8)
+
+`forks/yunohost` `cba098036`, `forks/portal` `9b0af80`. D8's portal "My site"
+surface for non-admin users is implemented, gated on the same scope path as
+the signed operation chain (no schema change).
+
+- **Scope-aware nsite routes.** The native API authorizer previously required
+  an admin identity for every `/package/*` route. The nsite family
+  (`NSITE_ROUTE_SCOPES`, mirroring each tool's scope in
+  `nostr_operations.TOOLS`) now also accepts any linked identity — NIP-98
+  signer, or a portal session user's linked pubkeys — that holds one of the
+  route's kind-31100 granted scopes: admin routes stay admin-only,
+  read routes need `nsites.read`, publish/snapshot/mirror need
+  `nsites.publish`, gateway/domain lifecycle needs `nsites.admin`. Admins
+  bypass. `_granted_scopes` reads the subject's 31100 grants from the control
+  relay (best-effort, fail-closed). The authorizer contract becomes
+  `Callable[[str], str]` (the route rule is passed so the gate can be
+  per-route).
+- **Portal page** (`/my-site`): the user connects a signer (NIP-07 extension,
+  saved NIP-46 reconnect, `bunker://`, or passkey — the same signers the
+  account page uses), sees the sites registered under that pubkey, and runs
+  the publish flow: directory pick + client-side SHA-256 inventory
+  (`utils/nsite.ts`, mirroring the admin console's `lib/nsite`), server-side
+  `publish.plan` (unsigned event + `plan_sha256`), Blossom upload signed with
+  the signer (BUD-01), then NIP-46 sign of the manifest and submission via
+  `/package/nsite/publish` (portal session cookie). The server never sees a
+  user key (D7). Prerequisites are surfaced in the UI: an admin must grant
+  `nsites.read` + `nsites.publish` and register the pubkey (hosted mode), or
+  the gateway must be in open mode.
+- **Remaining deferred (unchanged):** local Blossom (D4) and Git/NIP-34
+  sources (D6).
+
+Tests: fork 8 new (publish requires/granted scope, read grants read-not-admin,
+admin bypass, session linked identity ok / no-identity 403, plan requires
+`nsites.read`); portal prettier + build clean. Full fork suite: 920 passed —
+the one registry-list failure is the concurrent catalogue PR's stale
+expectation, unrelated to this change.
