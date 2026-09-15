@@ -68,9 +68,12 @@ def deb_build(staging: Path, out: Path) -> None:
     )
 
 
-def write_control(staging: Path, name: str, version: str, arch: str, summary: str,
-                  depends: list[str], provides: list[str],
-                  conflicts: list[str], replaces: list[str]) -> None:
+def write_control(staging: Path, pkg: dict, version: str, arch: str) -> None:
+    name = pkg["name"]
+    depends = pkg.get("depends", [])
+    provides = pkg.get("provides", [])
+    conflicts = pkg.get("conflicts", [])
+    replaces = pkg.get("replaces", [])
     ctrl = (
         f"Package: {name}\n"
         f"Version: {version}\n"
@@ -78,7 +81,7 @@ def write_control(staging: Path, name: str, version: str, arch: str, summary: st
         f"Priority: optional\n"
         f"Architecture: {arch}\n"
         f"Maintainer: NostrHost <noreply@nostrhost.org>\n"
-        f"Description: {summary}\n"
+        f"Description: {pkg.get('summary', '')}\n"
     )
     if depends:
         ctrl += "Depends: " + ",\n ".join(depends) + "\n"
@@ -90,6 +93,51 @@ def write_control(staging: Path, name: str, version: str, arch: str, summary: st
         ctrl += "Replaces: " + ", ".join(replaces) + "\n"
     (staging / "DEBIAN").mkdir(parents=True, exist_ok=True)
     (staging / "DEBIAN" / "control").write_text(ctrl, encoding="utf-8")
+
+
+def render_venv_postinst(venv: str, wheels_dir: str, app_wheel_glob: str,
+                         system_site_packages: bool, reqs_file: str | None = None) -> str:
+    """Render a postinst that (re)creates a venv and installs a wheel into it.
+
+    Shared by the python-cli (self-contained venv, own wheel set + reqs.txt)
+    and python-adapter (installs into the shared --system-site-packages
+    runtime venv, no reqs.txt) package kinds.
+    """
+    venv_create = "python3 -m venv --system-site-packages \"$VENV\"" if system_site_packages \
+        else "python3 -m venv \"$VENV\""
+    reqs_install = ""
+    if reqs_file:
+        reqs_install = (
+            '    "$VENV/bin/pip" install --no-index --ignore-installed \\\n'
+            '      --find-links="$WHEELS" --disable-pip-version-check -r "$REQS"\n'
+        )
+    reqs_var = f"REQS={reqs_file}\n" if reqs_file else ""
+    return f'''#!/bin/sh
+set -e
+
+VENV={venv}
+WHEELS={wheels_dir}
+{reqs_var}
+case "$1" in
+  configure)
+    if [ ! -x "$VENV/bin/python" ]; then
+      rm -rf "$VENV"
+      {venv_create}
+    fi
+{reqs_install}    app_wheel=""
+    for wheel in "$WHEELS"/*.whl; do
+      [ -e "$wheel" ] || continue
+      case "$wheel" in {app_wheel_glob}) app_wheel=$wheel ;; esac
+    done
+    test -n "${{app_wheel:-}}"
+    "$VENV/bin/pip" install --no-index --no-deps \\
+      --disable-pip-version-check "$app_wheel"
+    ;;
+  abort-upgrade|abort-remove|abort-deconfigure|'')
+    ;;
+esac
+exit 0
+'''
 
 
 def build_golang(pkg: dict, version: str, outdir: Path) -> Path:
@@ -121,9 +169,7 @@ def build_golang(pkg: dict, version: str, outdir: Path) -> Path:
                 raise SystemExit(f"build-package: declared systemd unit not found: {unit}")
             (staging / "lib" / "systemd" / "system").mkdir(parents=True, exist_ok=True)
             shutil.copy2(unit, staging / "lib" / "systemd" / "system" / unit_name)
-        write_control(staging, name, version, arch, pkg.get("summary", ""),
-                      pkg.get("depends", []), pkg.get("provides", []),
-                      pkg.get("conflicts", []), pkg.get("replaces", []))
+        write_control(staging, pkg, version, arch)
         allowed_scripts = {"preinst", "postinst", "prerm", "postrm"}
         for script_name, relative_path in src.get("maintainer_scripts", {}).items():
             if script_name not in allowed_scripts:
@@ -166,9 +212,7 @@ def build_python(pkg: dict, version: str, outdir: Path) -> Path:
         shutil.rmtree(target, ignore_errors=True)
         shutil.rmtree(wheeldir)
 
-        write_control(staging, name, version, arch, pkg.get("summary", ""),
-                      pkg.get("depends", []), pkg.get("provides", []),
-                      pkg.get("conflicts", []), pkg.get("replaces", []))
+        write_control(staging, pkg, version, arch)
         out = outdir / f"{name}_{version}_{arch}.deb"
         deb_build(staging, out)
         return out
@@ -218,38 +262,12 @@ def build_python_cli(pkg: dict, version: str, outdir: Path) -> Path:
         )
         launcher.chmod(0o755)
 
-        write_control(staging, name, version, arch, pkg.get("summary", ""),
-                      pkg.get("depends", []), pkg.get("provides", []),
-                      pkg.get("conflicts", []), pkg.get("replaces", []))
+        write_control(staging, pkg, version, arch)
         debian = staging / "DEBIAN"
-        postinst = f'''#!/bin/sh
-set -e
-
-VENV={venv}
-WHEELS=/usr/share/{name}/wheels
-REQS=/usr/share/{name}/requirements.txt
-
-case "$1" in
-  configure)
-    if [ ! -x "$VENV/bin/python" ]; then
-      rm -rf "$VENV"
-      python3 -m venv "$VENV"
-    fi
-    "$VENV/bin/pip" install --no-index --ignore-installed \\
-      --find-links="$WHEELS" --disable-pip-version-check -r "$REQS"
-    set -- "$WHEELS"/*.whl
-    for wheel in "$@"; do
-      case "$wheel" in *yunohost_mcp_connect-*.whl) app_wheel=$wheel ;; esac
-    done
-    test -n "${{app_wheel:-}}"
-    "$VENV/bin/pip" install --no-index --no-deps \\
-      --disable-pip-version-check "$app_wheel"
-    ;;
-  abort-upgrade|abort-remove|abort-deconfigure|'')
-    ;;
-esac
-exit 0
-'''
+        postinst = render_venv_postinst(
+            venv, f"/usr/share/{name}/wheels", "*yunohost_mcp_connect-*.whl",
+            system_site_packages=False, reqs_file=f"/usr/share/{name}/requirements.txt",
+        )
         (debian / "postinst").write_text(postinst, encoding="utf-8")
         (debian / "postinst").chmod(0o755)
 
@@ -322,38 +340,14 @@ def build_python_adapter(pkg: dict, version: str, outdir: Path) -> Path:
         )
         launcher.chmod(0o755)
 
-        write_control(staging, name, version, arch, pkg.get("summary", ""),
-                      pkg.get("depends", []), pkg.get("provides", []),
-                      pkg.get("conflicts", []), pkg.get("replaces", []))
+        write_control(staging, pkg, version, arch)
 
         norm = app_wheel.replace("-", "_")
         debian = staging / "DEBIAN"
-        postinst = f'''#!/bin/sh
-set -e
-
-VENV={venv}
-WHEELS=/usr/share/{name}/wheels
-
-case "$1" in
-  configure)
-    if [ ! -x "$VENV/bin/python" ]; then
-      rm -rf "$VENV"
-      python3 -m venv --system-site-packages "$VENV"
-    fi
-    app_wheel=""
-    for wheel in "$WHEELS"/*.whl; do
-      [ -e "$wheel" ] || continue
-      case "$wheel" in *{norm}-*.whl) app_wheel=$wheel ;; esac
-    done
-    test -n "${{app_wheel:-}}"
-    "$VENV/bin/pip" install --no-index --no-deps \\
-      --disable-pip-version-check "$app_wheel"
-    ;;
-  abort-upgrade|abort-remove|abort-deconfigure|'')
-    ;;
-esac
-exit 0
-'''
+        postinst = render_venv_postinst(
+            venv, f"/usr/share/{name}/wheels", f"*{norm}-*.whl",
+            system_site_packages=True,
+        )
         (debian / "postinst").write_text(postinst, encoding="utf-8")
         (debian / "postinst").chmod(0o755)
 
@@ -402,9 +396,7 @@ def build_spa(pkg: dict, version: str, outdir: Path) -> Path:
             raise SystemExit(f"build-package: SPA build did not produce non-empty output at {static_src}")
         dest = staging / src["static_dir"].lstrip("/")
         shutil.copytree(static_src, dest)
-        write_control(staging, name, version, arch, pkg.get("summary", ""),
-                      pkg.get("depends", []), pkg.get("provides", []),
-                      pkg.get("conflicts", []), pkg.get("replaces", []))
+        write_control(staging, pkg, version, arch)
         out = outdir / f"{name}_{version}_{arch}.deb"
         deb_build(staging, out)
         return out
@@ -429,9 +421,7 @@ def build_config(pkg: dict, version: str, outdir: Path) -> Path:
                 shutil.copy2(s, d)
             else:
                 raise SystemExit(f"build-package: config source not found: {s}")
-        write_control(staging, name, version, arch, pkg.get("summary", ""),
-                      pkg.get("depends", []), pkg.get("provides", []),
-                      pkg.get("conflicts", []), pkg.get("replaces", []))
+        write_control(staging, pkg, version, arch)
         out = outdir / f"{name}_{version}_{arch}.deb"
         deb_build(staging, out)
         return out
@@ -511,8 +501,7 @@ def build_runtime(pkg: dict, version: str, outdir: Path) -> Path:
             UMBRELLA,
         )
         shutil.copy2(reqfile, share / "runtime-requirements.txt")
-        write_control(staging, name, version, arch, pkg.get("summary", ""),
-                      pkg.get("depends", []), [], [], [])
+        write_control(staging, pkg, version, arch)
         (staging / "DEBIAN" / "postinst").write_text(RUNTIME_POSTINST, encoding="utf-8")
         (staging / "DEBIAN" / "postinst").chmod(0o755)
         (staging / "DEBIAN" / "postrm").write_text(RUNTIME_POSTRM, encoding="utf-8")
@@ -540,9 +529,7 @@ def build_caddy(pkg: dict, version: str, outdir: Path) -> Path:
         for m in pkg["source"].get("xcaddy_modules", []):
             cmd += ["--with", m]
         run(cmd, UMBRELLA)
-        write_control(staging, name, version, arch, pkg.get("summary", ""),
-                      pkg.get("depends", []), pkg.get("provides", []),
-                      pkg.get("conflicts", []), pkg.get("replaces", []))
+        write_control(staging, pkg, version, arch)
         out = outdir / f"{name}_{version}_{arch}.deb"
         deb_build(staging, out)
         return out

@@ -20,16 +20,10 @@ PINS="$ROOT/baseline/pins.yml"
 UPDATE=0
 [[ "${1:-}" == "--update" ]] && UPDATE=1
 
-get_pin() { awk -v c="$1" '
-    $0 ~ "component: " c { found=1 }
-    found && $0 ~ "pin_commit:" { print $2; exit }
-    found && $0 ~ "^  - " && $0 !~ "component: " c { exit }
-  ' "$PINS"; }
+# shellcheck source=lib/forks.sh
+source "$ROOT/scripts/lib/forks.sh"
 
-for pair in "yunohost debian/12.1.41.2 YunoHost/yunohost" \
-            "portal debian/12.1.2 YunoHost/yunohost-portal" \
-            "admin debian/12.1.15 YunoHost/yunohost-admin" \
-            "installer main YunoHost/custom-debian-iso"; do
+for pair in "${FORK_PAIRS[@]}"; do
   set -- $pair
   comp="$1"; tag="$2"; upstream_repo="$3"
   dir="$ROOT/forks/$comp"

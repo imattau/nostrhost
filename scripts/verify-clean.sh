@@ -25,15 +25,8 @@ PINS="$ROOT/baseline/pins.yml"
 STRICT=0
 [[ "${1:-}" == "--strict" ]] && STRICT=1
 
-# Fallback awk extraction of pin_commit when yq is unavailable.
-get_pin() {
-  local component="$1"
-  awk -v c="$component" '
-    $0 ~ "component: " c { found=1 }
-    found && $0 ~ "pin_commit:" { print $2; exit }
-    found && $0 ~ "^  - " && $0 !~ "component: " c { exit }
-  ' "$PINS"
-}
+# shellcheck source=lib/forks.sh
+source "$ROOT/scripts/lib/forks.sh"
 
 # tagref <comp> <tag> <upstream_repo> -> resolves the CURRENT upstream tag
 # commit into refs/nostrhost/upstream-<comp>-<tag>; prints nothing. Best
@@ -57,10 +50,7 @@ is_derivative() {
 }
 
 fail=0
-for pair in "yunohost debian/12.1.41.2 YunoHost/yunohost" \
-            "portal debian/12.1.2 YunoHost/yunohost-portal" \
-            "admin debian/12.1.15 YunoHost/yunohost-admin" \
-            "installer main YunoHost/custom-debian-iso"; do
+for pair in "${FORK_PAIRS[@]}"; do
   set -- $pair
   comp="$1"; tag="$2"; upstream_repo="$3"
   dir="$ROOT/forks/$comp"

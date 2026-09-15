@@ -25,9 +25,20 @@ jobs:
         working-directory: libs/nostrhost-policy
         run: uv sync --all-groups && uv run pytest -q
 
-  catalog-lib:
-    name: Go catalog lib
+  go-libs:
+    name: Go ${{ matrix.name }}
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - name: catalog lib
+            dir: libs/nostrhost-catalog
+          - name: nsite gateway (nostrhost-nsite)
+            dir: libs/nostrhost-nsite
+            build_cmd: ./cmd/nostrhost-nsite
+          - name: control plane (nostrhost-control)
+            dir: libs/nostrhost-control
+            build_cmd: ./cmd/nostrhost-control
     steps:
       - uses: actions/checkout@v4
         with:
@@ -35,51 +46,16 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version-file: libs/nostrhost-catalog/go.mod
+          go-version-file: ${{ matrix.dir }}/go.mod
 
       - name: go test
-        working-directory: libs/nostrhost-catalog
-        run: go test ./...
-
-  nsite-lib:
-    name: Go nsite gateway (nostrhost-nsite)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: recursive
-
-      - uses: actions/setup-go@v5
-        with:
-          go-version-file: libs/nostrhost-nsite/go.mod
-
-      - name: go test
-        working-directory: libs/nostrhost-nsite
+        working-directory: ${{ matrix.dir }}
         run: go test ./...
 
       - name: go build
-        working-directory: libs/nostrhost-nsite
-        run: go build -buildvcs=false ./cmd/nostrhost-nsite
-
-  control-lib:
-    name: Go control plane (nostrhost-control)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: recursive
-
-      - uses: actions/setup-go@v5
-        with:
-          go-version-file: libs/nostrhost-control/go.mod
-
-      - name: go test
-        working-directory: libs/nostrhost-control
-        run: go test ./...
-
-      - name: go build
-        working-directory: libs/nostrhost-control
-        run: go build -buildvcs=false ./cmd/nostrhost-control
+        if: matrix.build_cmd
+        working-directory: ${{ matrix.dir }}
+        run: go build -buildvcs=false ${{ matrix.build_cmd }}
 
   fork-identity:
     name: Fork identity layer (Phase 3)
