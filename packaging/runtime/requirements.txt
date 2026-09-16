@@ -32,6 +32,10 @@ tomli-w==1.2.0
 # ASGI framework for the native admin API (src/nostrhost/api.py). starlette +
 # uvicorn are already in the MCP closure below; fastapi is the new direct dep.
 fastapi==0.141.1
+# pydantic v2's EmailStr (src/utils/form.py) requires email-validator >= 2.0;
+# bookworm only ships 1.3.0, so bundle the wheel like pydantic.
+email-validator==2.2.0
+dnspython==2.8.0
 # The daemons + control-plane clients use websockets.sync.client (>=14.2);
 # Debian bookworm ships 10.3 which lacks it, so it must be a bundled wheel too.
 # 14.2 floor: 13.x races receive_eof() in sync close_socket() without the
