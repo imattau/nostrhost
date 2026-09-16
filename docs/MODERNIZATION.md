@@ -46,7 +46,7 @@ The inherited base and its modernization status:
 | L5 | `passlib` (unmaintained) | `src/utils/password.py` `sha512_crypt` for `/etc/shadow` | stdlib `crypt(3)` | ✅ P1 |
 | L6 | `toml` (deprecated package) | `mcp_endpoint.py`, `file_utils.py`, `jinja_filters.py`, `native_providers.py` | `tomllib` + `tomli-w` | ✅ P1 |
 | L7 | dual `requests` + `httpx` | 8 files used `requests`; 6 used an **undeclared** `httpx` | consolidate on `httpx2` | ✅ P1/P3 |
-| L8 | vendored `acme_tiny` (2016-era ACME client) | `src/vendor/acme_tiny/`, used by `certificate.py` → `domain.cert.install` | delegate to Caddy / `acme` lib | ⏳ P3 |
+| L8 | vendored `acme_tiny` (2016-era ACME client) | `src/vendor/acme_tiny/`, used by `certificate.py` → `domain.cert.install` | delegate to Caddy / `acme` lib | ✅ P3 |
 | L9 | vendored `spectre-meltdown-checker` (2018 shell) | `src/diagnosers/00-basesystem.py` Meltdown check | `/sys/devices/system/cpu/vulnerabilities/` | ✅ P3 |
 | L10 | `aptitude` for package operations | only the historical 0027 bookworm migration (`utils/system.py` wrapper); no runtime/problem path uses it | retire with the pre-bookworm migration path | ⏸ assessed |
 | L11 | gevent remnant / `ldap_admin` | `utils/process.py` gevent branch (dead); `authenticators/ldap_admin.py` still used by `log.py`/`user.py` | drop gevent branch; keep `ldap_admin` | ✅ P3 |
@@ -181,13 +181,21 @@ now. This is the last bottle-era component.
    **no real `moulinette` imports** left (only logger names / historical
    comments), and `authenticators/ldap_admin.py` is **not dead** — it is used
    by `log.py` and `user.py` — so it stays (now on `nostrhost.web`).
-3. **L8 ACME → Caddy ⏳ (blocked: needs a VM).**
-   `domain.cert.install` (`native_ops.py:1697`) and the compat
-   `certificate.py` still issue via the vendored `acme_tiny`. Do it as a
-   VM-verified pass (real ACME/domain), ideally by delegating issuance to
-   Caddy. Note: the vendored `acme_tiny` uses `urllib`, not `requests`, so it
-   does not block any dependency removal; it is about retiring the 2016-era
-   client.
+3. **L8 ACME → Caddy ✅ (VM-verified).** Caddy owns platform TLS (ACME for
+   public domains, its local CA otherwise) and `nostr_certd` exports the certs
+   into `/etc/yunohost/certs`; `certificate.py` still ran the vendored
+   `acme_tiny` and restarted the retired nginx/dovecot. Now
+   `_fetch_and_enable_new_certificate` ensures the domain's Caddy site (which
+   triggers provisioning) and polls `nostr_certd.export_domain`; the CSR/SAN
+   builder, account-key/key generation, nginx ACME-challenge check and
+   nginx/dovecot restarts are removed, and `src/vendor/acme_tiny` is deleted
+   (`src/vendor` is now empty). `_get_status` also stopped misreporting a
+   still-valid short-lived cert as "expired". Verified on the clean7 testbed:
+   `certificate_install('nostrhost.test')` ensured the Caddy site, exported the
+   cert, and status moved from `expired` → `abouttoexpire`. The
+   `domain.cert.install`/`info` native ops delegate to Caddy and tolerate a
+   not-yet-provisioned cert. (The legacy `cert_alternate_names` CSR hook is
+   retired with the CSR builder; SANs now come from Caddy config.)
 4. **L10 aptitude → reassessed: no work needed for supported systems.**
    `aptitude` is invoked by exactly one caller — the historical
    `migrations/0027_migrate_to_bookworm.py` (via
@@ -226,8 +234,7 @@ Phase 1  dependency hygiene                        ✅
 Phase 2  FastAPI/uvicorn both APIs                 ✅
          (zmq log broker retirement deferred)      ⏸
 Phase 3  requests→httpx2, gevent cleanup,          ✅
-         Meltdown /sys check
-         ACME→Caddy                                ⏳ (VM)
+         Meltdown /sys check, ACME→Caddy (VM-verified)
          aptitude                                  ⏸ assessed (migration-only)
 ```
 
