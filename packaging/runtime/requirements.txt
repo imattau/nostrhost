@@ -29,6 +29,9 @@ typing-inspection==0.4.4
 # TOML writing for the native code (reads use the stdlib tomllib). Not in
 # Debian bookworm, so it rides the runtime venv like pydantic.
 tomli-w==1.2.0
+# ASGI framework for the native admin API (src/nostrhost/api.py). starlette +
+# uvicorn are already in the MCP closure below; fastapi is the new direct dep.
+fastapi==0.141.1
 # The daemons + control-plane clients use websockets.sync.client (>=14.2);
 # Debian bookworm ships 10.3 which lacks it, so it must be a bundled wheel too.
 # 14.2 floor: 13.x races receive_eof() in sync close_socket() without the

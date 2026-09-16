@@ -125,10 +125,9 @@ packages:
       submodule: forks/yunohost
       binary_package: python3-nostrhost
     built_with: nostrhost-core       # excluded from the build matrix
-    summary: Native nostrhost framework — moulinette replacement (primitives + Typer CLI + Bottle/NIP-98 API)
+    summary: Native nostrhost framework — moulinette replacement (primitives + Typer CLI + FastAPI/NIP-98 API)
     depends:
       - python3-typer
-      - python3-bottle
       - python3-requests
       - python3-nostrhost-auth
 
@@ -141,7 +140,7 @@ packages:
   # packaging/runtime/requirements.txt changes, bump the version here.
   - name: nostrhost-runtime
     kind: runtime
-    version: "0.1.7"
+    version: "0.1.8"
     summary: NostrHost Python runtime venv (bundled manylinux cp311 wheels)
     depends:
       - python3-venv
@@ -410,7 +409,6 @@ external_deps:
   - init-system-helpers
   - systemd
   - python3-typer
-  - python3-bottle
   - python3-requests
   - python3-venv
   - python3-pip

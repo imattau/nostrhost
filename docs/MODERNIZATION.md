@@ -35,23 +35,22 @@ The NostrHost-native stack is current and should be left alone:
 
 ## 2. What is still legacy
 
-The remaining legacy is the **Python core inherited from YunoHost**, plus a
-few vendored artifacts:
+The inherited base and its modernization status:
 
-| # | Area | Evidence | Modern target |
-|---|---|---|---|
-| L1 | HTTP API on **bottle + single-threaded wsgiref** | `src/nostrhost/api.py` (`app.run()`), `src/nostrhost/portal_api.py` (119 + n routes); admin SPA streams SSE `/package/events/<id>` | FastAPI/Starlette + uvicorn (async) |
-| L2 | **ZeroMQ** XSUB/XPUB SSE log broker | `src/utils/sse.py` (`zmq.proxy`, `.logstreamcache`, `time.sleep(1)` connect hack) | native async SSE / drop |
-| L3 | `pydantic` pinned to **v1** | `pyproject.toml` `<2.0`; code already imports `pydantic.v1` with fallbacks; venv ships 2.13 | v2 |
-| L4 | `pyjwt` pinned to **v1** | `pyjwt>=1.7,<2.0`; `nostr_oidc.py`, legacy LDAP authenticators | v2 |
-| L5 | `passlib` (unmaintained) | `src/utils/password.py` `sha512_crypt` for `/etc/shadow` | stdlib `crypt(3)` |
-| L6 | `toml` (deprecated package) | `mcp_endpoint.py`, `file_utils.py`, `jinja_filters.py`, `native_providers.py` | `tomllib` + `tomli-w` |
-| L7 | dual `requests` + `httpx` | 8 files use `requests`; 6 used an **undeclared** `httpx` | consolidate on `httpx2` |
-| L8 | vendored `acme_tiny` (2016-era ACME client) | `src/vendor/acme_tiny/`, used by `certificate.py` → `domain.cert.install` | delegate to Caddy / `acme` lib |
-| L9 | vendored `spectre-meltdown-checker` (2018 shell) | `src/diagnosers/00-basesystem.py` Meltdown check | `/sys/devices/system/cpu/vulnerabilities/` |
-| L10 | `aptitude` for package operations | `src/utils/system.py` (20 refs) | `python3-apt` |
-| L11 | moulinette/gevent + dead LDAP authenticator remnants | `utils/process.py` (annotated legacy), `log.py`, `authenticators/ldap_*` | delete |
-| L12 | flake8/black/isort tooling | `pyproject.toml` tox envs | ruff (+ uv) |
+| # | Area | Evidence | Modern target | Status |
+|---|---|---|---|---|
+| L1 | HTTP API on **bottle + single-threaded wsgiref** | `src/nostrhost/api.py` (`app.run()`), `src/nostrhost/portal_api.py` (119 + n routes); admin SPA streams SSE `/package/events/<id>` | FastAPI/Starlette + uvicorn (async) | ✅ P2 |
+| L2 | **ZeroMQ** XSUB/XPUB SSE log broker | `src/utils/sse.py` (`zmq.proxy`, `.logstreamcache`, `time.sleep(1)` connect hack) | native async SSE / drop | ⏸ deferred |
+| L3 | `pydantic` pinned to **v1** | `pyproject.toml` `<2.0`; code already imports `pydantic.v1` with fallbacks; venv ships 2.13 | v2 | ✅ P1 |
+| L4 | `pyjwt` pinned to **v1** | `pyjwt>=1.7,<2.0`; `nostr_oidc.py`, legacy LDAP authenticators | v2 | ✅ P1 |
+| L5 | `passlib` (unmaintained) | `src/utils/password.py` `sha512_crypt` for `/etc/shadow` | stdlib `crypt(3)` | ✅ P1 |
+| L6 | `toml` (deprecated package) | `mcp_endpoint.py`, `file_utils.py`, `jinja_filters.py`, `native_providers.py` | `tomllib` + `tomli-w` | ✅ P1 |
+| L7 | dual `requests` + `httpx` | 8 files use `requests`; 6 used an **undeclared** `httpx` | consolidate on `httpx2` | ◑ P1/P3 |
+| L8 | vendored `acme_tiny` (2016-era ACME client) | `src/vendor/acme_tiny/`, used by `certificate.py` → `domain.cert.install` | delegate to Caddy / `acme` lib | ⏳ P3 |
+| L9 | vendored `spectre-meltdown-checker` (2018 shell) | `src/diagnosers/00-basesystem.py` Meltdown check | `/sys/devices/system/cpu/vulnerabilities/` | ⏸ assessed/kept |
+| L10 | `aptitude` for package operations | `src/utils/system.py` (20 refs) | `python3-apt` | ⏳ P3 |
+| L11 | moulinette/gevent + dead LDAP authenticator remnants | `utils/process.py` (annotated legacy), `log.py`, `authenticators/ldap_*` | delete | ⏳ P3 |
+| L12 | flake8/black/isort tooling | `pyproject.toml` tox envs | ruff (+ uv) | ✅ P1 |
 
 ---
 
@@ -105,11 +104,11 @@ Landed in fork `d2ac24ad5` (superproject bump + `packaging/*` alongside).
 
 ---
 
-## 4. Phase 2 — HTTP layer (planned) ⏳
+## 4. Phase 2 — HTTP layer ✅ (zmq log broker deferred)
 
-**Problem.** Both internal HTTP services run on bottle's built-in server
+**Problem.** Both internal HTTP services ran on bottle's built-in server
 (`bottle.WSGIRefServer` → `wsgiref.simple_server`), which is
-**single-threaded**: it serves one request at a time with no keep-alive.
+**single-threaded**: one request at a time, no keep-alive.
 
 | Service | Unit | Port | Entry |
 |---|---|---|---|
@@ -117,35 +116,52 @@ Landed in fork `d2ac24ad5` (superproject bump + `packaging/*` alongside).
 | portal auth API | `nostr-portal-api.service` | 127.0.0.1:6788 | `src/nostrhost/portal_api.py` |
 
 The admin SPA consumes **SSE** (`/package/events/<request_id>`,
-`useOperation.ts`), so a single open stream blocks every other request on that
-server.
+`useOperation.ts`), so a single open stream blocked every other request.
 
-**Plan (decision: go straight to FastAPI, both APIs).**
+**Done.** Both services are now **FastAPI on uvicorn** (fork `f7b031d06`,
+`affd321ea`); bottle is removed from the tree and all manifests.
 
-1. Replace bottle with **FastAPI/Starlette + uvicorn** for **both**
-   `nostr-api` and `nostr-portal-api`.
-   - NIP-98 auth (`_AuthErrorsPlugin`, `verify_nip98_request`, `ReplayCache`)
-     becomes an async dependency/HTTPBearer; the replay cache stays
-     single-process (uvicorn single worker) to preserve semantics.
-   - `_SIMPLE_GET_FORWARDS` → a route-registration loop; JSON schemas via
-     pydantic v2 models, aligning the API with the `operation_catalog()` typing
-     already shared by MCP/Admin.
-   - Preserve the existing error JSON shape (`{"error", "code"}`) via
-     exception handlers; `_json_safe` becomes unnecessary.
-   - SSE via `sse-starlette` (`EventSourceResponse`) — already in the runtime
-     wheel set (`starlette==1.6.0`, `sse-starlette==3.4.11`, `uvicorn`).
-2. Keep host/port identical so Caddy routes and systemd units barely change
-   (only the `ExecStart` server entry if it changes).
-3. **L2:** retire the ZeroMQ SSE log broker (`utils/sse.py`) after
-   inventorying its consumers; drop `zmq` if nothing else uses it.
-4. Add `fastapi` to the runtime wheel set (`packaging/runtime/requirements.txt`)
-   and bump `nostrhost-runtime`.
+- `nostrhost/api.py` — `_AuthErrorsPlugin` → `_ApiRoute` (a per-route
+  `APIRoute` wrapper): authorizes before the endpoint (NIP-98 / portal session
+  / CSRF / nsite scope rules unchanged), stores the admin pubkey on
+  `request.state`, and maps `ApiError` / operation errors / unexpected
+  exceptions to the `{"error", "code"}` envelope. The simple GET-forward table
+  is a route-registration loop reading `request.path_params`; `/events` is a
+  Starlette `StreamingResponse` (exact `text/event-stream` header preserved);
+  `uvicorn.run` replaces `app.run`.
+- `nostrhost/portal_api.py` — `build_app` → FastAPI; `_WebRoute` binds the
+  request context, drains queued cookies/status, and maps a raised
+  `HTTPResponse` / unexpected error. All 22 portal routes unchanged.
+- `nostrhost/web.py` — new shared per-request context (request ContextVar,
+  `request`/`response` proxies, `HTTPResponse`, pending-cookie queue) used by
+  both APIs and by the session authenticator, so the deep cookie-refresh path
+  keeps working and now attaches to the FastAPI response.
+- `backup.py` archive download / `user.py` CSV export return Starlette
+  responses instead of bottle `static_file`/`HTTPResponse`.
+- `fastapi` added to the runtime wheel set (runtime `0.1.8`); `python3-bottle`
+  dropped from `debian/control`, `packages.yml`, `compatibility.yml`.
+
+**Deferred — L2 ZeroMQ SSE log broker (`utils/sse.py`).** Not removed: it is
+still created by `OperationLogger` (`log.py:755`) and its `.logstreamcache`
+files back `get_current_operation()`; retiring it touches operation logging
+and is a separate, behaviour-sensitive change. `zmq` remains a dependency for
+now. This is the last bottle-era component.
+
+**Notes / deviations from the draft plan.**
+- NIP-98 became a per-route `APIRoute` wrapper (not an async dependency) to
+  keep the exact authorize→endpoint→error-map ordering and the single-process
+  `ReplayCache` semantics.
+- SSE uses a plain Starlette `StreamingResponse` (the runtime already ships
+  `sse-starlette` via the MCP SDK, but the existing frame generator needed no
+  change).
+- Request/response JSON shapes are byte-compatible; existing clients are
+  unaffected.
 
 ### Acceptance for Phase 2
-- Concurrent requests served in parallel; multiple simultaneous SSE streams.
-- Admin SPA end-to-end (vitest, `vue-tsc`, `vite build`) and portal login.
-- NIP-98 auth + CSRF behaviour unchanged (existing API tests ported to the
-  FastAPI TestClient).
+- Both apps verified over ASGI; the 133 admin-API tests + portal tests pass.
+- Single-worker uvicorn keeps the `ReplayCache` semantics.
+- Remaining VM check: concurrent requests + multiple simultaneous SSE streams
+  behind Caddy, and the admin SPA / portal end-to-end.
 
 ---
 
@@ -188,7 +204,8 @@ server.
 
 ```text
 Phase 1  dependency hygiene                        ✅
-Phase 2  FastAPI/uvicorn both APIs + retire zmq    ⏳
+Phase 2  FastAPI/uvicorn both APIs                 ✅
+         (zmq log broker retirement deferred)      ⏸
 Phase 3  Caddy ACME, requests→httpx2, python-apt,  ⏳
          dead-path cleanup
 ```

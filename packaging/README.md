@@ -13,7 +13,7 @@ each built from its own component repo (held here as pinned submodules).
 | `nostrhost-core-system` | meta-package: minimal headless system | core + control + catalog + caddy + security-config + python libs |
 | `nostrhost-core` | NostrHost server-management engine (renamed from `yunohost`, Stage 2) | python3-nostrhost, libs, caddy, security-config |
 | `yunohost` | transitional package depending on nostrhost-core (rename shim) | nostrhost-core |
-| `python3-nostrhost` | native moulinette replacement: framework primitives + Typer CLI + Bottle/NIP-98 API | yunohost, typer, bottle, auth |
+| `python3-nostrhost` | native moulinette replacement: framework primitives + Typer CLI + FastAPI/NIP-98 API | yunohost, typer, auth |
 | `nostrhost-control` | local khatru control-plane relay | core |
 | `nostrhost-notify` | NIP-17/59 notification daemon | control, core |
 | `nostrhost-catalog` | catalogue resolver/service | control |
@@ -63,7 +63,7 @@ requirements.txt`) and installed **offline** into a private venv:
 
 - `postinst` creates `/opt/nostrhost/venv` with `--system-site-packages`, so
   the dist-packages debs (`nostrhost`, `nostrhost_auth`, `nostrhost_policy`,
-  `yunohost`, typer, bottle, …) stay visible and the wheels layer the
+  `yunohost`, typer, …) stay visible and the wheels layer the
   pip-only deps on top.
 - Daemons and units run on `/opt/nostrhost/venv/bin/python`.
 - No manual `pip` on the target. When the pins in
