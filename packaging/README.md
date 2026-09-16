@@ -54,9 +54,10 @@ or network access is needed after the APT package is downloaded. Generate a
 separate key for each client with `yunohost-mcp-connect --generate-key PATH`.
 
 Some Python runtime deps are **not in Debian bookworm** (or only in an
-incompatible version): `nostr-sdk` (for `python3-nostrhost-auth`), and
-`nostr-sdk`, `pydantic>=2` (for `python3-nostrhost-policy`; bookworm
-only ships pydantic 1.x). They are bundled into `nostrhost-runtime` as pinned
+incompatible version): `nostr-sdk` (for `python3-nostrhost-auth`),
+`pydantic>=2` (for `python3-nostrhost-policy`; bookworm only ships pydantic
+1.x), and `tomli-w` (the native TOML writer; reads use the stdlib `tomllib`).
+They are bundled into `nostrhost-runtime` as pinned
 manylinux cp311 wheels (downloaded at build time from `packaging/runtime/
 requirements.txt`) and installed **offline** into a private venv:
 
