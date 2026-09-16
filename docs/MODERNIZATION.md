@@ -40,7 +40,7 @@ The inherited base and its modernization status:
 | # | Area | Evidence | Modern target | Status |
 |---|---|---|---|---|
 | L1 | HTTP API on **bottle + single-threaded wsgiref** | `src/nostrhost/api.py` (`app.run()`), `src/nostrhost/portal_api.py` (119 + n routes); admin SPA streams SSE `/package/events/<id>` | FastAPI/Starlette + uvicorn (async) | ✅ P2 |
-| L2 | **ZeroMQ** XSUB/XPUB SSE log broker | `src/utils/sse.py` (`zmq.proxy`, `.logstreamcache`, `time.sleep(1)` connect hack) | native async SSE / drop | ⏸ deferred |
+| L2 | **ZeroMQ** XSUB/XPUB SSE log broker | `src/utils/sse.py` (`zmq.proxy`, `.logstreamcache`, `time.sleep(1)` connect hack) | native async SSE / drop | ✅ P2 |
 | L3 | `pydantic` pinned to **v1** | `pyproject.toml` `<2.0`; code already imports `pydantic.v1` with fallbacks; venv ships 2.13 | v2 | ✅ P1 |
 | L4 | `pyjwt` pinned to **v1** | `pyjwt>=1.7,<2.0`; `nostr_oidc.py`, legacy LDAP authenticators | v2 | ✅ P1 |
 | L5 | `passlib` (unmaintained) | `src/utils/password.py` `sha512_crypt` for `/etc/shadow` | stdlib `crypt(3)` | ✅ P1 |
@@ -104,7 +104,7 @@ Landed in fork `d2ac24ad5` (superproject bump + `packaging/*` alongside).
 
 ---
 
-## 4. Phase 2 — HTTP layer ✅ (zmq log broker deferred)
+## 4. Phase 2 — HTTP layer ✅
 
 **Problem.** Both internal HTTP services ran on bottle's built-in server
 (`bottle.WSGIRefServer` → `wsgiref.simple_server`), which is
@@ -141,11 +141,12 @@ The admin SPA consumes **SSE** (`/package/events/<request_id>`,
 - `fastapi` added to the runtime wheel set (runtime `0.1.8`); `python3-bottle`
   dropped from `debian/control`, `packages.yml`, `compatibility.yml`.
 
-**Deferred — L2 ZeroMQ SSE log broker (`utils/sse.py`).** Not removed: it is
-still created by `OperationLogger` (`log.py:755`) and its `.logstreamcache`
-files back `get_current_operation()`; retiring it touches operation logging
-and is a separate, behaviour-sensitive change. `zmq` remains a dependency for
-now. This is the last bottle-era component.
+**L2 ZeroMQ SSE log broker — retired ✅.** `utils/sse.py` streamed operation
+logs to the retired `yunohost-admin`; `start_log_broker` only ran under the
+retired `interface == "api"`, every parent `OperationLogger` still built the
+handler (opening a socket to a broker that never starts and sleeping 1s), and
+its `.logstreamcache`/`get_current_operation` had no callers. Removed it and
+the `zmq` dependency (fork `886b0f1cf`).
 
 **Notes / deviations from the draft plan.**
 - NIP-98 became a per-route `APIRoute` wrapper (not an async dependency) to
@@ -231,8 +232,7 @@ now. This is the last bottle-era component.
 
 ```text
 Phase 1  dependency hygiene                        ✅
-Phase 2  FastAPI/uvicorn both APIs                 ✅
-         (zmq log broker retirement deferred)      ⏸
+Phase 2  FastAPI/uvicorn both APIs + retire zmq    ✅
 Phase 3  requests→httpx2, gevent cleanup,          ✅
          Meltdown /sys check, ACME→Caddy (VM-verified)
          aptitude                                  ⏸ assessed (migration-only)
