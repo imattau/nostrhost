@@ -130,7 +130,7 @@ case "$1" in
       case "$wheel" in {app_wheel_glob}) app_wheel=$wheel ;; esac
     done
     test -n "${{app_wheel:-}}"
-    "$VENV/bin/pip" install --no-index --no-deps \\
+    "$VENV/bin/pip" install --no-index --no-deps --force-reinstall \\
       --disable-pip-version-check "$app_wheel"
     ;;
   abort-upgrade|abort-remove|abort-deconfigure|'')
