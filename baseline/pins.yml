@@ -27,8 +27,8 @@ forks:
     branch: nostrhost          # derivative branch (first fork modification, Phase 3)
     derivative: true
     pin: debian/12.1.41.2      # upstream baseline the branch was cut from
-    pin_commit: e0a58606d3f2ec2222400dbf58d164c2e337830a
-    live_server: 12.1.41.54
+    pin_commit: 5ccf0facc201a6a1d569f06a067301de54a662fa
+    live_server: 12.1.41.55
 
   - component: portal          # Nuxt/Vue/TypeScript user portal
     upstream_repo: YunoHost/yunohost-portal
@@ -38,7 +38,7 @@ forks:
     branch: dev               # Nostr (NIP-07) login page + Tailwind/shadcn-vue redesign (PR #1)
     derivative: true
     pin: debian/12.1.2
-    pin_commit: 939e658b2d67a08b1a80bf78b701ed2513b01b1c
+    pin_commit: 2398a046b081960372c77ccd48f0ed8e82bcf4b7
     live_server: 12.1.2
 
   - component: admin           # Vue/Vite/TypeScript admin interface
@@ -49,7 +49,7 @@ forks:
     branch: dev               # Tailwind/shadcn-vue redesign (app shell, PR #1)
     derivative: true
     pin: debian/12.1.15
-    pin_commit: 40b4418d91852196eff15cf42ffb3a86ac4f09f9
+    pin_commit: ace5400578c9633a75e20f66052c8e781555a556
     live_server: 12.1.15
 
   - component: installer       # Debian ISO graphical installer image builder
@@ -105,7 +105,7 @@ libraries:
     repo: imattau/nostrhost-agent
     path: libs/nostrhost-agent
     branch: main
-    pin_commit: 3397b7adc374b5c1215ce5212aadb7e16222cf1e
+    pin_commit: 7a351bfb9683cebae405623fd7cb06a8434fc040
     stack: Go
 
   - component: yunohost-mcp    # FROZEN reference implementation (MCP transition §2, docs/MCP-TRANSITION.md)
@@ -119,5 +119,5 @@ libraries:
     repo: imattau/nostrhost-mcp
     path: libs/nostrhost-mcp
     branch: main
-    pin_commit: 5486bbeddca2bc0198ad5abf7d7469d24a716713
+    pin_commit: 2f89a1e29116efbde437c6b101baa3d56c0b5a39
     stack: Python (mcp SDK v2)

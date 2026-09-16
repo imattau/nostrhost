@@ -65,7 +65,10 @@ jobs:
         with:
           python-version: "3.11"
       - name: Install Debian 12-compatible test dependencies
-        run: python -m pip install "typer==0.7.0" "click==8.1.7" "pydantic==1.10.14" "PyYAML==6.0.2" "pytest==8.3.5"
+        # The authoring CLI runs on the target with Debian's typer (0.7.x) plus
+        # the deps the runtime venv bundles (pydantic v2, tomli-w) and the ASGI
+        # stack it imports (httpx2). pydantic v1 is no longer enough.
+        run: python -m pip install "typer==0.7.0" "click==8.1.7" "pydantic>=2" "tomli-w" "httpx2" "PyYAML==6.0.2" "pytest==8.3.5"
       - name: Test package authoring and packaging contracts
         env:
           PYTHONPATH: forks/yunohost/src

@@ -71,8 +71,8 @@ jobs:
 
       - name: Install deps
         run: |
-          pip install -q pytest nostr-sdk websockets bottle PyJWT typer \
-            toml pyyaml requests jinja2 packaging passlib cryptography publicsuffix2 \
+          pip install -q pytest nostr-sdk websockets httpx2 fastapi uvicorn PyJWT typer \
+            tomli-w pyyaml jinja2 packaging passlib cryptography publicsuffix2 \
             psutil dnspython python-debian email-validator pyopenssl
           pip install -q -e libs/nostrhost-auth
           pip install -q -e libs/nostrhost-policy
