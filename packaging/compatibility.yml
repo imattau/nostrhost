@@ -71,4 +71,3 @@ external:
   nftables: ">= 1.0"
   slapd: ">= 2.5"
   python3-typer: ">= 0.9"      # native CLI (python3-nostrhost)
-  python3-requests: ">= 2.28"

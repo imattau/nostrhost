@@ -45,11 +45,11 @@ The inherited base and its modernization status:
 | L4 | `pyjwt` pinned to **v1** | `pyjwt>=1.7,<2.0`; `nostr_oidc.py`, legacy LDAP authenticators | v2 | ✅ P1 |
 | L5 | `passlib` (unmaintained) | `src/utils/password.py` `sha512_crypt` for `/etc/shadow` | stdlib `crypt(3)` | ✅ P1 |
 | L6 | `toml` (deprecated package) | `mcp_endpoint.py`, `file_utils.py`, `jinja_filters.py`, `native_providers.py` | `tomllib` + `tomli-w` | ✅ P1 |
-| L7 | dual `requests` + `httpx` | 8 files use `requests`; 6 used an **undeclared** `httpx` | consolidate on `httpx2` | ◑ P1/P3 |
+| L7 | dual `requests` + `httpx` | 8 files used `requests`; 6 used an **undeclared** `httpx` | consolidate on `httpx2` | ✅ P1/P3 |
 | L8 | vendored `acme_tiny` (2016-era ACME client) | `src/vendor/acme_tiny/`, used by `certificate.py` → `domain.cert.install` | delegate to Caddy / `acme` lib | ⏳ P3 |
 | L9 | vendored `spectre-meltdown-checker` (2018 shell) | `src/diagnosers/00-basesystem.py` Meltdown check | `/sys/devices/system/cpu/vulnerabilities/` | ⏸ assessed/kept |
 | L10 | `aptitude` for package operations | `src/utils/system.py` (20 refs) | `python3-apt` | ⏳ P3 |
-| L11 | moulinette/gevent + dead LDAP authenticator remnants | `utils/process.py` (annotated legacy), `log.py`, `authenticators/ldap_*` | delete | ⏳ P3 |
+| L11 | gevent remnant / `ldap_admin` | `utils/process.py` gevent branch (dead); `authenticators/ldap_admin.py` still used by `log.py`/`user.py` | drop gevent branch; keep `ldap_admin` | ✅ P3 |
 | L12 | flake8/black/isort tooling | `pyproject.toml` tox envs | ruff (+ uv) | ✅ P1 |
 
 ---
@@ -165,24 +165,35 @@ now. This is the last bottle-era component.
 
 ---
 
-## 5. Phase 3 — system internals (planned) ⏳
+## 5. Phase 3 — system internals
 
-1. **L8 ACME → Caddy.** `domain.cert.install` (`native_ops.py:1697`) and the
-   compat `certificate.py` still issue via the vendored `acme_tiny`. Decision:
-   delegate issuance to **Caddy** for native domains and remove the vendored
-   client. This is also what lets `requests` be removed entirely (L7).
-2. **L7 (finish) `requests` → `httpx2`.** Migrate the 8 remaining files
-   (`diagnosis`, `dyndns`, `caddy_admin`, `app_catalog`, `diagnosers/21-web`,
-   `yunopaste`, `file_utils`, `resources`); drop `python3-requests` from
-   `debian/control` and the fork deps.
-3. **L10 aptitude → `python3-apt`.** Evaluate/migrate `utils/system.py`
-   package operations; retain aptitude only if a dependency-solving behaviour
-   genuinely requires it.
-4. **L11 dead-path cleanup.** Remove the gevent branch in `utils/process.py`
-   (already annotated legacy), moulinette references in `log.py`/`logging.py`,
-   and the dead `authenticators/ldap_*` modules.
-5. **L9 (optional).** Replace the vendored Meltdown checker with the
-   `/sys/.../vulnerabilities` interface.
+1. **L7 `requests` → `httpx2` ✅.** The 8 remaining files (`diagnosis`,
+   `dyndns`, `caddy_admin`, `app_catalog`, `diagnosers/21-web`, `yunopaste`,
+   `file_utils`, `resources`) and `bin/yunopaste` now use `httpx2` (with
+   `follow_redirects=True` where `requests` followed by default; exception
+   types mapped: `TimeoutException`/`ConnectError`/`RequestError`). `requests`
+   is dropped from the runtime deps (`debian/control`, `packages.yml`,
+   `compatibility.yml`) and kept only as a test-only dep for the legacy
+   upstream `tests/`.
+2. **L11 gevent/moulinette cleanup ✅.** `utils/process.py` dropped its dead
+   gevent branch (`gevent` was never a declared dep, so the import always
+   failed) for a plain `threading.Thread`; `types-gevent` removed. There are
+   **no real `moulinette` imports** left (only logger names / historical
+   comments), and `authenticators/ldap_admin.py` is **not dead** — it is used
+   by `log.py` and `user.py` — so it stays (now on `nostrhost.web`).
+3. **L8 ACME → Caddy ⏳.** `domain.cert.install` (`native_ops.py:1697`) and the
+   compat `certificate.py` still issue via the vendored `acme_tiny`.
+   **Security-sensitive — do with VM verification.** Note: the vendored
+   `acme_tiny` uses `urllib`, not `requests`, so it no longer blocks anything;
+   removing it is about retiring the 2016-era ACME client, ideally by
+   delegating issuance to Caddy.
+4. **L10 aptitude → `python3-apt` ⏳.** `utils/system.py` still shells to
+   `aptitude` (~20 refs). **Needs a VM** (dependency-solver behaviour change):
+   migrate only where the solver semantics are equivalent; retain aptitude if
+   not.
+5. **L9 (optional) ⏳.** Replace the vendored Meltdown checker with the
+   `/sys/devices/system/cpu/vulnerabilities/` interface (diagnosis
+   behaviour/translation review needed).
 
 ---
 
@@ -206,8 +217,9 @@ now. This is the last bottle-era component.
 Phase 1  dependency hygiene                        ✅
 Phase 2  FastAPI/uvicorn both APIs                 ✅
          (zmq log broker retirement deferred)      ⏸
-Phase 3  Caddy ACME, requests→httpx2, python-apt,  ⏳
-         dead-path cleanup
+Phase 3  requests→httpx2, gevent cleanup,          ✅
+         ACME→Caddy, python-apt                    ⏳ (VM)
+         Meltdown /sys check                       ⏳ (optional)
 ```
 
 Phase 2 depends on Phase 1's pydantic v2 alignment. Phase 3's `requests`

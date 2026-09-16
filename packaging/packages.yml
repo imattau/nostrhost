@@ -128,7 +128,6 @@ packages:
     summary: Native nostrhost framework — moulinette replacement (primitives + Typer CLI + FastAPI/NIP-98 API)
     depends:
       - python3-typer
-      - python3-requests
       - python3-nostrhost-auth
 
   # ------------------------------------------------------------ runtime ----
@@ -409,7 +408,6 @@ external_deps:
   - init-system-helpers
   - systemd
   - python3-typer
-  - python3-requests
   - python3-venv
   - python3-pip
   - crowdsec
