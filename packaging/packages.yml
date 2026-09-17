@@ -346,7 +346,7 @@ packages:
 
   - name: nostrhost-portal
     kind: spa
-    version: "0.1.7"
+    version: "0.1.8"
     source:
       repo: imattau/nostrhost-portal
       submodule: forks/portal
