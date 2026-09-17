@@ -452,3 +452,40 @@ admin bypass, session linked identity ok / no-identity 403, plan requires
 `nsites.read`); portal prettier + build clean. Full fork suite: 920 passed —
 the one registry-list failure is the concurrent catalogue PR's stale
 expectation, unrelated to this change.
+
+## Phase 5 continuation appendix — `nsite.discover` (relay discovery in the catalogue)
+
+`forks/yunohost` `30ad6e04c`, `forks/admin` `43ee0384`. Requested by the
+maintainer after Phase 5: the catalogue (kind-32267 app declarations) showed no
+nsites, even though the catalogue's own relays carry kind-15128/35128 manifests
+from other publishers. Decision (maintainer): nsites are a **separate mechanism
+to integrate** — not `app`-tag-linked — so discovery is a read-only, on-demand,
+bounded relay scan surfaced *inside* the existing catalogue Browse flow via an
+All/Apps/Nsites filter.
+
+- **`nsite.discover`** (`nsites.read`, no approval, low risk) — scans the
+  operator-trusted `catalogue` + `nsite_lookup` relay sets (≤6 relays, ≤200
+  events/relay, 8 s timeout each, loopback/private targets filtered), validates
+  every candidate with the full NIP-5A checks, keeps the newest manifest per
+  site (`pubkey` + `d`, deterministic id tie-break), and returns bounded
+  metadata only: `label`, `pubkey`, `kind`, `d`, 120-char `title`, ≤10
+  `server`/`r` hints, `event_id`, `created_at`, `paths_count`, `app`,
+  `registered`. Manifest `content` and raw tags never leave the server. No
+  state is written; results are capped at 200 sites.
+- **Surfaces** — `GET /package/nsite/discover`, `nostrhost nsite discover`, and
+  the Admin Catalogue **Browse** tab: an All/Apps/Nsites filter mixes discovered
+  sites into the existing app flow (a separate tab/section was rejected). A
+  site card shows identity/title/Blossom hints and a Register action (hosted
+  allowlist) for unregistered sites. MCP redaction applies automatically
+  (`_redact_nsite` is `nsite.`-prefixed, so discover's `title` is redacted for
+  MCP clients). The agent registers `nsite.discover` as RiskRead and the
+  default Observe `observation_queries` include `nsite.gateway.status`,
+  `nsite.list`, `nsite.discover`.
+- **Tests** — 10 new fork tests (validated metadata, dedupe-newest, registered
+  flag, relay union + dedupe, private-relay filter, relay-count bound, empty,
+  truncation, no-content-leak, strict args); registry/MCP/agent assertions
+  updated; Admin type-check/lint/build + `discoverNsites` client test. Full
+  fork suite: 1052 passed (3 pre-existing environment failures).
+- **Deferred (unchanged):** local Blossom (D4) and Git/NIP-34 sources (D6).
+  Subpath-based site addressing stays out of scope — nsites remain
+  label-subdomain based per NIP-5A.

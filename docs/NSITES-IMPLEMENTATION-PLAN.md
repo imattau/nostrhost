@@ -429,6 +429,7 @@ Registry additions (`nostr_operations.py`, `native_ops.py`, policy
 | `nsite.gateway.status` | `nsites.read` | no | low | — | enabled, mode, domain, health, cache usage, TLS state |
 | `nsite.list` / `nsite.inspect` | `nsites.read` | no | low | — | registered sites, current manifest, aggregate hash, relay/blob status |
 | `nsite.resolve` | `nsites.read` | no | low | — | fetch a manifest for any pubkey/label from public relays (read only; bounded) |
+| `nsite.discover` | `nsites.read` | no | low | — | browse validated kind-15128/35128 manifests found on the catalogue + lookup relays (read only, bounded; on-demand scan, no state) |
 | `nsite.validate_manifest` | `nsites.read` | no | low | — | validate a candidate (signed or unsigned) event; no network |
 | `nsite.reachability` | `nsites.read` | no | low | — | relay/server reachability for a site; bounded |
 | `nsite.publish.plan` | `nsites.read` | no | low | — | file inventory → unsigned event + `plan_sha256` binding hashes, kind, `d`, servers, relays |
