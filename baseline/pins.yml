@@ -27,7 +27,7 @@ forks:
     branch: nostrhost          # derivative branch (first fork modification, Phase 3)
     derivative: true
     pin: debian/12.1.41.2      # upstream baseline the branch was cut from
-    pin_commit: eb679ad0292782d2e393a51649310af1c9ec9213
+    pin_commit: 23cbcf90e050e4511ffe6e0016defd700c09d142
     live_server: 12.1.41.64
 
   - component: portal          # Nuxt/Vue/TypeScript user portal
@@ -38,7 +38,7 @@ forks:
     branch: dev               # Nostr (NIP-07) login page + Tailwind/shadcn-vue redesign (PR #1)
     derivative: true
     pin: debian/12.1.2
-    pin_commit: 5700241d0e77c3a7d6998ab9e8af0e1a77d5fa82
+    pin_commit: f3ee753629056646cf37f1409ae6e2c53bc28ee6
     live_server: 12.1.2
 
   - component: admin           # Vue/Vite/TypeScript admin interface
@@ -49,7 +49,7 @@ forks:
     branch: dev               # Tailwind/shadcn-vue redesign (app shell, PR #1)
     derivative: true
     pin: debian/12.1.15
-    pin_commit: ad9d5cc2ca092466587992b02a00863413185844
+    pin_commit: f3ce76367524ed54c8d9275836286ca269e11748
     live_server: 12.1.15
 
   - component: installer       # Debian ISO graphical installer image builder
