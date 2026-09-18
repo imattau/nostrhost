@@ -83,14 +83,34 @@ jobs:
           PYTHONPATH: src:../../libs/nostrhost-policy/src:../../libs/nostrhost-auth/src
         run: python -m pytest -c /dev/null tests_nostr/ -q
 
+  agent-catalog:
+    name: Agent operation catalogue (staleness guard)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install deps
+        run: |
+          pip install -q pydantic nostr-sdk websockets httpx2 fastapi uvicorn PyJWT typer \
+            tomli-w pyyaml jinja2 packaging passlib cryptography publicsuffix2 \
+            psutil dnspython python-debian email-validator pyopenssl
+          pip install -q -e libs/nostrhost-auth
+          pip install -q -e libs/nostrhost-policy
+
       - name: Verify the agent operation-catalogue snapshot is current
-        # The resident agent embeds a generated catalogue + digest; if this
-        # check fails, regenerate it against the pinned fork source:
+        # The resident agent embeds a generated catalogue + digest; a stale
+        # digest makes nostr-operationsd reject every request with
+        # `catalog_digest_mismatch` (and any later approval becomes a no-op).
+        # Regenerate against the pinned fork source when this fails:
         #   python libs/nostrhost-agent/scripts/generate_operation_registry.py \
         #     --fork-src forks/yunohost/src \
         #     --output libs/nostrhost-agent/agent/catalog_generated.go
-        # A stale digest makes nostr-operationsd reject every request with
-        # `catalog_digest_mismatch` (and any later approval becomes a no-op).
         run: |
           python libs/nostrhost-agent/scripts/generate_operation_registry.py \
             --fork-src forks/yunohost/src \
