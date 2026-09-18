@@ -90,7 +90,7 @@ libraries:
     repo: imattau/nostrhost-catalog
     path: libs/nostrhost-catalog
     branch: main
-    pin_commit: 152833f42458bfbc97f0cb3574102c54e5d1e218
+    pin_commit: 301352ea3c41aeafb7eeae9571c4886675e66014
 
   - component: control         # control plane: local relay + event model (Phase 2)
     repo: imattau/nostrhost-control

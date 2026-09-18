@@ -185,7 +185,7 @@ packages:
 
   - name: nostrhost-catalog
     kind: golang
-    version: "0.1.4"
+    version: "0.1.5"
     source:
       repo: imattau/nostrhost-catalog
       submodule: libs/nostrhost-catalog
