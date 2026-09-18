@@ -82,3 +82,17 @@ jobs:
         env:
           PYTHONPATH: src:../../libs/nostrhost-policy/src:../../libs/nostrhost-auth/src
         run: python -m pytest -c /dev/null tests_nostr/ -q
+
+      - name: Verify the agent operation-catalogue snapshot is current
+        # The resident agent embeds a generated catalogue + digest; if this
+        # check fails, regenerate it against the pinned fork source:
+        #   python libs/nostrhost-agent/scripts/generate_operation_registry.py \
+        #     --fork-src forks/yunohost/src \
+        #     --output libs/nostrhost-agent/agent/catalog_generated.go
+        # A stale digest makes nostr-operationsd reject every request with
+        # `catalog_digest_mismatch` (and any later approval becomes a no-op).
+        run: |
+          python libs/nostrhost-agent/scripts/generate_operation_registry.py \
+            --fork-src forks/yunohost/src \
+            --output libs/nostrhost-agent/agent/catalog_generated.go \
+            --check

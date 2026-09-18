@@ -105,7 +105,7 @@ libraries:
     repo: imattau/nostrhost-agent
     path: libs/nostrhost-agent
     branch: main
-    pin_commit: 8cc8e0c9e8c612a1e554093604daaa117c1f0368
+    pin_commit: a6885f0ef8d0bb242a0ab94e2d84ad63240bdaac
     stack: Go
 
   - component: yunohost-mcp    # FROZEN reference implementation (MCP transition §2, docs/MCP-TRANSITION.md)

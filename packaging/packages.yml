@@ -223,7 +223,7 @@ packages:
   # packages until its provisioning and operational lifecycle is mature.
   - name: nostrhost-agent
     kind: golang
-    version: "0.1.7"
+    version: "0.1.8"
     source:
       repo: imattau/nostrhost-agent
       submodule: libs/nostrhost-agent
