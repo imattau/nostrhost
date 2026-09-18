@@ -274,7 +274,8 @@
         "type": {
           "default": "http",
           "enum": [
-            "http"
+            "http",
+            "socket"
           ],
           "title": "Type",
           "type": "string"
@@ -439,6 +440,84 @@
       "title": "PortsResource",
       "type": "object"
     },
+    "RuntimeInstanceResource": {
+      "description": "A per-user runtime instance template (``multi-tenant-runtime`` class).\n\nUnlike ``ServiceResource``, this never describes one concrete process: it\ndescribes the ``<app>@.service``/``<app>@.socket`` *templates* systemd\ninstantiates once per connecting user (``%i``). ``exec``/``environment``\nmay reference the literal ``%i`` specifier so the rendered unit resolves\nit per instance; ``security`` reuses ``ServiceSecurity`` rather than a\nparallel model so both process kinds share one hardening/caps surface.\n\nMost apps (opencode included) only know how to bind a TCP port, not a\nUnix socket, so the instance itself gets ``PrivateNetwork=yes`` and binds\n``127.0.0.1:internal_port`` inside its own isolated network namespace -\nevery instance can safely reuse the same fixed port since no two\ninstances share a namespace. A paired ``<app>-bridge@.service`` running\nthe standard ``systemd-socket-proxyd`` (shipped with systemd) is what\nCaddy's ``socket_path_template`` actually connects to; it joins the\ninstance's namespace (``JoinsNamespaceOf=``) and forwards to\n``internal_port``. This is the standard systemd idiom for giving socket\nactivation to a daemon that only speaks TCP - see native_providers.py's\n``RuntimeInstanceTemplateProvider`` for the rendered units.",
+      "properties": {
+        "config_dir_env": {
+          "title": "Config Dir Env",
+          "type": "string"
+        },
+        "cpu_quota_percent": {
+          "exclusiveMinimum": 0,
+          "maximum": 10000,
+          "title": "Cpu Quota Percent",
+          "type": "integer"
+        },
+        "data_dir_env": {
+          "title": "Data Dir Env",
+          "type": "string"
+        },
+        "environment": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Environment",
+          "type": "object"
+        },
+        "exec": {
+          "minLength": 1,
+          "title": "Exec",
+          "type": "string"
+        },
+        "home_env": {
+          "title": "Home Env",
+          "type": "string"
+        },
+        "idle_timeout_seconds": {
+          "default": 600,
+          "exclusiveMinimum": 0,
+          "title": "Idle Timeout Seconds",
+          "type": "integer"
+        },
+        "internal_port": {
+          "exclusiveMinimum": 0,
+          "maximum": 65535,
+          "title": "Internal Port",
+          "type": "integer"
+        },
+        "memory_max_mb": {
+          "exclusiveMinimum": 0,
+          "title": "Memory Max Mb",
+          "type": "integer"
+        },
+        "security": {
+          "$ref": "#/definitions/ServiceSecurity"
+        },
+        "socket_path_template": {
+          "minLength": 1,
+          "title": "Socket Path Template",
+          "type": "string"
+        },
+        "state_directory": {
+          "minLength": 1,
+          "title": "State Directory",
+          "type": "string"
+        },
+        "working_directory": {
+          "format": "path",
+          "title": "Working Directory",
+          "type": "string"
+        }
+      },
+      "required": [
+        "exec",
+        "state_directory",
+        "socket_path_template",
+        "internal_port"
+      ],
+      "title": "RuntimeInstanceResource",
+      "type": "object"
+    },
     "RuntimeResource": {
       "properties": {
         "prefix": {
@@ -550,6 +629,17 @@
     },
     "ServiceSecurity": {
       "properties": {
+        "cpu_quota_percent": {
+          "exclusiveMinimum": 0,
+          "maximum": 10000,
+          "title": "Cpu Quota Percent",
+          "type": "integer"
+        },
+        "memory_max_mb": {
+          "exclusiveMinimum": 0,
+          "title": "Memory Max Mb",
+          "type": "integer"
+        },
         "no_new_privileges": {
           "default": true,
           "title": "No New Privileges",
@@ -834,6 +924,15 @@
           "title": "Path",
           "type": "string"
         },
+        "route_mode": {
+          "default": "static",
+          "enum": [
+            "static",
+            "per-user-socket"
+          ],
+          "title": "Route Mode",
+          "type": "string"
+        },
         "upstream": {
           "minLength": 1,
           "title": "Upstream",
@@ -906,6 +1005,15 @@
       "title": "Hooks",
       "type": "object"
     },
+    "installation_class": {
+      "default": "shared",
+      "enum": [
+        "shared",
+        "multi-tenant-runtime"
+      ],
+      "title": "Installation Class",
+      "type": "string"
+    },
     "packages": {
       "$ref": "#/definitions/PackagesResource",
       "description": "APT dependencies owned by the host package manager; shared packages are retained on app removal."
@@ -933,6 +1041,9 @@
     "runtime": {
       "$ref": "#/definitions/RuntimeResource",
       "description": "A host-managed language runtime and version; use an explicit prefix only for an isolated runtime."
+    },
+    "runtime_instance": {
+      "$ref": "#/definitions/RuntimeInstanceResource"
     },
     "secrets": {
       "additionalProperties": {
