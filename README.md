@@ -1,75 +1,57 @@
 # NostrHost
 
-**Run your own little corner of the internet — no username, no password,
-no company in between.**
+NostrHost helps you run websites and online services on a computer you control.
+It provides a web dashboard for installing apps, managing who can use them,
+checking that the server is healthy, and making backups.
 
-NostrHost turns a cheap server (or an old computer at home) into a personal
-hosting platform. Instead of logging in with a username and password, you
-log in with a **Nostr key** — the same kind of key used for decentralised
-social apps. That key *is* your identity, and every action you take on your
-server — installing an app, approving a change, adding a user — is signed
-with it, so there's always a clear, tamper-proof record of who did what.
+Instead of creating another administrator password, you sign in with a Nostr
+key. If you already use Nostr, you can use the same identity with a safe signer.
+If you do not use Nostr yet, the [beginner's guide](docs/guide/getting-started.md)
+explains what you need.
 
-Under the hood, NostrHost is built on [YunoHost](https://yunohost.org/), a
-mature and well-tested self-hosting engine used by thousands of people — so
-the parts that keep your server safe and reliable (backups, security
-updates, TLS certificates) are proven technology, not an untested rewrite.
+## Is it ready for everyday use?
 
-## Why would I want this?
+Not yet. NostrHost is **pre-alpha software**. Important parts work, but setup,
+upgrades, and recovery are still being tested. Use it on a spare computer or a
+test virtual machine. Do not use it as the only home for important data.
 
-- **You own it.** Your apps, your data, your server. No platform can lock
-  you out, change the rules, or shut you down.
-- **No passwords to lose.** You sign in with your Nostr key, the same one
-  you might already use for a Nostr social app. Lose a password database
-  breach, forgotten-password email, or "reset your password" scam — there
-  isn't one.
-- **Everything is auditable.** Because every admin action is a signed
-  event, you (or anyone you trust) can see exactly what changed on your
-  server and when.
-- **It's still familiar.** If you've used a control panel before, the
-  app store, domains, backups and user-management screens will feel
-  familiar — just with a different front door.
+The optional AI assistant is also experimental. No local AI model has yet
+passed the project's safety and quality checks, so the assistant should remain
+in its read-only Observe mode. NostrHost does not automatically download an AI
+model or send your server data to an AI provider.
 
-## Is it ready for me right now?
+## What NostrHost can do
 
-**Not yet — NostrHost is pre-alpha.** The pieces exist and mostly work, but
-we're still smoothing out the full install → use → recover journey. Right
-now it's best suited to people happy to try it on a spare or disposable
-machine and tell us what breaks. If that's not you yet, star the repo and
-check back — or read [`docs/ALPHA-PLAN.md`](docs/ALPHA-PLAN.md) to see how
-close we are.
+- Host web apps on your own domain.
+- Let people sign in using Nostr identities.
+- Control who can use each app.
+- Manage domains, web addresses, services, and software updates.
+- Make encrypted backups and restore them after a problem.
+- Check the server and explain problems through a web dashboard.
+- Keep a signed history of important administrative actions.
+- Send private Nostr notifications to administrators.
+- Connect approved external assistants through MCP.
+- Run an optional local assistant with tightly limited access.
 
-## What you'll need
+## What you need
 
-- A server or virtual machine running **Debian 12**, or a spare computer
-  you're happy to wipe and dedicate to this.
-- A domain name (even a free dynamic one works while you're trying it out).
-- Your own Nostr key (an `npub`/`nsec` pair) to log in with — any Nostr app
-  or browser extension can create one for you in a few seconds. The key you
-  sign in with the first time becomes the server's owner. (The server also
-  generates its own separate Nostr identity automatically on first run, for
-  its internal control-plane relay — that one's not for you to log in with,
-  it's the server talking to itself.)
+- A spare computer or virtual server using Debian 12 on an amd64 processor.
+- A domain name that points to that computer.
+- A Nostr identity for the first owner.
+- Somewhere else to keep backups and recovery information.
 
-## Installing it
+Installing a server still requires comfort with a terminal. After setup, most
+day-to-day work can be done in the web dashboard.
 
-The easiest way is the **automated installer image**: it produces a
-ready-to-boot Debian ISO that installs and sets up NostrHost with almost no
-input from you. See [`docs/guide/getting-started.md`](docs/guide/getting-started.md)
-for the full walkthrough, including the APT-based install if you'd rather
-add NostrHost to a server you've already set up.
+## Start here
 
-## Want to go deeper?
+1. [Learn what NostrHost is](docs/guide/README.md).
+2. [Install a test server](docs/guide/getting-started.md).
+3. [Install and use apps](docs/guide/apps.md).
+4. [Understand identities and access](docs/guide/identity-and-access.md).
+5. [Set up backups](docs/guide/backups-and-recovery.md).
+6. [Look after the server](docs/guide/server-care.md).
+7. [Learn about the optional AI assistant](docs/guide/ai-assistant.md).
 
-- **Using NostrHost day to day?** → the [user guide](docs/guide/README.md)
-- **Running a server long-term?** → the [admin guide](docs/admin/README.md)
-- **Curious how it's built, or want to contribute code?** → the
-  [developer guide](docs/dev/README.md), which covers the repository
-  layout, the architecture, and how the pieces fit together
-- **Full documentation hub** → [`docs/README.md`](docs/README.md)
-
-## Questions or feedback?
-
-This project is young and changing fast. If something's confusing, broken,
-or you just want to say hello, please open an issue — that feedback is what
-shapes what gets built next.
+The [documentation home](docs/README.md) also links to information for server
+operators, developers, and people building integrations.

@@ -1,29 +1,38 @@
 # Administrator guide
 
-For people responsible for keeping a NostrHost server running: deployment,
-upgrades, security posture, backup/recovery policy. If you just want to use
-an already-running server, see the [user guide](../guide/README.md) instead.
+This guide is for the people responsible for keeping a NostrHost server
+available, secure, current, and recoverable.
 
-## Pages
+## Operator responsibilities
 
-| Page | Covers |
-|---|---|
-| [Deployment topology](deployment-topology.md) | Single-server layout, request path through Caddy, what runs where, domains/DNS, network exposure |
-| [Security model](security-model.md) | CrowdSec + nftables, request-time `forward_auth`, Nostr identity, capability/role authorization, the audit chain |
-| [Backup and disaster recovery](backup-and-recovery.md) | The four-layer state model (Nostr/ngit/Restic/Linux), known-good state and rollback, full server restore |
-| [Upgrades and migrations](upgrades-and-migrations.md) | The core rename, completed Caddy/CrowdSec/moulinette migrations, in-progress LDAP retirement, upgrading a running server |
-| [Notifications](notifications.md) | Configuring `nostrhost-notify` — recipients, event classes, severity, digest vs. immediate delivery |
+- Keep Debian and NostrHost packages current.
+- Monitor service health, capacity, certificates, security events, and backup
+  results.
+- Maintain least-privilege roles, capabilities, groups, and app permissions.
+- Keep the public network surface limited to the required web and SSH ports.
+- Store recovery keys and backup credentials away from the host.
+- Test upgrades and disaster recovery before depending on them.
+- Preserve operation IDs and audit records during incident response.
 
-## Planned pages
+## Guides
 
-| Page | Will cover | Written from |
-|---|---|---|
-| Running the optional agent *(TODO)* | Enabling `nostrhost-agent`, scoping its capabilities, Observe mode | [`../../packaging/README.md`](../../packaging/README.md), [`../AGENT-DISTRIBUTION-PLAN.md`](../AGENT-DISTRIBUTION-PLAN.md) |
-| Testing changes on a VM *(TODO)* | Using the VM testbed before rolling changes to a real server | [`../VM-TESTBED.md`](../VM-TESTBED.md) |
+1. [Deployment and network layout](deployment-topology.md)
+2. [Security model](security-model.md)
+3. [Backup and disaster recovery](backup-and-recovery.md)
+4. [Updates and routine maintenance](upgrades-and-migrations.md)
+5. [Notifications](notifications.md)
+6. [Optional resident agent](resident-agent.md)
 
-## Related reading
+Use the [reference section](../reference/README.md) for event, operation,
+diagnosis, and MCP details.
 
-- [`../ALPHA-PLAN.md`](../ALPHA-PLAN.md) for what in the operational surface
-  above is proven end-to-end today versus still in progress.
-- [`dev/`](../dev/README.md) if you need to understand *why* something is
-  built the way it is, not just how to operate it.
+## Daily and periodic checks
+
+Daily checks should cover failed services, security decisions, recent failed
+operations, free disk space, and backup completion. Periodic checks should
+cover package updates, certificate renewal, inactive identities, recovery
+material, restore tests, and capacity trends.
+
+Prefer Admin for routine work. Use `nostrhost --help` for recovery, automation,
+or detailed JSON output. Both interfaces use the same policy and operation
+registry.

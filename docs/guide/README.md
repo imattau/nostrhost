@@ -1,33 +1,61 @@
 # User guide
 
-For people installing and running NostrHost as their own self-hosting
-platform — the Portal/Admin end of things, not the codebase.
+NostrHost is a control panel for a server you own. It helps you run web apps
+without handing your data and identity to a hosting company.
 
-> **Status.** NostrHost is pre-alpha. The flow below (`apt install nostrhost`
-> → `nostrhost postinstall` → Nostr login → install an app) is the target
-> path the project is currently building and proving end-to-end; see
-> [`../ALPHA-PLAN.md`](../ALPHA-PLAN.md) for exactly which steps are wired up
-> today versus still in progress. Where a page describes something not yet
-> available, it says so.
+## What makes it different?
 
-## Pages
+Most server dashboards use an administrator name and password. NostrHost uses
+a Nostr identity instead. You approve sign-ins and important actions with a
+signer on a device you trust.
 
-| Page | Covers |
-|---|---|
-| [Getting started](getting-started.md) | What NostrHost is, requirements, installing the APT package, first-run (`postinstall`), logging in with a Nostr key |
-| Installing apps *(TODO)* | Using the catalogue, installing/upgrading/removing a `package.toml` app from the Portal or CLI |
-| Managing your identity *(TODO)* | Nostr keys, NIP-05, delegated/agent keys, linking additional devices |
-| Backups and recovery *(TODO)* | Restic-backed backups, restoring a snapshot, disaster recovery via the ngit state repo |
-| Notifications *(TODO)* | Configuring admin notifications (NIP-17/59 encrypted DMs) |
-| Troubleshooting *(TODO)* | Common failures during install/first-run and how to diagnose them |
+Behind the dashboard, NostrHost keeps a signed record of important changes.
+This makes it easier to see who requested a change, who approved it, and
+whether it succeeded.
 
-Pages marked *(TODO)* aren't written yet — see
-[`dev/README.md`](../dev/README.md#contributing-to-the-docs) if you'd like to
-contribute one.
+## What can I manage?
 
-## Related reading
+From the Admin dashboard you can:
 
-- [`admin/`](../admin/README.md) if you're responsible for keeping the
-  server running (upgrades, security, capacity) rather than just using it.
-- [`../AI-PACKAGE-AUTHORING.md`](../AI-PACKAGE-AUTHORING.md) if you want to
-  package your own app for the catalogue.
+- install and update apps;
+- add domains and choose app addresses;
+- add people and decide which apps they can use;
+- check whether services are working;
+- make and restore backups;
+- review security warnings and recent changes; and
+- configure private administrator notifications.
+
+## What should I understand first?
+
+### Your key is your administrator identity
+
+Keep your private key in a trusted signer. Never paste it into the server,
+email, chat, a support ticket, or an AI assistant. NostrHost normally needs
+your public key only.
+
+### The server has its own identity
+
+During setup, NostrHost creates a separate identity for the server. This lets
+the server sign its own results and notices. It is not a second personal
+account and should not be used for login.
+
+### Some changes need approval
+
+A person or tool may be allowed to suggest a change without being allowed to
+carry it out. For example, an assistant might suggest restarting a service,
+but the owner may still need to approve it.
+
+### Backups must live somewhere else
+
+A backup kept only on the same machine will be lost if that machine fails.
+Keep backups and recovery information in separate, protected storage.
+
+## Follow the guide
+
+1. [Getting started](getting-started.md)
+2. [Apps](apps.md)
+3. [Identity and access](identity-and-access.md)
+4. [Backups and recovery](backups-and-recovery.md)
+5. [Looking after your server](server-care.md)
+6. [AI assistant](ai-assistant.md)
+7. [Troubleshooting](troubleshooting.md)

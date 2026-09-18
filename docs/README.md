@@ -1,74 +1,72 @@
-# NostrHost documentation
+# NostrHost help
 
-This is the documentation hub for NostrHost. It is organised by audience.
-The many existing files at the top level of `docs/` (`ROADMAP.md`,
-`CONTROL-PLANE.md`, `STATELAYER.md`, the `*-PLAN.md` and `*-MIGRATION.md`
-files, etc.) remain in place as the **design record** — they capture how
-each part of the platform was decided and built, and are the primary
-sources this guide set is written from. Treat them as the deep-dive/history
-layer; the sections below are the entry points.
+You do not need to understand how NostrHost is built to use it. Start with the
+user guide and follow it in order.
 
-> **Status note.** NostrHost is pre-alpha (see `ALPHA-PLAN.md` and the
-> "Platform state" table in the top-level `README.md`). Sections below that
-> describe end-user flows (installation, first run) describe the *target*
-> experience the alpha plan is building towards, and are marked accordingly
-> where the underlying capability isn't wired up end-to-end yet.
+## For people using NostrHost
 
-## Start here
-
-| I want to... | Go to |
+| What do you want to do? | Read this |
 |---|---|
-| Install NostrHost and log in for the first time | [`guide/`](guide/README.md) — user guide |
-| Run and operate a NostrHost server long-term | [`admin/`](admin/README.md) — administrator guide |
-| Understand or contribute to the codebase | [`dev/`](dev/README.md) — developer guide |
-| Integrate with NostrHost's events, schemas or MCP bridge | [`reference/`](reference/README.md) — reference |
+| Understand NostrHost | [User guide](guide/README.md) |
+| Install a test server | [Getting started](guide/getting-started.md) |
+| Install or remove an app | [Apps](guide/apps.md) |
+| Add people or change access | [Identity and access](guide/identity-and-access.md) |
+| Protect your data | [Backups and recovery](guide/backups-and-recovery.md) |
+| Keep the server healthy | [Looking after your server](guide/server-care.md) |
+| Understand the AI features | [AI assistant](guide/ai-assistant.md) |
+| Fix a common problem | [Troubleshooting](guide/troubleshooting.md) |
 
-## Documentation map
+## For people looking after a server
 
-```text
-docs/
-├── README.md              # you are here
-├── guide/                  # end users / self-hosters
-├── admin/                  # sysadmins / operators
-├── dev/                    # developers / contributors
-├── reference/               # API / integration reference
-└── *.md                     # design record: architecture decisions,
-                              # migration plans, roadmap, phase reports
-```
+The [administrator guide](admin/README.md) covers security, updates,
+notifications, network setup, and disaster recovery. It assumes some Linux
+server experience, but begins with plain-language explanations.
 
-## Design record index
+## Advanced information
 
-The most load-bearing design documents, in the order a new contributor
-should read them:
+These sections are not needed for ordinary use:
 
-1. [`ROADMAP.md`](ROADMAP.md) — full provenance: where NostrHost came from
-   (a YunoHost fork) and every stage of the derivative build-out.
-2. [`ALPHA-PLAN.md`](ALPHA-PLAN.md) — the current execution plan to the 0.1
-   alpha ("make it a product").
-3. [`BASELINE.md`](BASELINE.md) — the pinned upstream/fork baseline and the
-   rules for changing it.
-4. [`CONTROL-PLANE.md`](CONTROL-PLANE.md) — the local Nostr relay as the
-   control-plane bus; the architectural core of the whole platform.
-5. [`NIP-MAPPING.md`](NIP-MAPPING.md) — which standard Nostr NIPs cover which
-   platform requirement, and where genuine custom event kinds remain.
-6. [`STATELAYER.md`](STATELAYER.md) — ngit/NIP-34 configuration state plus
-   Restic data linkage.
-7. [`RESOURCE-ENGINE.md`](RESOURCE-ENGINE.md) — the declarative
-   `package.toml` app lifecycle engine.
+- [Developer guide](dev/README.md) — changing NostrHost or creating an app
+  package.
+- [Contributing](dev/contributing.md) — choosing a repository, preparing a
+  change, and opening a pull request.
+- [Technical reference](reference/README.md) — details for integrations,
+  automated tools, and protocol implementers.
 
-Everything else in `docs/*.md` is a focused deep-dive (a migration such as
-`CADDY-MIGRATION.md` / `CROWDSEC-MIGRATION.md` / `LDAP-RETIREMENT.md`, a
-subsystem plan such as `NOTIFICATION-SERVICE.md` / `AGENT-DISTRIBUTION-PLAN.md`,
-or a point-in-time inventory/stocktake).
+## Words used in these guides
 
-## Contributing to the docs
+### Owner
 
-- New end-user, operator, developer or reference material goes under the
-  matching section (`guide/`, `admin/`, `dev/`, `reference/`), not at the
-  top level of `docs/`.
-- The top-level `docs/*.md` files are the design record: update them when a
-  documented decision changes, but don't restructure them to read as a
-  tutorial — that's what the sections above are for.
-- Keep cross-references relative (`../CONTROL-PLANE.md`, `../ROADMAP.md`) so
-  the docs work both on GitHub and if this tree is ever built with a static
-  site generator.
+The person with final control of the server. Sensitive changes may need the
+owner's approval.
+
+### Nostr key
+
+A digital identity made of a public part and a private part. The public part
+identifies you. The private part proves that you are you and must remain secret.
+
+### Signer
+
+An app or device that safely holds your private key and signs login requests.
+
+### Portal
+
+The page people use to open their apps and manage their own account.
+
+### Admin
+
+The dashboard used to manage the server.
+
+### App
+
+A service hosted by the server, such as a notes app, website, or file-sharing
+tool.
+
+### Operation
+
+An administrative action such as installing an app or restoring a backup.
+
+### MCP
+
+A standard way for an external AI assistant to use approved server tools. It
+does not give the assistant unrestricted access.

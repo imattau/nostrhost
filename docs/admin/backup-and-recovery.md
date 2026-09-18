@@ -1,212 +1,72 @@
 # Backup and disaster recovery
 
-NostrHost separates **who changed something**, **what should exist**,
-**what data existed**, and **what is actually running** into four distinct
-layers. Understanding that split is the key to understanding backup and
-recovery. Full design: [`../STATELAYER.md`](../STATELAYER.md).
+Recovery combines four layers: signed operational history, versioned
+configuration state, Restic data archives, and the Debian host itself. None is
+a complete backup on its own.
 
-```text
-Nostr events            → WHO changed it?     (identity, authority, audit)
-ngit / NIP-34 + Git      → WHAT should exist?  (durable semantic config state)
-Restic                   → WHAT data existed?  (application/filesystem data)
-Linux / YunoHost         → WHAT is running?    (actual runtime state)
+## Configuration state
+
+NostrHost records desired configuration in a versioned repository. Changes can
+be compared, marked healthy, and reconciled with the machine. The repository
+must not contain private keys, passwords, tokens, or raw backup data.
+
+Before a high-risk operation, record the current state. Afterward, run health
+checks before treating the new state as known-good. A state rollback restores
+configuration intent; a Restic restore recovers files and app data.
+
+## Data backups
+
+Restic encrypts and deduplicates system and application data. Configure a
+destination that survives loss of the server. Monitor backup completion,
+repository growth, retention, and integrity.
+
+Use Admin for normal backup work or inspect:
+
+```bash
+nostrhost backup --help
+nostrhost app backup --help
 ```
 
-## Configuration state (ngit / NIP-34)
+## Backup policy
 
-Server configuration — not application data — is tracked as a git
-repository whose identity, ownership and discovery align with Nostr
-identities via **NIP-34**:
+A practical policy defines:
 
-```text
-Server npub
-    │
-    ▼
-NIP-34 repository announcement (kind 30617)
-    │
-    ▼
-nostrhost-state              nostr://<server-npub>/nostrhost-state
-    │
-    ├── signed repository state
-    ├── PRs / patches (e.g. from an agent proposing a change)
-    └── CI results
-    │
-    ▼
-Git objects
-```
+- which apps and system parts are included;
+- backup frequency and retention;
+- where the repository is stored;
+- who controls its credentials;
+- acceptable recovery-point and recovery-time objectives; and
+- how often restoration is tested.
 
-The repository stores **semantic intent** ("nginx should be enabled"), not
-a raw copy of `/etc` and not runtime observation ("nginx is running" is
-Linux/systemd's job, not this layer's):
+Create an on-demand backup before app upgrades, schema changes, bulk user or
+permission changes, and major package updates.
 
-```text
-state/
-├── manifest.toml
-├── system/
-├── apps/
-├── domains/
-├── services/
-├── network/
-├── dns/
-├── certificates/
-├── identities/
-├── capabilities/
-├── backups/
-├── schedules/
-└── package-versions/
-```
+## Restore a single app
 
-Secrets are never stored in plaintext here — state references secret
-identifiers backed by systemd credentials or a dedicated encrypted store.
+Choose the smallest archive and scope that solve the problem. Prevent new
+writes, preserve evidence, verify the archive, restore, and then check the app
+service, route, permissions, health, and data. Record the restore as an
+operation and investigate the original failure.
 
-### Every change gets a pre/post snapshot
+## Rebuild the server
 
-```text
-operation request → pre-change snapshot → execute → post-change snapshot → health validation
-```
+1. Isolate the failed host if compromise is possible.
+2. Prepare a clean Debian 12 target and confirm storage capacity.
+3. Install the trusted NostrHost package source.
+4. Transfer the recovery bundle and backup credentials through a secure path.
+5. Use `nostrhost postinstall restore --help` to select the existing identity,
+   configuration state, and Restic snapshot.
+6. Reconcile the host, run diagnosis, and inspect failed services.
+7. Verify DNS, HTTPS, sign-in, roles, apps, scheduled jobs, notifications, and
+   a new backup.
+8. Rotate exposed credentials and retain incident evidence.
 
-Each state commit is linked to the Nostr operation event that caused it, so
-history reads as an audit trail, not just a diff log:
+Never run the new-server setup when the replacement must assume an existing
+identity.
 
-```text
-A  known-good state
-B  install Alby Hub
-C  reverse-proxy change
-D  permission update
-```
+## Recovery test
 
-### Known-good state and rollback
-
-NostrHost tracks a validated **known-good** state distinct from the current
-desired state:
-
-```text
-main       → current desired state
-known-good → latest health-validated state
-previous   → previous accepted state
-```
-
-Rollback is **assisted**, not a blind `git revert` — different change
-classes have different reversibility:
-
-| Change class | Example | Automatic rollback |
-|---|---|---:|
-| Declarative config | firewall rule, service enabled | Usually |
-| Runtime setting | systemd unit state | Usually |
-| Package install | new app | Often |
-| Package upgrade | version bump | Conditional |
-| Database migration | schema change | Only with a known procedure/backup |
-| Data deletion | app removal | Restore required |
-| External side effect | DNS API, payment, external message | Often impossible |
-| Credential rotation | replace key | Special handling |
-
-The rollback flow: select a previous state → show a semantic diff →
-generate a rollback plan → policy/approval → execute → health check.
-`rollback.apply` runs as a policy-gated chain operation (`state.write`
-scope + admin approval), restoring via the linked Restic snapshot where
-data is involved.
-
-## Application data (Restic)
-
-Git/ngit is configuration-state history — it is **not** a data backup
-system. Application and filesystem data recovery is **Restic**'s job. For
-any operation that can affect app data, the configuration-state commit and
-the data snapshot are linked:
-
-```text
-pre-change state commit S1
-        │
-        ├──→ Restic snapshot R1
-        ▼
-     execute
-        ▼
-   health check
-```
-
-A machine-readable manifest records the relationship:
-
-```toml
-[state]
-schema = 1
-known_good = true
-
-[operation]
-event = "<nostr-event-id>"
-
-[backup]
-restic_snapshot = "<snapshot-id>"
-required = true
-
-[health]
-result = "passed"
-```
-
-This produces a single restore point that describes **both** the intended
-configuration **and** the associated data — restoring one without the
-other would leave the server in an inconsistent state.
-
-## Full disaster recovery
-
-A server rebuilt from nothing but its own identity, its published state
-repository, and its Restic backup:
-
-```text
-new machine
-    │
-install NostrHost
-    │
-restore / authorise server identity
-    │
-discover NIP-34 state repository
-    │
-retrieve latest known-good state
-    │
-retrieve linked Restic snapshot
-    │
-install required apps/packages
-    │
-restore application data
-    │
-reconcile configuration
-    │
-validate
-```
-
-This is what `nostrhost postinstall --restore` automates (see
-[`../guide/getting-started.md`](../guide/getting-started.md)). The state
-repository is published outbound from the local relay to external Nostr
-relays specifically so it can be rediscovered after total loss of the
-original machine — no central git forge is authoritative.
-
-## Repository authority is not operational authority
-
-A change proposed through the state repository (by a human or an agent)
-**never bypasses policy**:
-
-```text
-NIP-34 change → verify repository authority → NostrHost policy →
-risk classification → approval if required → executor / reconciler
-```
-
-ngit establishes *who proposed this state and where it came from*;
-`nostrhost-policy` still decides whether it may actually be applied to the
-machine.
-
-## Status
-
-The design is staged (Stage A: state history — done; Stage B: assisted
-rollback with Restic linkage — done; Stage C: ngit replication/DR — outbound
-publication implemented; Stage D: full automatic declarative reconciliation
-— deliberately not yet enabled). See
-[`../STATELAYER.md`](../STATELAYER.md) §8.9 for the staged rollout and
-[`../ALPHA-PLAN.md`](../ALPHA-PLAN.md) for what's proven end-to-end on a
-test VM today versus still in progress.
-
-## Related reading
-
-- [`../guide/getting-started.md`](../guide/getting-started.md) — the
-  `postinstall --new`/`--restore` flow from a user's perspective.
-- [`security-model.md`](security-model.md) — how proposed state changes are
-  authorised before being applied.
-- [`../VM-TESTBED.md`](../VM-TESTBED.md) — exercising install/backup/restore
-  end-to-end on a disposable VM before relying on this in production.
+Perform restores in an isolated VM. A passing exercise proves that off-server
+material is accessible, credentials work, the repository is readable, the
+configuration reconciles, data is present, and an owner can authenticate.
+Document the observed recovery time and any manual steps.

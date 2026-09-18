@@ -1,59 +1,43 @@
 # Developer guide
 
-For people reading, building, or contributing to the NostrHost codebase.
+This guide explains where code belongs, how the runtime works, and how to
+develop and release changes safely.
 
-NostrHost is spread across the umbrella repository (this one — architecture,
-integration, packaging, docs) and a set of git submodules: forks of YunoHost
-components under `forks/`, and NostrHost-native libraries under `libs/`.
+## Read in this order
 
-## Pages
+1. [Architecture overview](architecture-overview.md)
+2. [Building and testing](building-and-testing.md)
+3. [Contributing](contributing.md)
+4. [Writing a native app package](native-app-packages.md)
+5. [Packaging and releases](packaging-and-releases.md)
+6. [Reference](../reference/README.md) for event and integration contracts
 
-| Page | Covers |
-|---|---|
-| [Architecture overview](architecture-overview.md) | The repository layout, the control-plane relay, how the submodules fit together, and where to go deeper |
-| Building and testing *(TODO)* | Working with submodules, running each component's test suite, `scripts/verify-clean.sh` |
-| Contributing *(TODO)* | Branch/pin conventions, where a change belongs (umbrella vs. fork vs. lib), commit/PR expectations |
-| Writing a native package *(TODO)* | Authoring a `package.toml` app manifest — see [`../AI-PACKAGE-AUTHORING.md`](../AI-PACKAGE-AUTHORING.md) and [`../RESOURCE-ENGINE.md`](../RESOURCE-ENGINE.md) in the meantime |
-| Packaging and release *(TODO)* | The APT release pipeline — see [`../../packaging/README.md`](../../packaging/README.md) in the meantime |
+## Repository boundaries
 
-Pages marked *(TODO)* aren't written yet.
+The top-level repository owns component pins, integration, Debian packaging,
+schemas, testbeds, and product documentation. Most runtime code lives in Git
+submodules under `forks/` and `libs/`. Make a code change in the component that
+owns it, commit that component, then update the top-level submodule pin and any
+compatibility metadata.
 
-## Design record, by topic
+Do not mix generated build output, private keys, credentials, VM disks, or
+runtime state into source commits.
 
-The developer guide is an entry point; the actual design decisions and
-rationale live in the top-level `docs/*.md` design record. Useful jumping-off
-points by area:
+## Design rules
 
-- **Control plane / events:** [`../CONTROL-PLANE.md`](../CONTROL-PLANE.md),
-  [`../NIP-MAPPING.md`](../NIP-MAPPING.md),
-  [`../RELAY-SELECTION.md`](../RELAY-SELECTION.md)
-- **App lifecycle:** [`../RESOURCE-ENGINE.md`](../RESOURCE-ENGINE.md),
-  [`../RESOURCE-ENGINE-CUTOVER.md`](../RESOURCE-ENGINE-CUTOVER.md),
-  [`../APP-MANAGEMENT-PLAN.md`](../APP-MANAGEMENT-PLAN.md)
-- **State and backup:** [`../STATELAYER.md`](../STATELAYER.md)
-- **Web/TLS:** [`../CADDY-MIGRATION.md`](../CADDY-MIGRATION.md) and its
-  `CADDY-P*-SPIKE.md` phase notes
-- **Security:** [`../CROWDSEC-MIGRATION.md`](../CROWDSEC-MIGRATION.md)
-- **Identity/auth compatibility:** [`../LDAP-RETIREMENT.md`](../LDAP-RETIREMENT.md),
-  [`../MAIL-RETIREMENT.md`](../MAIL-RETIREMENT.md)
-- **Admin/Portal UI:** [`../ADMIN-PORT-PLAN.md`](../ADMIN-PORT-PLAN.md),
-  [`../ADMIN-FEATURE-MATRIX.md`](../ADMIN-FEATURE-MATRIX.md),
-  [`../NATIVE-ADMIN-API.md`](../NATIVE-ADMIN-API.md)
-- **Roles/permissions:** [`../ROLE-AND-APP-ACCESS-DESIGN.md`](../ROLE-AND-APP-ACCESS-DESIGN.md),
-  [`../ROLE-AND-APP-ACCESS-IMPLEMENTATION-PLAN.md`](../ROLE-AND-APP-ACCESS-IMPLEMENTATION-PLAN.md)
-- **MCP / agent integration:** [`../MCP-TRANSITION.md`](../MCP-TRANSITION.md),
-  [`../AGENT-DISTRIBUTION-PLAN.md`](../AGENT-DISTRIBUTION-PLAN.md)
-- **Full history:** [`../ROADMAP.md`](../ROADMAP.md) records every stage of
-  the derivative build-out; [`../EXTRACTION.md`](../EXTRACTION.md) and
-  [`../LEGACY-INVENTORY.md`/`../YNH-HELPER-STOCKTAKE.md`](../LEGACY-INVENTORY.md)
-  record what was extracted or inventoried along the way.
+- All interfaces use the shared operation catalogue and policy path.
+- Only the executor changes machine state after validation and approval.
+- Prefer a standard Nostr primitive before adding a custom event kind.
+- Keep sessions and secrets out of the relay event stream.
+- Native apps declare resources; they do not run arbitrary lifecycle scripts.
+- Planning and inspection are read-only; application is a separate action.
+- Every write needs a clear permission, audit result, and recovery story.
+- Preserve compatibility only at explicit boundaries and keep those boundaries
+  private where possible.
 
-## Contributing to the docs
+## Documentation changes
 
-- End-user material → [`../guide/`](../guide/README.md).
-- Operator/sysadmin material → [`../admin/`](../admin/README.md).
-- API/event/schema reference → [`../reference/`](../reference/README.md).
-- A new architectural decision or migration → a new top-level `docs/*.md`
-  file (the design record), linked from this page's topic list above.
-- Keep prose in guide/admin/dev pages task-oriented; keep the "why" in the
-  design record and link to it rather than duplicating it.
+Update the audience-facing page that owns the behaviour. User tasks belong in
+`guide/`, operations in `admin/`, development in `dev/`, and stable contracts
+in `reference/`. Explain current behaviour directly and avoid making readers
+reconstruct it from internal notes or change history.

@@ -1,44 +1,30 @@
 # Reference
 
-API and integration reference for building on top of NostrHost, or for
-understanding its wire formats precisely. If you want a narrative
-explanation instead of a lookup table, see the [architecture
-overview](../dev/architecture-overview.md).
+This section describes the stable contracts used by NostrHost interfaces and
+integrations. It assumes you already understand the
+[architecture](../dev/architecture-overview.md).
 
-> **Status.** The underlying schemas and event kinds are still being
-> finalised in Phase 2 of the roadmap — see
-> [`../NIP-MAPPING.md`](../NIP-MAPPING.md) §4 for what's locked versus still
-> marked "to verify". Treat kind numbers on these pages as current, not
-> frozen.
+## Contents
 
-## Pages
+- [Control-plane events](control-plane-events.md): signed requests,
+  approvals, results, definitions, and notices.
+- [Operation catalogue](operations.md): the shared tool and policy boundary.
+- [Diagnosis engine](diagnosis-engine.md): health checks, cache, and ignored
+  findings.
+- [MCP integration](mcp-integration.md): connecting an agent or MCP client.
+- [MCP diagnosis tools](mcp-diagnosis-tools.md): agent-facing health and
+  incident evidence.
 
-| Page | Covers |
-|---|---|
-| [Control-plane event reference](control-plane-events.md) | The operation request/approval/execution kind chain (2200–2205), notice kinds, kind-range discipline, and the standard NIPs used instead of custom kinds |
-| [MCP integration](mcp-integration.md) | Using `yunohost-mcp-connect` and the native `nostrhost-mcp` adapter from an MCP client (Claude Desktop, Codex, etc.), and why MCP is an interface rather than an authority boundary |
-| [Diagnosis engine](diagnosis-engine.md) | How `yunohost diagnosis` works: diagnoser discovery, report format, caching, the ignore-filter workflow, and the CLI/API surface |
-| [MCP diagnosis tools](mcp-diagnosis-tools.md) | The 7 diagnosis/health-adjacent MCP tools (`health_check`, `diagnosis_run`, `system_snapshot`, `ssh_diagnose`, `incident_snapshot`, `diagnose_app`, `validate_server`) — what each wraps or adds beyond the core engine |
+## Source contracts
 
-## Use the source directly (no separate reference page planned)
+Some contracts are best consumed directly by tools:
 
-These are already the primary, authoritative reference — a summary page
-would only go stale:
+- `schema/package.schema.json` validates native app manifests.
+- `packaging/packages.yml` defines Debian packages and their sources.
+- `packaging/compatibility.yml` defines component version constraints.
+- `forks/yunohost/src/nostrhost/native_ops.py` defines operation schemas,
+  scopes, risk, reversibility, and handlers.
+- `libs/nostrhost-control/internal/eventmodel/` validates custom event kinds.
 
-| Topic | Source |
-|---|---|
-| Every NostrHost requirement mapped to a standard Nostr NIP | [`../NIP-MAPPING.md`](../NIP-MAPPING.md) |
-| The `package.toml`/`package.json` resource vocabulary, field-by-field | [`../../schema/package.schema.json`](../../schema/package.schema.json), [`../RESOURCE-ENGINE.md`](../RESOURCE-ENGINE.md) |
-| Every `.deb` NostrHost ships, its contents and dependency graph | [`../../packaging/README.md`](../../packaging/README.md) |
-
-## Planned pages
-
-| Page | Will cover |
-|---|---|
-| CLI reference *(TODO)* | Every `nostrhost` subcommand — generate from the CLI's own `--help` once stable |
-
-## Related reading
-
-- [`dev/`](../dev/README.md) for how these pieces fit together.
-- [`admin/`](../admin/README.md) for operating a server day to day rather
-  than integrating with it.
+Generated clients should use exported schemas or catalogues rather than parse
+human documentation.

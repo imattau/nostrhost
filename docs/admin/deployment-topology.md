@@ -1,14 +1,8 @@
-# Deployment topology
+# Deployment and network layout
 
-How a single NostrHost server is laid out: what listens where, what
-terminates TLS, and how a request reaches an app. This is a summary of
-[`../CADDY-MIGRATION.md`](../CADDY-MIGRATION.md); read that for the full
-phased history and rationale.
-
-> **Status.** NostrHost targets a **single-server** deployment model — one
-> machine running the full stack, not a multi-node cluster. Multi-host/fleet
-> projection is a later idea (see `../MCP-TRANSITION.md` §7) and not part of
-> the current architecture.
+NostrHost is designed as a single-server platform. One machine runs the web
+edge, control plane, server-management engine, interfaces, and supporting
+services.
 
 ## Request path
 
@@ -16,77 +10,64 @@ phased history and rationale.
 Internet
    │
    ▼
-Caddy (public 80/443, 443/udp for HTTP/3; admin API on 127.0.0.1:2019)
-   ├─ TLS: automatic ACME (Let's Encrypt) for public domain names
-   │        `tls internal` (self-signed) for .test/.local/non-public names
-   ├─ domains + native app routes, generated from semantic state
-   ├─ forward_auth → nostrhost-authd (Python) → ALLOW / DENY /
-   │        302-to-portal, with X-Remote-*/X-Nostr-* compatibility headers
-   ├─ reverse_proxy → the native API, portal API, OIDC, native app upstreams
-   └─ file_server → the Portal and Admin single-page apps
+Caddy on ports 80 and 443
+   ├── HTTPS certificates and redirects
+   ├── authentication check through nostrhost-authd
+   ├── Admin and Portal static files and APIs
+   └── reverse proxy to hosted apps
 ```
 
-Caddy is the **single web/TLS front end** — nginx and SSOwat have been
-retired (see the "Component disposition" table in
-[`../CADDY-MIGRATION.md`](../CADDY-MIGRATION.md)). All access control that
-used to live in SSOwat's Lua now lives in `nostrhost-authd`, evaluated per
-request via Caddy's `forward_auth` directive.
+Caddy is the only public web entry point. Its administration endpoint, the
+NostrHost APIs, and the control relay are loopback-only.
 
-## What runs on the box
+## Main services
 
-| Layer | Component(s) | Role |
-|---|---|---|
-| Web/TLS | Caddy (+ `caddy-l4` for TLS passthrough) | Public-facing termination, routing, certificates |
-| Auth | `nostrhost-authd` | Per-request ALLOW/DENY decision behind `forward_auth` |
-| Control plane | `nostrhost-control` (khatru relay) | Local Nostr relay — the control-plane bus (see [`architecture-overview.md`](../dev/architecture-overview.md)) |
-| Core engine | `nostrhost-core` (the YunoHost-derived engine) | App lifecycle, domains, backups, services, diagnosis |
-| Security | CrowdSec + `crowdsec-firewall-bouncer` (nftables mode) | Intrusion detection/decision + enforcement (see [security-model.md](security-model.md)) |
-| Catalogue | `nostrhost-catalog` | App discovery/resolution over Nostr |
-| Notifications | `nostrhost-notify` | NIP-17/59 encrypted admin notifications |
-| Runtime | `/opt/nostrhost/venv` (`nostrhost-runtime`) | Private venv for Python deps not in Debian bookworm |
+| Service | Purpose |
+|---|---|
+| Caddy | HTTPS, certificates, routing, static files, and reverse proxying |
+| `nostrhost-authd` | Per-request identity and access checks |
+| `nostrhost-control` | Local Nostr relay and administrative event bus |
+| `nostrhost-core` | Apps, domains, users, services, backups, and diagnosis |
+| `nostrhost-catalog` | Trusted app discovery and package metadata |
+| `nostrhost-notify` | Encrypted administrator notifications |
+| CrowdSec and nftables | Detection, decisions, and network enforcement |
+| Restic | Deduplicated, encrypted backup storage |
+| Portal and Admin | User and operator web interfaces |
+| `nostrhost-nsite` | Optional NIP-5A site gateway on a dedicated domain |
 
-See [`../../packaging/README.md`](../../packaging/README.md) for the
-complete package → dependency graph, and
-[`architecture-overview.md`](../dev/architecture-overview.md) for how these
-talk to each other via the relay.
+The optional `nostrhost-agent` and `nostrhost-mcp` services are not required
+for a normal server.
 
-## Domains and DNS
-
-Every domain served by NostrHost needs to resolve to the server's public IP
-before Caddy can obtain a certificate for it. During evaluation, a
-dynamic-DNS domain (e.g. DuckDNS) works; for a real deployment, point your
-own domain's A/AAAA record at the server. Native DNS-provider integration
-(Cloudflare, deSEC, DuckDNS, manual) is a later-phase item — see the "Later
-phase" section of [`../ALPHA-PLAN.md`](../ALPHA-PLAN.md) (§26).
+The nsite gateway is also optional. When enabled with `nostrhost nsite`, it
+receives its own managed Caddy route and serves signed Nostr site content. Keep
+it on a dedicated registered domain so its public content boundary is clear.
 
 ## Network exposure
 
-- **Public:** Caddy's 80/443 (and 443/udp for HTTP/3) — this is the only
-  inbound surface a NostrHost server needs.
-- **Loopback-only:** the control-plane relay (`nostrhost-control`), Caddy's
-  admin API (`127.0.0.1:2019`), the native API and portal API upstreams
-  Caddy reverse-proxies to.
-- **No inbound relay port.** The control-plane relay is never
-  Internet-reachable; selective outbound sync publishes catalogue/trust
-  events to external relays, and pulls in the other direction, but nothing
-  external can connect to the local relay directly. See
-  [`../CONTROL-PLANE.md`](../CONTROL-PLANE.md) §3 and
-  [`../STATELAYER.md`](../STATELAYER.md) for why this boundary matters for
-  the audit/identity model.
+- TCP 80 and 443 are public for HTTP and HTTPS.
+- UDP 443 is optional for HTTP/3.
+- SSH should be restricted by firewall, source network, or another controlled
+  access path where possible.
+- Internal APIs, relay endpoints, databases, Caddy administration, and app
+  backends must not be exposed directly.
 
-## Legacy app compatibility (transitional)
+The control relay is local by design. Selective outbound relay connections may
+publish or fetch catalogue, state, or trust information, but external clients
+do not connect directly to the internal control plane.
 
-Apps still built on the traditional `_ynh`/Bash packaging model are served
-by a legacy nginx instance bound to `127.0.0.1:8080` (no public ports),
-reverse-proxied by Caddy. This shim is explicitly temporary — see
-[`../LEGACY-INVENTORY.md`](../LEGACY-INVENTORY.md) for what's still on it
-and the removal gate. New apps should use the native `package.toml` model
-described in [`../RESOURCE-ENGINE.md`](../RESOURCE-ENGINE.md).
+## Domains and certificates
 
-## Related reading
+Each public domain must resolve to the server before Caddy can obtain a public
+certificate. Keep both IPv4 and IPv6 records accurate. Non-public development
+names use locally trusted certificates and are unsuitable for ordinary public
+browsers without additional trust configuration.
 
-- [`security-model.md`](security-model.md) — what protects this topology
-  from abuse.
-- [`upgrades-and-migrations.md`](upgrades-and-migrations.md) — how this
-  topology got here (nginx → Caddy, fail2ban → CrowdSec) and what upgrading
-  across those changes involves.
+DNS provider credentials are handled through the credential broker and should
+not be stored in package manifests, shell scripts, or the event stream.
+
+## App routing
+
+Native app routes are generated from declared package resources. Access checks
+run before traffic reaches a protected app. Compatibility apps can be served
+through an internal legacy web backend, but that backend remains private and
+new packages should use native routes.

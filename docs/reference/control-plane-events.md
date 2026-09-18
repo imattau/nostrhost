@@ -1,114 +1,73 @@
-# Control-plane event reference
+# Control-plane events
 
-The concrete event kinds NostrHost's control plane uses today, plus the
-standard NIPs it relies on instead of inventing new ones. This is a
-lookup-table companion to [`../CONTROL-PLANE.md`](../CONTROL-PLANE.md) (the
-narrative design) and [`../NIP-MAPPING.md`](../NIP-MAPPING.md) (the
-requirement → NIP mapping); those remain authoritative, and the final
-registry is a `nostrhost-control` `EVENT-PROTOCOL.md` deliverable, not this
-repo. Treat the kind numbers below as **current, not frozen** — Phase 2 of
-the roadmap validates the final registry against the live NIPs.
+NostrHost uses a local, authenticated Nostr relay as its administrative event
+bus. Events are signed and linked, so every interface sees the same operation
+history.
 
-## Kind-range discipline (NIP-16 / NIP-33)
+The custom kind numbers are an internal protocol contract and may change
+before the first stable release.
 
-| Range | Semantics | Used for |
-|---|---|---|
-| `1000–9999` | Regular (stored, immutable, one per event) | The operation request → approval → rejection → execution chain; system/service/security notices |
-| `10000–19999` | Replaceable | Reserved (current-state snapshots, if ever needed) |
-| `20000–29999` | Ephemeral (not stored) | Transient coordination messages, if needed |
-| `30000–39999` | Addressable (`d`-tag keyed, replaceable per subject) | Server-authoritative identity/role/capability definitions; trust/policy declarations not expressible as a NIP-51 list |
+## Operation chain
 
-## The operation chain (kinds 2200–2205)
+| Kind | Meaning | Required link |
+|---:|---|---|
+| 2200 | Operation request | Event ID becomes the request ID |
+| 2201 | Approval | `e` tag refers to request |
+| 2202 | Rejection | `e` tag refers to request |
+| 2203 | Execution started | `e` tag refers to request |
+| 2204 | Execution result | `e` tag refers to request |
+| 2205 | Execution progress | `e` tag refers to request |
 
-The audit-trail chain every administrative action flows through:
+A request contains a registered tool name and JSON arguments. Policy decides
+whether it can run immediately, needs approval, or must be rejected. Only the
+configured server identity may publish execution and result events.
 
-| Kind | Meaning |
-|---|---|
-| `2200` | Operation **request** |
-| `2201` | **Approval** |
-| `2202` | **Rejection** |
-| `2203` | **Executing** (started) |
-| `2204` | **Result** (terminal: success/failure) |
-| `2205` | **Progress** (intermediate updates for long-running operations) |
+The terminal state is derived from the newest valid rejection or result. Event
+arrival order alone is not authority; consumers validate signatures, authors,
+references, and schemas.
 
-Correlation across the chain is an `["e", request-id]` tag pointing back to
-the originating `2200` request. The executor daemon subscribes to this
-range plus `31100`/`27236`/`27237` (delegation/capability-adjacent kinds),
-validates signer authority and policy, executes, and signs terminal states
-with the server's own key. Clients (CLI `op follow/status`, the API's SSE
-endpoint, the MCP adapter) stream progress by `REQ`-subscribing to
-`2203`/`2204`/`2205` filtered by `#e`.
-
-## System / service / security notices (2210–2213)
+## Definitions and delegation
 
 | Kind | Meaning |
-|---|---|
-| `2210` | System notice |
-| `2211` | Service notice |
-| `2212` | Backup notice *(inferred from the 2210–2213 range; confirm against the live `EVENT-PROTOCOL.md` before depending on it)* |
-| `2213` | Security notice |
+|---:|---|
+| 31100 | Capability or role grant for a public key |
+| 31101 | Trust or policy declaration |
+| 31102 | Identity definition linking a public key and account |
+| 27236 | Scoped, expiring capability delegation |
+| 27237 | Delegation revocation |
 
-These are distinguished from each other by a `class` field/tag in content
-rather than by separate kinds per notification type — e.g. "update
-available", "recovery result" and "certificate event" all ride on `2210`
-(system) or `2211` (service) with a differing `class`, and a CrowdSec ban
-rides on `2213` with `class = "security"`. This is the source the
-notification service ([`../admin/notifications.md`](../admin/notifications.md))
-subscribes to. See [`../NOTIFICATION-SERVICE.md`](../NOTIFICATION-SERVICE.md)
-§3 for the full class table.
+Definition events are addressable: a newer valid event replaces the earlier
+definition for the same address. Revoking an identity publishes a disabled
+definition. A delegator cannot grant scopes it does not hold.
 
-## State-bundle replication (kind 2214)
+## Operational notices
 
-Stage-C ngit disaster-recovery chunks: a gzip git bundle of the
-configuration-state repository, split into signed chunks and published
-outbound to external relays so the repository can be reconstructed from
-relays + server identity alone. See
-[`../admin/backup-and-recovery.md`](../admin/backup-and-recovery.md).
+| Kind | Meaning |
+|---:|---|
+| 2206 | Authentication or login notice |
+| 2210 | General system event |
+| 2211 | Service event |
+| 2212 | Backup event |
+| 2213 | Security event |
 
-## Standard Nostr primitives NostrHost relies on
+Notice content is a JSON object. Producers should include `class`, `severity`
+(`info`, `warning`, or `critical`), and a short `summary`. Notification
+consumers use these fields, while the raw event remains the audit source.
 
-Rather than custom kinds for everything, most control-plane requirements
-map onto existing NIPs:
+## Standard Nostr features
 
-| Requirement | NIP / kind |
-|---|---|
-| Public user profile | kind `0` (NIP-01) |
-| Delegated event signing (agent keys) | NIP-26 |
-| Relay client authentication | NIP-42 (kind `22242`) |
-| Encrypted payloads inside signed events | NIP-44 |
-| Lists / sets (trusted publishers, approved repos, preferred relays, groups) | NIP-51 (kinds `10000`/`10002`/`30000`/`30002`/`10006`) |
-| Relay list metadata | NIP-65 (kind `10002`) |
-| Relay discovery / liveness | NIP-66 (kinds `30166`/`10166`) |
-| Protected events | NIP-70 |
-| State/event sync (catalogue, control events) | NIP-77 Negentropy |
-| App/user settings | NIP-78 (kind `30078` addressable, or kind `78`) |
-| Relay administration (allow/ban pubkeys & kinds, roles) | NIP-86 |
-| HTTP request authentication | NIP-98 (kind `27235`) |
-| Software application discovery | NIP-89 handlers + kind `32267` (software-application), `30063` (release-artifact sets), `30267` (app-curation sets) |
-| Administrative notifications | NIP-17 (private DM) + NIP-59 (gift wrap) |
-| State-repository discovery | NIP-34 (kind `30617`, repository announcement) |
+NostrHost uses standard features where they fit: kind 0 profiles, NIP-26
+delegation concepts, NIP-34 repository announcements, NIP-42 relay
+authentication, NIP-44 encryption, NIP-51 lists, NIP-65/66 relay metadata,
+NIP-77 synchronisation, NIP-78 application data, NIP-86 relay management, and
+NIP-98 HTTP authentication.
 
-See [`../NIP-MAPPING.md`](../NIP-MAPPING.md) for the complete
-component-by-component mapping, including what each primitive replaces from
-YunoHost's original control plane, and which decisions are still marked "to
-verify" versus locked.
+## Validation and access
 
-## What is deliberately *not* a relay event
+The relay validates timestamps, size, kind policy, writer policy,
+authentication, schema, and required references. Protected reads also require
+authentication. Relay management requires a NIP-98 signature from a configured
+administrator.
 
-| Stays local (HTTP/auth subsystem) |
-|---|
-| Live browser sessions, cookies |
-| CSRF state |
-| Login/link challenge state |
-| The `broker/` Unix-socket privilege boundary |
-| LDAP writes (being retired regardless — see [`../LDAP-RETIREMENT.md`](../LDAP-RETIREMENT.md)) |
-
-The relay records `LOGIN_SUCCEEDED`/`LOGIN_REVOKED`/`IDENTITY_LINKED`
-*notices*, but is never the live session store itself.
-
-## Related reading
-
-- [`../dev/architecture-overview.md`](../dev/architecture-overview.md) — the
-  narrative version of how these events flow through the system.
-- [`mcp-integration.md`](mcp-integration.md) — how an MCP client submits and
-  observes these events without needing root authority itself.
+The relay binds to loopback. Sessions, cookies, CSRF tokens, login challenges,
+plaintext secrets, and bulk app data are deliberately not relay events.
