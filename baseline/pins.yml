@@ -27,8 +27,8 @@ forks:
     branch: nostrhost          # derivative branch (first fork modification, Phase 3)
     derivative: true
     pin: debian/12.1.41.2      # upstream baseline the branch was cut from
-    pin_commit: adedf057d095b1ec460142ada09dc363c6c4dbac
-    live_server: 12.1.41.85
+    pin_commit: 3f54f8e94d4d4f05b285fc1e4d00b2c7be6207f7
+    live_server: 12.1.41.86
 
   - component: portal          # Nuxt/Vue/TypeScript user portal
     upstream_repo: YunoHost/yunohost-portal
@@ -49,7 +49,7 @@ forks:
     branch: dev               # Tailwind/shadcn-vue redesign (app shell, PR #1)
     derivative: true
     pin: debian/12.1.15
-    pin_commit: 764ff9f9aef2b8cdf2380d5176ab9dbffb0fc446
+    pin_commit: 27fa23ac080d28f42b4a6df9001601c3058e7e94
     live_server: 12.1.15
 
   - component: installer       # Debian ISO graphical installer image builder
@@ -96,7 +96,7 @@ libraries:
     repo: imattau/nostrhost-control
     path: libs/nostrhost-control
     branch: main
-    pin_commit: 235d77d89c05ffbbb452f65b7777db8c86ed6bfa
+    pin_commit: 7b6eeae954b29a41bc1d181c8558e1269e1b7233
     stack: khatru-based Go relay (NIP-11/42/77/86/98)
     event_protocol: libs/nostrhost-control/EVENT-PROTOCOL.md
     selection: docs/RELAY-SELECTION.md
