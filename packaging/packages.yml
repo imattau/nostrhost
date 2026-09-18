@@ -156,7 +156,7 @@ packages:
   # independent packages even though they share a source repository.
   - name: nostrhost-control
     kind: golang
-    version: "0.1.5"                     # badger MaxLimit raised so chain replays/lists are not truncated at 125 events
+    version: "0.1.6"                     # notify: bare 2200 is informational; approval is the executor's 2210 notice
     source:
       repo: imattau/nostrhost-control
       submodule: libs/nostrhost-control
@@ -170,7 +170,7 @@ packages:
 
   - name: nostrhost-notify
     kind: golang
-    version: "0.1.2"                     # from tag notify/v0.1.0 in CI
+    version: "0.1.3"                     # bare 2200 no longer claims "approval required"
     source:
       repo: imattau/nostrhost-control
       submodule: libs/nostrhost-control

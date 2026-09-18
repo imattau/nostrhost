@@ -27,8 +27,8 @@ forks:
     branch: nostrhost          # derivative branch (first fork modification, Phase 3)
     derivative: true
     pin: debian/12.1.41.2      # upstream baseline the branch was cut from
-    pin_commit: d495f14331e5009b40e572d1e826725e5e78ab87
-    live_server: 12.1.41.89
+    pin_commit: c0af761bb6fcec1839b7811509a268d016d0d635
+    live_server: 12.1.41.90
 
   - component: portal          # Nuxt/Vue/TypeScript user portal
     upstream_repo: YunoHost/yunohost-portal
@@ -96,7 +96,7 @@ libraries:
     repo: imattau/nostrhost-control
     path: libs/nostrhost-control
     branch: main
-    pin_commit: 09074e65c900affddc5e94f804bd86d7d5467b55
+    pin_commit: 07f378c8fbfdfd3fa9a131c74595ece532358a3c
     stack: khatru-based Go relay (NIP-11/42/77/86/98)
     event_protocol: libs/nostrhost-control/EVENT-PROTOCOL.md
     selection: docs/RELAY-SELECTION.md
