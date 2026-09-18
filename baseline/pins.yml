@@ -27,8 +27,8 @@ forks:
     branch: nostrhost          # derivative branch (first fork modification, Phase 3)
     derivative: true
     pin: debian/12.1.41.2      # upstream baseline the branch was cut from
-    pin_commit: 712d2a02f4399861a54e61f6555718e7911dd7cf
-    live_server: 12.1.41.82
+    pin_commit: 32c3ea5aeb26acb7aef6fa72b262277b57f2e665
+    live_server: 12.1.41.83
 
   - component: portal          # Nuxt/Vue/TypeScript user portal
     upstream_repo: YunoHost/yunohost-portal
@@ -90,7 +90,7 @@ libraries:
     repo: imattau/nostrhost-catalog
     path: libs/nostrhost-catalog
     branch: main
-    pin_commit: 1f74499011d9f70329271af1677496bab6d42a4f
+    pin_commit: 152833f42458bfbc97f0cb3574102c54e5d1e218
 
   - component: control         # control plane: local relay + event model (Phase 2)
     repo: imattau/nostrhost-control
