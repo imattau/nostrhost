@@ -27,8 +27,8 @@ forks:
     branch: nostrhost          # derivative branch (first fork modification, Phase 3)
     derivative: true
     pin: debian/12.1.41.2      # upstream baseline the branch was cut from
-    pin_commit: 9c97fbe5193bd482b4940d926ce6eb87af9eb123
-    live_server: 12.1.41.74
+    pin_commit: 05c2eb0f39e60f37bd581bb9df4c9c608e9d28a4
+    live_server: 12.1.41.75
 
   - component: portal          # Nuxt/Vue/TypeScript user portal
     upstream_repo: YunoHost/yunohost-portal
