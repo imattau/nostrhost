@@ -112,12 +112,18 @@ unsigned approval to it directly, over the relays the signer already listens
 on:
 
 ```bash
-# register the signer once (the URI carries the pairing secret; stored 0600)
+# preferred: pair by scanning a nostrconnect:// URI (no secret stored)
+nostrhost notify signer pair --relay wss://relay.example.com
+
+# alternative: register a bunker:// URI (carries the pairing secret; stored 0600)
 nostrhost notify signer add "bunker://<signer-pubkey>?relay=wss://...&secret=..."
 
 # after adding/removing an admin or linking/unlinking an identity
 nostrhost notify sync
 ```
+
+The Operations page shows whether the node pushes to your signer (and whether
+any signer is registered), and its list refreshes automatically while open.
 
 When the executor parks a request it publishes an explicit kind-2210 notice
 (class `approval`); `nostr-signerd` consumes that notice and, for every
