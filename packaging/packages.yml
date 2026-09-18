@@ -223,7 +223,7 @@ packages:
   # packages until its provisioning and operational lifecycle is mature.
   - name: nostrhost-agent
     kind: golang
-    version: "0.1.6"
+    version: "0.1.7"
     source:
       repo: imattau/nostrhost-agent
       submodule: libs/nostrhost-agent
@@ -327,7 +327,7 @@ packages:
   # ------------------------------------------------------------- web SPA ----
   - name: nostrhost-admin
     kind: spa
-    version: "0.1.20"
+    version: "0.1.21"
     source:
       repo: imattau/nostrhost-admin
       submodule: forks/admin
