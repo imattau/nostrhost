@@ -156,7 +156,7 @@ packages:
   # independent packages even though they share a source repository.
   - name: nostrhost-control
     kind: golang
-    version: "0.1.4"                     # approval/rejection authority deferred to operationsd (dynamic admin resolution)
+    version: "0.1.5"                     # badger MaxLimit raised so chain replays/lists are not truncated at 125 events
     source:
       repo: imattau/nostrhost-control
       submodule: libs/nostrhost-control
