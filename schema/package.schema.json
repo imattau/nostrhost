@@ -443,6 +443,10 @@
     "RuntimeInstanceResource": {
       "description": "A per-user runtime instance template (``multi-tenant-runtime`` class).\n\nUnlike ``ServiceResource``, this never describes one concrete process: it\ndescribes the ``<app>@.service``/``<app>@.socket`` *templates* systemd\ninstantiates once per connecting user (``%i``). ``exec``/``environment``\nmay reference the literal ``%i`` specifier so the rendered unit resolves\nit per instance; ``security`` reuses ``ServiceSecurity`` rather than a\nparallel model so both process kinds share one hardening/caps surface.\n\nMost apps (opencode included) only know how to bind a TCP port, not a\nUnix socket, so the instance itself gets ``PrivateNetwork=yes`` and binds\n``127.0.0.1:internal_port`` inside its own isolated network namespace -\nevery instance can safely reuse the same fixed port since no two\ninstances share a namespace. A paired ``<app>-bridge@.service`` running\nthe standard ``systemd-socket-proxyd`` (shipped with systemd) is what\nCaddy's ``socket_path_template`` actually connects to; it joins the\ninstance's namespace (``JoinsNamespaceOf=``) and forwards to\n``internal_port``. This is the standard systemd idiom for giving socket\nactivation to a daemon that only speaks TCP - see native_providers.py's\n``RuntimeInstanceTemplateProvider`` for the rendered units.",
       "properties": {
+        "cache_dir_env": {
+          "title": "Cache Dir Env",
+          "type": "string"
+        },
         "config_dir_env": {
           "title": "Config Dir Env",
           "type": "string"
@@ -496,6 +500,10 @@
         "socket_path_template": {
           "minLength": 1,
           "title": "Socket Path Template",
+          "type": "string"
+        },
+        "state_dir_env": {
+          "title": "State Dir Env",
           "type": "string"
         },
         "state_directory": {

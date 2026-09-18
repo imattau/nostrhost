@@ -33,8 +33,9 @@ mode = 0o755
 
 [runtime_instance]
 # %i is the per-connection username (systemd's template instance specifier);
-# HOME/OPENCODE_CONFIG_DIR are pointed at that user's own state directory so
-# instances never share config, API tokens, or session history.
+# every *_env below points at that same per-user state directory so
+# instances never share config, provider tokens, session history, or
+# project/repo storage.
 #
 # Confirmed against the real opencode CLI (anomalyco/opencode, packages/cli/
 # src/commands/handlers/serve.ts + packages/web/src/content/docs/server.mdx):
@@ -47,12 +48,24 @@ mode = 0o755
 # socket_path_template; a paired `opencode-web-bridge@.service`
 # (systemd-socket-proxyd, rendered automatically) forwards from that socket
 # into this instance's private loopback port.
+#
+# `config_dir_env` alone is NOT enough: per opencode's own source
+# (packages/core/src/global.ts), OPENCODE_CONFIG_DIR only overrides
+# Path.config. Path.data/Path.cache/Path.state - and critically Path.repos,
+# where "open project" actually clones/caches project repos - are derived
+# from XDG_DATA_HOME/XDG_CACHE_HOME/XDG_STATE_HOME instead (falling back to
+# $HOME only if those are unset). Without data_dir_env/cache_dir_env/
+# state_dir_env set here, every instance's projects could resolve to the
+# same shared fallback location.
 exec = "/opt/opencode-web/opencode serve --hostname 127.0.0.1 --port 35353"
 state_directory = "opencode-web"
 socket_path_template = "/run/opencode-web/%i.sock"
 internal_port = 35353
 home_env = "HOME"
 config_dir_env = "OPENCODE_CONFIG_DIR"
+data_dir_env = "XDG_DATA_HOME"
+cache_dir_env = "XDG_CACHE_HOME"
+state_dir_env = "XDG_STATE_HOME"
 idle_timeout_seconds = 900
 cpu_quota_percent = 100
 memory_max_mb = 1024
