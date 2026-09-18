@@ -90,7 +90,7 @@ only to *consume* them:
 |---|---|---|
 | backup result | backup executor → backup-result event | row 10 (backup completion/failure mail) |
 | health alert | diagnosis / health-check projector | — |
-| approval required | operation-request event (kind 2200) awaiting kind 2201 | — |
+| approval required | executor's explicit park notice (kind 2210, class `approval`, published only when a request actually parks) | — |
 | operation result | operation-execution/result events (kinds 2203/2204) | — |
 | security event | security projector (roadmap §18.5; **CrowdSec** → structured event — fail2ban retired in `CROWDSEC-MIGRATION.md` P6) | — |
 | update available | package/catalogue update check | — |
@@ -228,6 +228,15 @@ Done (2026-09-11): `state/notifications/*` wired through `nostrhost-state`
 verified); real outbound relays — `wss://nos.lol` delivers the security DM
 (NIP-17-friendly; `relay.damus.io` accepts kind-1059 but does not index/return
 it via `#p`, so it is not usable for DM discovery).
+
+Signer push (2026-09-18): `nostr-signerd` (core) turns the park notice into
+a NIP-46 `sign_event` request against each registered admin remote signer's
+own relays, then validates and publishes the returned 2201. The executor only
+emits the park notice when a request actually parks, so auto-executed admin
+requests are never pushed (a bare kind-2200 is informational). Verified end to
+end on the testbed: park → kind-2210 → bridge → signer on its relay → signed
+2201 → executor. DM remains the fallback when no signer is registered or it
+is offline.
 
 Done during deployment (2026-09-11): integration test against a live relay —
 `internal/notify/service_integration_test.go` boots the real relay and proves

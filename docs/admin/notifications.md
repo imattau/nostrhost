@@ -104,6 +104,35 @@ key. Wiring for certificate/backup/cron event sources is still in progress
 — see the status table in [`../NOTIFICATION-SERVICE.md`](../NOTIFICATION-SERVICE.md)
 for exactly what's live versus pending.
 
+## Remote signers (NIP-46) for approvals
+
+A DM tells an admin that approval is needed, but they still have to open the
+console to sign. If an admin has a NIP-46 remote signer, the node can push the
+unsigned approval to it directly, over the relays the signer already listens
+on:
+
+```bash
+# register the signer once (the URI carries the pairing secret; stored 0600)
+nostrhost notify signer add "bunker://<signer-pubkey>?relay=wss://...&secret=..."
+
+# after adding/removing an admin or linking/unlinking an identity
+nostrhost notify sync
+```
+
+When the executor parks a request it publishes an explicit kind-2210 notice
+(class `approval`); `nostr-signerd` consumes that notice and, for every
+registered admin signer, sends a NIP-46 `sign_event` request for the 2201
+approval to the signer's relays. The signer's owner approves on their signer,
+and the node validates and publishes the returned event. The node holds only
+its own `signer_client_sk` (it never signs the approval itself), and a signer
+that returns an event from the wrong identity is ignored. A request that
+auto-executes (the actor already has approval authority) never produces a
+notice, so it is never pushed.
+
+If no signer is registered or the signer is offline, the NIP-17 DM from the
+notification service is the fallback: the admin opens the console and signs
+there.
+
 ## Related reading
 
 - [`security-model.md`](security-model.md) — where the `security` event
