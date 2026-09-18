@@ -81,7 +81,7 @@ the **working specifications**; the plan, its phases and its status live here.
 | §7 | State history + recovery (ngit/NIP-34, Stages A–D) | ◑ | Stage D tail (reconcile auto-apply hardening); Stages A–C ✅ |
 | §8 | Portal Nostr authentication | ✓ | real-browser passkey attestation + visual app-grid pass (headless limit only) |
 | §9 | Restic linkage + assisted rollback (Stage B) | ✅ | reverse steps for app reinstall/upgrade stay manual pending install-arg provenance |
-| §10 | Admin interface (native management views) | ◑ | native package authoring screen + planning API landed (fork `63c6eb307`); identities/agents/delegations/approvals/catalogue/trust/audit views ⏳ |
+| §10 | Admin interface (native management views) | ◑ | native package authoring screen + planning API landed (fork `63c6eb307`); Restic restore-points + state/recovery views landed (Backups `/backups`, Recovery `/recovery`); identities/agents/delegations/approvals/catalogue/trust/audit views ⏳ |
 | §11 | Native Nostr catalogue | ✓ | `catalog.list/get/publish/verify` native ops landed (MCP Phase 5); Admin catalogue UI ⏳ |
 | §12 | Web-layer auth (Caddy `forward_auth`, SSOwat retired) | ✓ | P7 residual-reference cleanup (§20) |
 | §13 | MCP adapter | ✅ | MCP transition Phases 6–8 (below) |
@@ -951,6 +951,14 @@ State
 
 System health
 ```
+
+**Landed:** the *Restore points* and *State* views are live as the console's
+**Backups** (`/backups`, Restic restore points + retention/schedule) and
+**Recovery** (`/recovery`, known-good/history/diff, assisted rollback
+plan-and-apply, drift and disaster-recovery readiness) screens. The backup
+surface is Restic-only: the legacy YunoHost archive tools/UI were removed and
+the `backup.*` registry now wraps Restic snapshots (create/list/info/restore/
+delete/check/stats) plus `backup.policy.*` and a `nostrhost-backup.timer`.
 
 ---
 

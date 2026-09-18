@@ -25,7 +25,8 @@ exercises (`forks/yunohost/src/nostrhost/api.py`, the `ToolSpec` registry in
 | Firewall | `/firewall` | `firewall.list/open/close/reload` | Port/UPnP management; closing 22/80/443 requires typing the port to confirm. |
 | Services | `/services` | `service.status/control` | Status-aware start/stop/restart; disruptive actions confirm first. |
 | Updates | `/updates` | `updates.check/refresh/apply`, `system.migrations/migrate` | Pending package updates and platform migrations. |
-| Backups | `/backups` | `backup.list/create/info/restore/delete` | Archive inventory, contents (apps/system), create/restore/delete. |
+| Backups | `/backups` | `backup.list/create/info/restore/delete/check/stats/policy.read/policy.set/schedule` | Restic restore points, create/restore/forget, integrity check, retention policy and scheduled backups. |
+| Recovery | `/recovery` | `state.status/history/diff/rollback.plan/reconcile.plan/publish`, `rollback.apply` | Known-good marker, history/diff, assisted rollback plan-and-apply, disaster-recovery readiness and state replication. |
 | Diagnosis | `/diagnosis` | `diagnosis.run/ignored/ignore/unignore` | Per-category health checks; admin-gated ignore-filter controls. |
 | Settings | `/settings` | `settings.list/get/set/reset/reset_all` | Global YunoHost settings; reset-all requires typed confirmation. |
 | Power | `/power` | `system.reboot/shutdown` | Reboot (disruptive) and shutdown (destructive, typed confirmation). |

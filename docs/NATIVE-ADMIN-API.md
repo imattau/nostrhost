@@ -53,7 +53,8 @@ approval) must be checked, HTTP 200 does not mean success.
 | `/package/dns` | DNS record plan/apply/verify, provider credential refs |
 | `/package/credential` | Stored DNS credential list |
 | `/package/firewall` | Port/UPnP list, open, close, reload |
-| `/package/backup` | Archive list, info (contents), create, restore, delete |
+| `/package/backup` | Restic restore points: list, info, create, restore, delete (forget/prune), check, stats, retention policy, schedule |
+| `/package/state` | State repository (ngit/NIP-34): status, history, diff, rollback plan/apply, reconcile plan, publish |
 | `/package/diagnosis` | Run, ignored list, ignore/unignore |
 | `/package/service` | Status, control (start/stop/restart) |
 | `/package/settings` | Global settings list/get/set/reset/reset-all |
