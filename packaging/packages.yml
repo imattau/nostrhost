@@ -327,7 +327,7 @@ packages:
   # ------------------------------------------------------------- web SPA ----
   - name: nostrhost-admin
     kind: spa
-    version: "0.1.22"
+    version: "0.1.23"
     source:
       repo: imattau/nostrhost-admin
       submodule: forks/admin
