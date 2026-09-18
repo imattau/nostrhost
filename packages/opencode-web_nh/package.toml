@@ -19,7 +19,13 @@ installation_class = "multi-tenant-runtime"
 
 [app]
 id = "opencode-web_nh"
-version = "1.18.30"
+# ~nh<N> is a packaging-only revision suffix (YunoHost's convention is
+# ~ynh<N>): the upstream binary/source below is unchanged, but the app
+# lifecycle's upgrade gate compares this string for equality against the
+# installed version (app_management.py) and refuses to upgrade otherwise -
+# bump this whenever a packaging-only fix (like this one) needs `app
+# upgrade opencode-web_nh` to actually apply it.
+version = "1.18.30~nh1"
 
 [source.app]
 url = "https://github.com/anomalyco/opencode/releases/download/v1.18.30/opencode-linux-x64.tar.gz"
