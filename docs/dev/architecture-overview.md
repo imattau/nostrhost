@@ -23,7 +23,8 @@ nostrhost/
 │   └── yunohost-mcp/         compatibility MCP implementation
 ├── packages/           example and test native apps
 ├── packaging/          Debian build, compatibility, and publication tools
-├── schema/             native app manifest schema
+├── schema/             native app manifest + authority-registry schemas
+├── authority/          state authority register and event authority matrix
 ├── baseline/           pinned component revisions
 ├── scripts/            repository verification tools
 └── testbed/            VM and end-to-end tests
@@ -56,6 +57,19 @@ privileged backend. Projectors build convenient read models from signed events.
 The executor is the single machine-state writer. It validates operation names
 and arguments against the operation catalogue, checks policy, records start and
 result events, and calls the underlying service layer.
+
+## State and authority
+
+Every persistent control-plane fact has exactly one documented authority,
+recorded in [`authority/registry.toml`](../../authority/registry.toml):
+signed relay events, the ngit semantic-state repository, a local secret store,
+minimal bootstrap config, or a rebuildable projection. The classification and
+the direct-write inventory are in
+[authority-register.md](authority-register.md); `tools/authority_registry.py
+check` enforces registration in CI. Projectors that materialise read models
+from events share one lifecycle and runtime
+([projector-framework.md](projector-framework.md)). These are the WP0–WP2
+foundation of the [relay-backed control state plan](../RELAY-STATE-MIGRATION-PLAN.md).
 
 ## Identity and policy
 

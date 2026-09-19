@@ -1,0 +1,8 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/imattau/nostrhost/blob/main/authority/event-protocol/schemas/10002-relay-list.schema.json",
+  "title": "NIP-65 kind 10002 — relay list metadata",
+  "description": "Replaceable. r=<ws://|wss:// URL> tags, optionally followed by read/write marker. Content is empty.",
+  "type": ["object", "null"],
+  "additionalProperties": false
+}

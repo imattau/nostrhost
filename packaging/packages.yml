@@ -156,7 +156,7 @@ packages:
   # independent packages even though they share a source repository.
   - name: nostrhost-control
     kind: golang
-    version: "0.1.6"                     # notify: bare 2200 is informational; approval is the executor's 2210 notice
+    version: "0.1.7"                     # WP1 eventprotocol conformance + eventmodel validation
     source:
       repo: imattau/nostrhost-control
       submodule: libs/nostrhost-control
@@ -170,7 +170,7 @@ packages:
 
   - name: nostrhost-notify
     kind: golang
-    version: "0.1.3"                     # bare 2200 no longer claims "approval required"
+    version: "0.1.4"                     # WP1 eventprotocol conformance
     source:
       repo: imattau/nostrhost-control
       submodule: libs/nostrhost-control
@@ -185,7 +185,7 @@ packages:
 
   - name: nostrhost-catalog
     kind: golang
-    version: "0.1.5"
+    version: "0.1.6"                     # NIP-77 negentropy DOWN sync + rebuild/verify (WP5)
     source:
       repo: imattau/nostrhost-catalog
       submodule: libs/nostrhost-catalog
@@ -223,7 +223,7 @@ packages:
   # packages until its provisioning and operational lifecycle is mature.
   - name: nostrhost-agent
     kind: golang
-    version: "0.1.10"
+    version: "0.1.11"                 # regenerated catalogue: list.*/projection.status/audit tools (WP2-WP5)
     source:
       repo: imattau/nostrhost-agent
       submodule: libs/nostrhost-agent

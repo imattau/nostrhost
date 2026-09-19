@@ -1,0 +1,22 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/imattau/nostrhost/blob/main/authority/event-protocol/schemas/31102-identity.schema.json",
+  "title": "kind 31102 — identity definition",
+  "description": "Addressable. d tag = subject pubkey (64-hex). Authority for the pubkey<->account link. enabled:false is a semantic revocation and may omit username.",
+  "type": "object",
+  "required": ["username"],
+  "additionalProperties": false,
+  "properties": {
+    "username": { "type": "string" },
+    "signer_type": { "type": "string", "enum": ["nip07", "nip46", "passkey", "unknown"] },
+    "label": { "type": "string" },
+    "enabled": { "type": "boolean" },
+    "admin": { "type": "boolean" },
+    "schema": { "type": "integer", "minimum": 1 },
+    "server": { "type": "string", "pattern": "^[0-9a-fA-F]{64}$" },
+    "subject": { "type": "string" },
+    "revision": { "type": "integer", "minimum": 0 },
+    "updated_by": { "type": "string" },
+    "reason": { "type": "string" }
+  }
+}

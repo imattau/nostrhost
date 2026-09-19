@@ -1,0 +1,226 @@
+# NostrHost event authority matrix.
+#
+# One row per event kind/address family. Together with authority/registry.toml
+# this is the "authorization + replication matrix" required by §6.4 of
+# docs/RELAY-STATE-MIGRATION-PLAN.md.
+#
+# Fields:
+#   kind            event kind / address family
+#   address         "regular" | "addressable:<d>" | "replaceable"
+#   authors         who may author (scoped to this server)
+#   scope           NostrHost capability scope required, if any
+#   self_service    may the subject author its own document?
+#   schema          checked-in content schema (authority/event-protocol/schemas/)
+#   encryption      "plain" | "nip44" | "nip42-gated"
+#   retention       "immutable" | "replaceable" | "ephemeral"
+#   projection      owner that materialises the read model
+#   replication     "local-only" | "encrypted-backup" | "public"
+
+version = 2
+
+[[kind]]
+kind = 31100
+address = "addressable:subject-pubkey"
+authors = ["server-admin"]
+scope = "capability.write"
+self_service = false
+schema = "authority/event-protocol/schemas/31100-capability.schema.json"
+encryption = "nip42-gated"
+retention = "replaceable"
+projection = "forks/yunohost/src/nostr_operationsd.py"
+replication = "local-only"
+notes = "Capability grant; empty scopes means revoke. Enforced by eventmodel.validateCapability."
+
+[[kind]]
+kind = 31101
+address = "addressable:document"
+authors = ["server-admin"]
+scope = "policy.write"
+self_service = false
+schema = "authority/event-protocol/schemas/31101-policy.schema.json"
+encryption = "nip42-gated"
+retention = "replaceable"
+projection = "pending:WP6"
+replication = "local-only"
+notes = "Schema-versioned small non-secret policy document. Envelope 'schema' is required. No producer yet."
+
+[[kind]]
+kind = 31102
+address = "addressable:subject-pubkey"
+authors = ["server-admin"]
+scope = "identity.write"
+self_service = false
+schema = "authority/event-protocol/schemas/31102-identity.schema.json"
+encryption = "nip42-gated"
+retention = "replaceable"
+projection = "forks/yunohost/src/nostr_identityd.py"
+replication = "encrypted-backup"
+notes = "Authority for the pubkey<->account link. enabled:false is a semantic revocation."
+
+[[kind]]
+kind = 27236
+address = "regular"
+authors = ["server-admin", "delegator"]
+scope = "capability.delegate"
+self_service = true
+schema = "authority/event-protocol/schemas/27236-delegation.schema.json"
+encryption = "nip42-gated"
+retention = "immutable"
+projection = "forks/yunohost/src/nostr_operationsd.py"
+replication = "local-only"
+notes = "Tag contract: p, server, expiry (positive unix seconds), >=1 scope."
+
+[[kind]]
+kind = 27237
+address = "regular"
+authors = ["delegator", "server-admin"]
+scope = "capability.delegate"
+self_service = true
+schema = "authority/event-protocol/schemas/27237-revocation.schema.json"
+encryption = "nip42-gated"
+retention = "immutable"
+projection = "forks/yunohost/src/nostr_operationsd.py"
+replication = "local-only"
+notes = "Tag contract: e = 64-hex delegation event id."
+
+[[kind]]
+kind = "2200-2205"
+address = "regular"
+authors = ["server-admin", "server", "delegated-agent"]
+scope = "operation.submit"
+self_service = false
+schema = "pending:WP1-followup"
+encryption = "nip42-gated"
+retention = "immutable"
+projection = "forks/yunohost/src/nostr_operationsd.py"
+replication = "encrypted-backup"
+notes = "Operation request/approval/rejection/execution/result/progress audit chain; tag contract e=<request id>."
+
+[[kind]]
+kind = "2206,2210-2213"
+address = "regular"
+authors = ["server", "server-admin", "portal-notice"]
+scope = ""
+self_service = false
+schema = "pending:WP1-followup"
+encryption = "nip42-gated"
+retention = "immutable"
+projection = "libs/nostrhost-control/internal/notify/service.go"
+replication = "encrypted-backup"
+notes = "Notice convention: optional class/severity/summary; severity must be info|warning|critical."
+
+[[kind]]
+kind = 30000
+address = "addressable:permission"
+authors = ["server-admin"]
+scope = "permission.modify"
+self_service = false
+schema = "authority/event-protocol/schemas/30000-permission-set.schema.json"
+encryption = "nip44"
+retention = "replaceable"
+projection = "forks/yunohost/src/nostr_permissiond.py"
+replication = "local-only"
+notes = "NIP-51 permission sets; public p tags, private entries NIP-44."
+
+[[kind]]
+kind = 10000
+address = "replaceable"
+authors = ["server-admin"]
+scope = "nsites.admin"
+self_service = false
+schema = "authority/event-protocol/schemas/10000-mute-list.schema.json"
+encryption = "nip42-gated"
+retention = "replaceable"
+projection = "forks/yunohost/src/nostrhost/nsites/blocklist.py"
+replication = "local-only"
+notes = "NIP-51 mute list (blocked site-owner pubkeys)."
+
+[[kind]]
+kind = 10002
+address = "replaceable"
+authors = ["server-admin", "end-user"]
+scope = ""
+self_service = true
+schema = "authority/event-protocol/schemas/10002-relay-list.schema.json"
+encryption = "plain"
+retention = "replaceable"
+projection = "libs/nostrhost-auth/src/nostrhost_auth/identity/relays.py"
+replication = "public"
+notes = "NIP-65 relay list; r tags must be ws:// or wss://."
+
+[[kind]]
+kind = 30078
+address = "addressable:key"
+authors = ["server-admin", "end-user"]
+scope = ""
+self_service = true
+schema = "authority/event-protocol/schemas/30078-app-data.schema.json"
+encryption = "nip42-gated"
+retention = "replaceable"
+projection = "pending:WP4"
+replication = "local-only"
+notes = "NIP-78 application data (portal/user preferences). No producer yet."
+
+[[kind]]
+kind = "32267,30063,30267"
+address = "addressable:app"
+authors = ["catalogue-publisher"]
+scope = "catalog.publish"
+self_service = true
+schema = "pending:WP5"
+encryption = "plain"
+retention = "replaceable"
+projection = "libs/nostrhost-catalog/internal/catalog/store.go"
+replication = "public"
+notes = "Catalogue discovery/release/curation kinds."
+
+[[kind]]
+kind = 30079
+address = "addressable:app:publisher"
+authors = ["catalogue-publisher"]
+scope = "catalog.publish"
+self_service = true
+schema = "pending:WP5"
+encryption = "plain"
+retention = "replaceable"
+projection = "libs/nostrhost-catalog/internal/catalog/store.go"
+replication = "public"
+
+[[kind]]
+kind = 30080
+address = "addressable:app:commit"
+authors = ["ci-attester"]
+scope = "catalog.attest"
+self_service = true
+schema = "pending:WP5"
+encryption = "plain"
+retention = "replaceable"
+projection = "libs/nostrhost-catalog/internal/catalog/store.go"
+replication = "public"
+notes = "CI attestation; target replacement kind 31300."
+
+[[kind]]
+kind = 30617
+address = "addressable:repo"
+authors = ["server"]
+scope = ""
+self_service = false
+schema = "pending:WP9"
+encryption = "plain"
+retention = "replaceable"
+projection = "forks/yunohost/src/nostr_state.py"
+replication = "public"
+notes = "ngit / NIP-34 state-repository announcement."
+
+[[kind]]
+kind = 2214
+address = "regular"
+authors = ["server"]
+scope = ""
+self_service = false
+schema = "pending:WP9"
+encryption = "nip44"
+retention = "immutable"
+projection = "forks/yunohost/src/nostr_state.py"
+replication = "encrypted-backup"
+notes = "State-bundle replication chunks."

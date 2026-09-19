@@ -1,0 +1,8 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/imattau/nostrhost/blob/main/authority/event-protocol/schemas/27237-revocation.schema.json",
+  "title": "kind 27237 — delegation revocation",
+  "description": "Regular, immutable. Tags are the contract: e=<delegation event id 64-hex>. Content is empty. Enforced by code, not by content schema.",
+  "type": ["object", "null"],
+  "additionalProperties": false
+}

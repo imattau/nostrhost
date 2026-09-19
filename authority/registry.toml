@@ -1,0 +1,826 @@
+# NostrHost control-plane authority register (WP0).
+#
+# One entry per persistent control-plane fact. Exactly one authority per fact;
+# see docs/dev/authority-register.md for the class model and how to add an
+# entry. `tools/authority_registry.py check` fails when a persistent path
+# discovered in the source tree is not covered here.
+#
+# class:        event | repository | secret | bootstrap | projection |
+#               transactional | external
+# sensitivity:  secret | private | public
+# target_authority is a free-form coordinate naming the canonical source:
+#   events:<kind>            a signed relay event (or chain)
+#   ngit:<repo>              the semantic-state repository
+#   secret-store             local root-only credential material
+#   local:<role>             local bootstrap / enforcement / execution store
+#   external:<owner>         state owned by Linux, YunoHost, Restic, the agent
+
+version = 1
+
+# ---------------------------------------------------------------------------
+# Event authority
+# ---------------------------------------------------------------------------
+
+[[state]]
+id = "identity-mapping"
+path = "/etc/nostrhost/identity.db"
+class = "projection"
+owner = "forks/yunohost/src/nostr_identityd.py"
+readers = [
+  "forks/yunohost/src/nostr_identity.py",
+  "forks/yunohost/src/nostr_login.py",
+  "forks/yunohost/src/nostr_account.py",
+  "forks/yunohost/src/nostrhost/api.py",
+  "forks/yunohost/src/authenticators/ldap_ynhuser.py",
+]
+writers = ["forks/yunohost/src/nostr_identityd.py"]
+sensitivity = "private"
+target_authority = "events:31102"
+retention = "projection; disposable, rebuilt from the relay"
+recovery = "replay kind 31102 from the control relay (nostr-projector rebuild identity)"
+notes = "SQLite MappingStore in libs/nostrhost-auth. Pubkey<->account authority is 31102; this file is the read model. WP3: only the event-driven projector writes it (handle_identity_event); no direct-write path remains."
+
+[[state]]
+id = "capability-projection"
+path = "/var/lib/nostrhost/capabilities.json"
+class = "projection"
+owner = "forks/yunohost/src/nostr_capability_projection.py"
+readers = [
+  "forks/yunohost/src/nostr_operationsd.py",
+  "forks/yunohost/src/nostrhost/api.py",
+  "forks/yunohost/bin/nostr-projector",
+]
+writers = [
+  "forks/yunohost/src/nostr_operationsd.py",
+  "forks/yunohost/src/nostr_capability_projection.py",
+]
+sensitivity = "private"
+target_authority = "events:31100"
+retention = "projection; disposable, rebuilt from the relay"
+recovery = "replay kinds 31100/27236/27237 from the control relay (nostr-projector rebuild capabilities)"
+notes = "WP3: persisted authorization read model folding 31100 grants + 27236/27237 delegations. WP3 deliverable 2."
+
+[[state]]
+id = "capability-scopes"
+path = "in-memory:OperationEngine.scopes"
+class = "projection"
+owner = "forks/yunohost/src/nostr_operationsd.py"
+readers = ["forks/yunohost/src/nostr_operationsd.py"]
+writers = ["forks/yunohost/src/nostr_operationsd.py"]
+sensitivity = "private"
+target_authority = "events:31100"
+retention = "in-memory mirror of capability-projection"
+recovery = "replay kinds 31100/27236/27237 from the control relay"
+notes = "WP3: an in-process mirror of /var/lib/nostrhost/capabilities.json for the state recorder; the file is the durable authority."
+
+[[state]]
+id = "delegations"
+path = "in-memory:OperationEngine.delegations"
+class = "projection"
+owner = "forks/yunohost/src/nostr_operationsd.py"
+readers = ["forks/yunohost/src/nostr_operationsd.py"]
+writers = ["forks/yunohost/src/nostr_operationsd.py"]
+sensitivity = "private"
+target_authority = "events:27236"
+retention = "in-memory mirror of capability-projection"
+recovery = "replay kinds 27236/27237 from the control relay"
+notes = "WP3: mirrored into /var/lib/nostrhost/capabilities.json; the file is the durable authority."
+
+[[state]]
+id = "nip51-permission-sets"
+path = "/etc/nostrhost/nip51_permissions.json"
+class = "projection"
+owner = "forks/yunohost/src/nostr_permissiond.py"
+readers = ["forks/yunohost/src/nostrhost/permissions.py"]
+writers = ["forks/yunohost/src/nostr_permissiond.py"]
+sensitivity = "private"
+target_authority = "events:30000"
+retention = "projection; durable materialisation of accepted lists"
+recovery = "replay kind 30000 permission lists from the control relay"
+
+[[state]]
+id = "operation-chain"
+path = "relay:events.db"
+class = "event"
+owner = "libs/nostrhost-control"
+readers = [
+  "forks/yunohost/src/nostr_operations.py",
+  "forks/yunohost/src/nostrhost/native_ops.py",
+  "forks/yunohost/src/nostrhost/events.py",
+]
+writers = ["libs/nostrhost-control/internal/relay/server.go"]
+sensitivity = "private"
+target_authority = "events:chain"
+retention = "immutable audit chain; long-lived"
+recovery = "relay event store + state-bundle replication + Restic"
+notes = "Kinds 2200-2205. No separate audit DB; queries fold the chain with WP5 bounded 'until' pagination (page_all) and signer-anomaly annotation."
+
+[[state]]
+id = "notice-events"
+path = "relay:notices"
+class = "event"
+owner = "forks/yunohost/src/nostr_notify.py"
+readers = ["libs/nostrhost-control/internal/notify/service.go"]
+writers = [
+  "forks/yunohost/src/nostr_login.py",
+  "forks/yunohost/src/nostr_notify.py",
+  "forks/yunohost/src/nostr_security.py",
+  "forks/yunohost/src/nostr_operationsd.py",
+]
+sensitivity = "private"
+target_authority = "events:2210-2213"
+retention = "immutable notices; bounded retention"
+recovery = "relay event store"
+
+[[state]]
+id = "state-bundle-events"
+path = "relay:state-bundles"
+class = "event"
+owner = "forks/yunohost/src/nostr_state.py"
+readers = ["forks/yunohost/src/nostr_state.py"]
+writers = ["forks/yunohost/src/nostr_state.py"]
+sensitivity = "private"
+target_authority = "events:2214"
+retention = "replication chunks; refreshed per publish"
+recovery = "reconstruct the git bundle from contiguous chunks"
+
+[[state]]
+id = "state-repo-announcement"
+path = "relay:30617"
+class = "event"
+owner = "forks/yunohost/src/nostr_state.py"
+readers = ["forks/yunohost/src/nostr_state.py"]
+writers = ["forks/yunohost/src/nostr_state.py"]
+sensitivity = "public"
+target_authority = "events:30617"
+retention = "addressable; latest wins"
+recovery = "re-publish from the state repository"
+
+# ---------------------------------------------------------------------------
+# Repository authority (ngit / semantic state)
+# ---------------------------------------------------------------------------
+
+[[state]]
+id = "state-repository"
+path = "/var/lib/nostrhost/state/**"
+class = "repository"
+owner = "forks/yunohost/src/nostr_state.py"
+readers = [
+  "forks/yunohost/src/nostr_state.py",
+  "forks/yunohost/src/nostr_rollback.py",
+  "forks/yunohost/src/nostrhost/native_providers.py",
+]
+writers = [
+  "forks/yunohost/src/nostr_state.py",
+  "forks/yunohost/src/nostrhost/native_providers.py",
+]
+sensitivity = "private"
+target_authority = "ngit:nostrhost-state"
+retention = "git history; known-good tag"
+recovery = "restore the repository from kind-2214 bundles or a Restic snapshot, then reconcile"
+notes = "Sections: system/, domains/, apps/, services/, certificates/, identities/, package-versions/, security/, network/, notifications/, packages/, settings/, backups/, hooks/, nsites/."
+
+[[state]]
+id = "state-repo-git"
+path = "/var/lib/nostrhost/state/.git"
+class = "repository"
+owner = "forks/yunohost/src/nostr_state.py"
+readers = ["forks/yunohost/src/nostr_state.py"]
+writers = ["forks/yunohost/src/nostr_state.py"]
+sensitivity = "private"
+target_authority = "ngit:nostrhost-state"
+retention = "git object history"
+recovery = "clone from a bundle or restore from Restic"
+notes = "Covered by the state-repository glob; listed for clarity."
+
+[[state]]
+id = "nsite-desired-state"
+path = "/var/lib/nostrhost/state/nsites"
+class = "repository"
+owner = "forks/yunohost/src/nostrhost/nsites/service.py"
+readers = ["forks/yunohost/src/nostrhost/nsites/service.py"]
+writers = ["forks/yunohost/src/nostrhost/nsites/service.py"]
+sensitivity = "private"
+target_authority = "ngit:nostrhost-state"
+retention = "desired state; reviewable diffs"
+recovery = "restore the state repository, then reconcile"
+notes = "gateway.json, sites/*, domains/*. WP7 target: render nsite.toml from this."
+
+# ---------------------------------------------------------------------------
+# Secret authority (local root-only material; never event/Git published)
+# ---------------------------------------------------------------------------
+
+[[state]]
+id = "operator-keys"
+path = "/etc/nostrhost/operator.toml"
+class = "secret"
+owner = "forks/yunohost/src/nostr_identity.py"
+readers = [
+  "forks/yunohost/src/nostr_identity.py",
+  "forks/yunohost/src/nostr_operationsd.py",
+  "forks/yunohost/src/nostr_identityd.py",
+  "forks/yunohost/src/nostr_signerd.py",
+]
+writers = ["forks/yunohost/src/nostr_identity.py"]
+sensitivity = "secret"
+target_authority = "secret-store"
+retention = "permanent root trust anchor"
+recovery = "restore the operator recovery bundle"
+notes = "server_sk/operator_sk/publisher_sk/notifier_sk, control_relay, admins[], broker_pubkeys[]. Also bootstrap authority."
+
+[[state]]
+id = "portal-notice-key"
+path = "/etc/nostrhost/portal.toml"
+class = "secret"
+owner = "forks/yunohost/src/nostr_identity.py"
+readers = ["forks/yunohost/src/nostr_login.py", "forks/yunohost/src/nostr_account.py"]
+writers = ["forks/yunohost/src/nostr_identity.py"]
+sensitivity = "secret"
+target_authority = "secret-store"
+retention = "permanent; low-privilege notice key"
+recovery = "restore the recovery bundle"
+
+[[state]]
+id = "recovery-bundle"
+path = "/etc/nostrhost/keys.recovery"
+class = "secret"
+owner = "forks/yunohost/src/nostrhost/cli.py"
+readers = ["forks/yunohost/src/nostrhost/cli.py"]
+writers = ["forks/yunohost/src/nostrhost/cli.py"]
+sensitivity = "secret"
+target_authority = "secret-store"
+retention = "permanent; offline copy recommended"
+recovery = "operator-held recovery material"
+
+[[state]]
+id = "restic-config"
+path = "/etc/nostrhost/restic.toml"
+class = "secret"
+owner = "forks/yunohost/src/nostrhost/cli.py"
+readers = ["forks/yunohost/src/nostr_restic.py", "forks/yunohost/src/nostr_operationsd.py"]
+writers = ["forks/yunohost/src/nostrhost/cli.py", "forks/yunohost/src/nostr_restic.py"]
+sensitivity = "secret"
+target_authority = "secret-store"
+retention = "permanent; holds the repository password"
+recovery = "restore the Restic password and repository credential"
+notes = "Desired schedule/retention/paths are separable (WP6); the password stays secret."
+
+[[state]]
+id = "dns-credentials"
+path = "/var/lib/nostrhost/credentials"
+class = "secret"
+owner = "forks/yunohost/src/nostrhost/credentials.py"
+readers = ["forks/yunohost/src/nostrhost/credentials.py", "forks/yunohost/src/nostrhost/native_providers.py"]
+writers = ["forks/yunohost/src/nostrhost/credentials.py"]
+sensitivity = "secret"
+target_authority = "secret-store"
+retention = "permanent provider tokens"
+recovery = "re-enter DNS provider tokens"
+
+[[state]]
+id = "notifier-key"
+path = "/etc/nostrhost/notify.toml"
+class = "secret"
+owner = "forks/yunohost/src/nostrhost/cli.py"
+readers = ["libs/nostrhost-control/internal/notify/config.go"]
+writers = ["forks/yunohost/src/nostrhost/cli.py"]
+sensitivity = "secret"
+target_authority = "secret-store"
+retention = "permanent NIP-17 signing key"
+recovery = "restore the notifier key"
+
+[[state]]
+id = "signer-client-key"
+path = "/etc/nostrhost/signer_client_sk"
+class = "secret"
+owner = "forks/yunohost/src/nostr_signerd.py"
+readers = ["forks/yunohost/src/nostr_signerd.py"]
+writers = ["forks/yunohost/src/nostr_signerd.py"]
+sensitivity = "secret"
+target_authority = "secret-store"
+retention = "permanent signerd client key"
+recovery = "regenerate and re-pair"
+
+[[state]]
+id = "signer-targets"
+path = "/etc/nostrhost/signer_targets.json"
+class = "secret"
+owner = "forks/yunohost/src/nostr_signerd.py"
+readers = ["forks/yunohost/src/nostr_signerd.py"]
+writers = ["forks/yunohost/src/nostr_signerd.py"]
+sensitivity = "secret"
+target_authority = "secret-store"
+retention = "runtime; contains NIP-46 pairing secrets"
+recovery = "re-pair remote signers"
+
+[[state]]
+id = "agent-secret-key"
+path = "/etc/nostrhost-agent/config.json"
+class = "secret"
+owner = "forks/yunohost/src/nostrhost/cli.py"
+readers = ["forks/yunohost/src/nostrhost/cli.py", "libs/nostrhost-agent"]
+writers = ["forks/yunohost/src/nostrhost/cli.py"]
+sensitivity = "secret"
+target_authority = "secret-store"
+retention = "permanent agent key"
+recovery = "re-provision the agent"
+
+[[state]]
+id = "agent-github-token"
+path = "/etc/nostrhost-agent/github_token"
+class = "secret"
+owner = "forks/yunohost/src/nostrhost/cli.py"
+readers = ["forks/yunohost/src/nostrhost/cli.py"]
+writers = ["forks/yunohost/src/nostrhost/cli.py"]
+sensitivity = "secret"
+target_authority = "secret-store"
+retention = "operator-managed token"
+recovery = "issue a new token"
+
+[[state]]
+id = "agent-llm-env"
+path = "/etc/nostrhost-agent/llm.env"
+class = "secret"
+owner = "forks/yunohost/src/nostrhost/cli.py"
+readers = ["forks/yunohost/src/nostrhost/cli.py"]
+writers = ["forks/yunohost/src/nostrhost/cli.py"]
+sensitivity = "secret"
+target_authority = "secret-store"
+retention = "operator-managed"
+recovery = "re-enter provider credentials"
+
+[[state]]
+id = "oidc-config"
+path = "/etc/nostrhost/oidc.toml"
+class = "secret"
+owner = "forks/yunohost/src/nostr_oidc.py"
+readers = ["forks/yunohost/src/nostr_oidc.py"]
+writers = []
+sensitivity = "secret"
+target_authority = "secret-store"
+retention = "operator-managed; client secrets"
+recovery = "restore or re-register OIDC clients"
+notes = "WP7 target: non-secret client registrations become rendered projections."
+
+[[state]]
+id = "oidc-signing-key"
+path = "/var/cache/yunohost-portal/sessions/oidc-signing.pem"
+class = "secret"
+owner = "forks/yunohost/src/nostr_oidc.py"
+readers = ["forks/yunohost/src/nostr_oidc.py"]
+writers = ["forks/yunohost/src/nostr_oidc.py"]
+sensitivity = "secret"
+target_authority = "secret-store"
+retention = "lazily generated; rotating key material"
+recovery = "regenerate; clients re-fetch JWKS"
+
+# ---------------------------------------------------------------------------
+# Bootstrap authority (minimum local config to start safely)
+# ---------------------------------------------------------------------------
+
+[[state]]
+id = "relay-bootstrap"
+path = "/etc/nostrhost/relay.toml"
+class = "bootstrap"
+owner = "forks/yunohost/src/nostr_identity.py"
+readers = ["libs/nostrhost-control/internal/config/config.go"]
+writers = [
+  "forks/yunohost/src/nostr_identity.py",
+  "forks/yunohost/src/nostrhost/cli.py",
+]
+sensitivity = "private"
+target_authority = "local:bootstrap"
+retention = "root-owned bootstrap"
+recovery = "regenerate via nostrhost-bootstrap / postinstall"
+notes = "listen, DB paths, operator/server/notice/publisher pubkeys, allowlist mode, allowed kinds."
+
+[[state]]
+id = "relay-policy-store"
+path = "/var/lib/nostrhost/policy.db"
+class = "bootstrap"
+owner = "libs/nostrhost-control/internal/policy/store.go"
+readers = ["libs/nostrhost-control/internal/relay/server.go"]
+writers = [
+  "libs/nostrhost-control/internal/policy/store.go",
+  "libs/nostrhost-control/internal/relay/server.go",
+]
+sensitivity = "private"
+target_authority = "local:nip86"
+retention = "immediate enforcement store; rebuilt from bootstrap on start"
+recovery = "re-seed from bootstrap (admins/agents/kinds) and an authorized policy snapshot"
+direct_writes = [
+  "libs/nostrhost-control/internal/policy/store.go",
+  "libs/nostrhost-control/internal/relay/server.go",
+]
+notes = "WP8 target: emit a protected audit event per NIP-86 mutation and add a signed snapshot."
+
+[[state]]
+id = "host-policy"
+path = "/etc/nostrhost/policy.toml"
+class = "bootstrap"
+owner = "forks/yunohost/src/nostrhost/cli.py"
+readers = ["forks/yunohost/src/nostrhost_native_policy.py"]
+writers = ["forks/yunohost/src/nostrhost/cli.py"]
+sensitivity = "private"
+target_authority = "local:bootstrap"
+retention = "root-owned; deterministic safeguards"
+recovery = "regenerate from defaults"
+notes = "WP6 target: small non-secret rules become kind-31101 declarations."
+
+[[state]]
+id = "mcp-config"
+path = "/etc/nostrhost/mcp.toml"
+class = "bootstrap"
+owner = "forks/yunohost/src/nostrhost/mcp_endpoint.py"
+readers = ["forks/yunohost/src/nostrhost/mcp_endpoint.py"]
+writers = []
+sensitivity = "private"
+target_authority = "local:bootstrap"
+retention = "operator-managed"
+recovery = "regenerate MCP endpoint config"
+
+[[state]]
+id = "mcp-env"
+path = "/etc/nostrhost/mcp.env"
+class = "bootstrap"
+owner = "forks/yunohost/src/nostrhost/mcp_endpoint.py"
+readers = ["forks/yunohost/src/nostrhost/mcp_endpoint.py"]
+writers = []
+sensitivity = "private"
+target_authority = "local:bootstrap"
+retention = "operator-managed"
+recovery = "regenerate MCP endpoint env"
+
+[[state]]
+id = "security-config"
+path = "/etc/nostrhost/security.toml"
+class = "bootstrap"
+owner = "forks/yunohost/src/nostr_security.py"
+readers = ["forks/yunohost/src/nostr_security.py"]
+writers = []
+sensitivity = "private"
+target_authority = "local:bootstrap"
+retention = "operator-managed"
+recovery = "regenerate security config"
+notes = "WP7 target: desired security schedule becomes a rendered projection."
+
+[[state]]
+id = "ddns-config"
+path = "/etc/nostrhost/ddns.toml"
+class = "bootstrap"
+owner = "forks/yunohost/src/nostr_ddnswatch.py"
+readers = ["forks/yunohost/src/nostr_ddnswatch.py"]
+writers = []
+sensitivity = "private"
+target_authority = "local:bootstrap"
+retention = "operator-managed"
+recovery = "regenerate DDNS config"
+notes = "Desired configuration only; provider tokens live in the credential store (WP6)."
+
+# ---------------------------------------------------------------------------
+# Projections / caches (rebuildable)
+# ---------------------------------------------------------------------------
+
+[[state]]
+id = "permissions-projection"
+path = "/etc/nostrhost/permissions.json"
+class = "projection"
+owner = "forks/yunohost/src/nostrhost/permissions.py"
+readers = ["forks/yunohost/src/nostr_login.py", "forks/yunohost/src/authenticators/ldap_ynhuser.py"]
+writers = [
+  "forks/yunohost/src/nostrhost/permissions.py",
+  "forks/yunohost/src/nostr_permissiond.py",
+  "forks/yunohost/src/permission.py",
+  "forks/yunohost/src/user.py",
+]
+sensitivity = "public"
+target_authority = "events:30000"
+retention = "projection; regenerated on change"
+recovery = "recompute from accounts, YunoHost permissions and kind-30000 lists"
+direct_writes = [
+  "forks/yunohost/src/nostrhost/permissions.py",
+  "forks/yunohost/src/permission.py",
+  "forks/yunohost/src/user.py",
+  "forks/yunohost/src/domain.py",
+]
+notes = "Compatibility projection consumed by SSO/login. Rebuildable."
+
+[[state]]
+id = "list-projection"
+path = "/etc/nostrhost/lists.json"
+class = "projection"
+owner = "forks/yunohost/src/nostrhost/list_projection.py"
+readers = [
+  "forks/yunohost/src/nostrhost/list_projection.py",
+  "forks/yunohost/src/nostrhost/native_ops.py",
+]
+writers = [
+  "forks/yunohost/src/nostrhost/list_projection.py",
+  "forks/yunohost/src/nostr_listd.py",
+]
+sensitivity = "private"
+target_authority = "events:10000,10002,10006,30000,30078"
+retention = "projection; disposable, rebuilt from the relay"
+recovery = "replay kinds 10000/10002/10006/30000/30078 (nostr-projector rebuild lists)"
+notes = "WP4: folded NIP-51/NIP-65/NIP-78 lists and preferences (trusted publishers, approved repos, blocked relays, portal settings, per-user preferences)."
+
+[[state]]
+id = "portal-settings"
+path = "/etc/nostrhost/portal"
+class = "projection"
+owner = "forks/yunohost/src/nostrhost/permissions.py"
+readers = [
+  "forks/yunohost/src/nostrhost/portal_settings.py",
+  "forks/yunohost/src/app.py",
+  "forks/yunohost/src/authenticators/ldap_ynhuser.py",
+]
+writers = [
+  "forks/yunohost/src/nostrhost/permissions.py",
+  "forks/yunohost/src/domain.py",
+  "forks/yunohost/src/nostrhost/list_render.py",
+]
+sensitivity = "public"
+target_authority = "events:30078"
+retention = "projection; per-domain settings"
+recovery = "recompute from permissions and operator config"
+notes = "Per-domain JSON. WP4: the operator's portal-settings NIP-78 document is merged in by the list projection (apps stays owned by the permission projection)."
+
+[[state]]
+id = "accounts-store"
+path = "/etc/nostrhost/accounts.json"
+class = "projection"
+owner = "forks/yunohost/src/nostrhost/accounts.py"
+readers = [
+  "forks/yunohost/src/nostr_identity.py",
+  "forks/yunohost/src/nostrhost/permissions.py",
+  "forks/yunohost/src/nostrhost/accounts.py",
+]
+writers = [
+  "forks/yunohost/src/nostrhost/accounts.py",
+  "forks/yunohost/src/user.py",
+  "forks/yunohost/src/nostrhost/portal_api.py",
+]
+sensitivity = "private"
+target_authority = "external:yunohost"
+retention = "execution projection of YunoHost accounts"
+recovery = "recompute from YunoHost users; the pubkey link authority is 31102"
+direct_writes = [
+  "forks/yunohost/src/nostrhost/accounts.py",
+  "forks/yunohost/src/user.py",
+  "forks/yunohost/src/nostrhost/portal_api.py",
+]
+notes = "WP3 keeps Unix account provisioning as an execution projection, not link authority."
+
+[[state]]
+id = "ssh-keys-store"
+path = "/etc/nostrhost/ssh-keys.json"
+class = "projection"
+owner = "forks/yunohost/src/nostrhost/accounts.py"
+readers = ["forks/yunohost/src/nostrhost/accounts.py"]
+writers = ["forks/yunohost/src/nostrhost/accounts.py"]
+sensitivity = "private"
+target_authority = "external:yunohost"
+retention = "execution projection of authorized keys"
+recovery = "recompute from YunoHost account state"
+
+[[state]]
+id = "catalogue-projection"
+path = "/var/lib/nostrhost/catalogue.json"
+class = "projection"
+owner = "libs/nostrhost-catalog/internal/catalog/store.go"
+readers = [
+  "forks/yunohost/src/nostr_catalog_provider.py",
+  "forks/yunohost/src/app_catalog.py",
+  "forks/yunohost/src/nostrhost/native_ops.py",
+]
+writers = ["libs/nostrhost-catalog/cmd/nostrhost-catalog/main.go"]
+sensitivity = "public"
+target_authority = "events:32267"
+retention = "projection; explicitly disposable"
+recovery = "re-sync catalogue declarations/attestations from the relay"
+notes = "WP5: rebuild/verify subcommands added; rebuild is NIP-77 negentropy DOWN from the lookup relays."
+
+[[state]]
+id = "catalogue-derived-index"
+path = "relay:32267+30079+0+1 (own publisher)"
+class = "projection"
+owner = "forks/yunohost/src/nostrhost/native_ops.py"
+readers = ["forks/yunohost/src/nostrhost/native_ops.py"]
+sensitivity = "public"
+target_authority = "events:32267,30079,0,1"
+retention = "derived; no local files"
+recovery = "re-query the control relay (authors = publisher key, page_all)"
+notes = "WP5: replaces the former catalogue-attestation-ledger / catalogue-announcement-ledger / catalogue-profile-cache JSON files. Endorsements (30079), announcement notes (1) and publisher profile (0) are read back from the relay; attest dedup is the replaceable 30079 d-tag, announce dedup a version tag."
+
+[[state]]
+id = "catalogue-env"
+path = "/etc/nostrhost/catalogue.env"
+class = "projection"
+owner = "forks/yunohost/src/nostrhost/cli.py"
+readers = ["forks/yunohost/src/nostrhost/native_ops.py", "forks/yunohost/src/nostrhost/connectivity.py"]
+writers = ["forks/yunohost/src/nostrhost/cli.py", "forks/yunohost/src/nostrhost/connectivity.py"]
+sensitivity = "public"
+target_authority = "local:rendered-projection"
+retention = "rendered config; no secrets"
+recovery = "regenerate from connectivity + trust config"
+notes = "WP4 target: trusted publishers move to a NIP-51 list."
+
+[[state]]
+id = "connectivity-config"
+path = "/var/lib/nostrhost/state/system/connectivity.json"
+class = "projection"
+owner = "forks/yunohost/src/nostrhost/connectivity.py"
+readers = ["forks/yunohost/src/nostrhost/connectivity.py"]
+writers = ["forks/yunohost/src/nostrhost/connectivity.py"]
+sensitivity = "public"
+target_authority = "local:rendered-projection"
+retention = "rendered config"
+recovery = "regenerate defaults"
+notes = "WP4 target: preferred/blocked relays become NIP-65 kind 10002 / NIP-51 kind 10006."
+
+[[state]]
+id = "nsite-config"
+path = "/etc/nostrhost/nsite.toml"
+class = "projection"
+owner = "forks/yunohost/src/nostrhost/nsites/service.py"
+readers = ["libs/nostrhost-nsite"]
+writers = [
+  "forks/yunohost/src/nostrhost/nsites/service.py",
+  "forks/yunohost/src/nostrhost/connectivity.py",
+]
+sensitivity = "public"
+target_authority = "local:rendered-projection"
+retention = "rendered service config"
+recovery = "re-render from nsite desired state"
+notes = "WP7 target: provenance-tracked projection with native config validation."
+
+[[state]]
+id = "catalogue-cache"
+path = "/var/cache/nostrhost/catalogue"
+class = "projection"
+owner = "forks/yunohost/src/nostrhost/cli.py"
+readers = ["forks/yunohost/src/nostrhost/cli.py"]
+writers = ["forks/yunohost/src/nostrhost/cli.py"]
+sensitivity = "public"
+target_authority = "projection:cache"
+retention = "cache; safe to delete"
+recovery = "re-fetch from the relay"
+
+[[state]]
+id = "package-cache"
+path = "/var/cache/nostrhost/packages"
+class = "projection"
+owner = "forks/yunohost/src/nostrhost/native_providers.py"
+readers = ["forks/yunohost/src/nostrhost/native_providers.py"]
+writers = ["forks/yunohost/src/nostrhost/native_providers.py"]
+sensitivity = "public"
+target_authority = "projection:cache"
+retention = "cache; safe to delete"
+recovery = "re-download package manifests"
+
+[[state]]
+id = "nsite-blob-cache"
+path = "/var/cache/nostrhost-nsite"
+class = "projection"
+owner = "forks/yunohost/src/nostrhost/nsites/models.py"
+readers = ["libs/nostrhost-nsite"]
+writers = ["libs/nostrhost-nsite"]
+sensitivity = "public"
+target_authority = "projection:cache"
+retention = "cache; safe to delete"
+recovery = "re-fetch blobs from Blossom"
+
+# ---------------------------------------------------------------------------
+# Transactional runtime (short-lived, atomic, or process-local)
+# ---------------------------------------------------------------------------
+
+[[state]]
+id = "signer-sessions"
+path = "/var/lib/nostrhost/signer_sessions.db"
+class = "transactional"
+owner = "forks/yunohost/src/nostr_account.py"
+readers = ["forks/yunohost/src/nostr_account.py"]
+writers = ["forks/yunohost/src/nostr_account.py"]
+sensitivity = "private"
+target_authority = "local:runtime"
+retention = "session-scoped; revocable"
+recovery = "re-connect signers"
+direct_writes = ["forks/yunohost/src/nostr_account.py"]
+
+[[state]]
+id = "signer-bridge-state"
+path = "/var/lib/nostrhost/signer_bridge_state.json"
+class = "transactional"
+owner = "forks/yunohost/src/nostr_signerd.py"
+readers = ["forks/yunohost/src/nostr_signerd.py"]
+writers = ["forks/yunohost/src/nostr_signerd.py"]
+sensitivity = "private"
+target_authority = "local:runtime"
+retention = "runtime; disposable"
+recovery = "restart the signer daemon"
+
+[[state]]
+id = "projection-cursors"
+path = "/var/lib/nostrhost/projections"
+class = "transactional"
+owner = "forks/yunohost/src/nostr_projector.py"
+readers = [
+  "forks/yunohost/src/nostr_projector.py",
+  "forks/yunohost/src/nostrhost/native_ops.py",
+]
+writers = ["forks/yunohost/src/nostr_projector.py"]
+sensitivity = "private"
+target_authority = "projection:cursor"
+retention = "rebuildable cursor state; lost cursor only costs a replay"
+recovery = "delete and replay the relay; projections rebuild"
+notes = "WP2: durable per-projector checkpoint, deliberately outside /etc. Read cross-process by projection.status."
+
+[[state]]
+id = "security-cursor"
+path = "/var/lib/nostrhost/security.json"
+class = "transactional"
+owner = "forks/yunohost/src/nostr_security.py"
+readers = ["forks/yunohost/src/nostr_security.py", "forks/yunohost/src/nostr_state.py"]
+writers = ["forks/yunohost/src/nostr_security.py"]
+sensitivity = "private"
+target_authority = "projection:cursor"
+retention = "cursor state"
+recovery = "reset and re-scan the security source"
+
+[[state]]
+id = "identity-socket"
+path = "/run/nostrhost/identity.sock"
+class = "transactional"
+owner = "forks/yunohost/src/nostr_identityd.py"
+readers = ["forks/yunohost/src/nostr_account.py"]
+writers = ["forks/yunohost/src/nostr_identityd.py"]
+sensitivity = "private"
+target_authority = "local:runtime"
+retention = "process-lifetime"
+recovery = "restart the identity daemon"
+
+[[state]]
+id = "nsite-drafts"
+path = "/var/lib/nostrhost/nsites/drafts"
+class = "transactional"
+owner = "forks/yunohost/src/nostrhost/nsites/service.py"
+readers = ["forks/yunohost/src/nostrhost/nsites/service.py"]
+writers = ["forks/yunohost/src/nostrhost/nsites/service.py"]
+sensitivity = "private"
+target_authority = "local:runtime"
+retention = "draft working area; disposable"
+recovery = "re-upload drafts"
+
+# ---------------------------------------------------------------------------
+# External / runtime truth (owned by another engine)
+# ---------------------------------------------------------------------------
+
+[[state]]
+id = "events-store"
+path = "/var/lib/nostrhost/events.db"
+class = "external"
+owner = "libs/nostrhost-control/internal/relay/server.go"
+readers = ["libs/nostrhost-control/internal/relay/server.go"]
+writers = ["libs/nostrhost-control/internal/relay/server.go"]
+sensitivity = "private"
+target_authority = "local:relay-store"
+retention = "physical relay event store; per-kind retention"
+recovery = "restore from Restic or an approved replica"
+notes = "The store exists to hold events; it is not itself event-authoritative."
+
+[[state]]
+id = "restic-repository"
+path = "/var/lib/nostrhost/restic-repo"
+class = "external"
+owner = "forks/yunohost/src/nostrhost/cli.py"
+readers = ["forks/yunohost/src/nostr_restic.py"]
+writers = ["forks/yunohost/src/nostr_restic.py"]
+sensitivity = "private"
+target_authority = "external:restic"
+retention = "Restic retention policy"
+recovery = "restore via the Restic password (WP9 runbook)"
+
+[[state]]
+id = "lib-root"
+path = "/var/lib/nostrhost"
+class = "external"
+owner = "forks/yunohost/src/nostrhost/cli.py"
+readers = ["forks/yunohost/src/nostrhost/credentials.py"]
+writers = ["forks/yunohost/src/nostrhost/cli.py"]
+sensitivity = "private"
+target_authority = "local:runtime"
+retention = "parent state directory"
+recovery = "recreate directories on demand"
+
+[[state]]
+id = "agent-runtime"
+path = "/var/lib/nostrhost-agent/**"
+class = "external"
+owner = "forks/yunohost/src/nostrhost/cli.py"
+readers = ["libs/nostrhost-agent"]
+writers = ["libs/nostrhost-agent"]
+sensitivity = "private"
+target_authority = "external:agent"
+retention = "agent runtime state"
+recovery = "re-provision the resident agent"
+notes = "models/, runtime/, exports/, contribution-submitted.jsonl"

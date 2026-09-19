@@ -27,8 +27,8 @@ forks:
     branch: nostrhost          # derivative branch (first fork modification, Phase 3)
     derivative: true
     pin: debian/12.1.41.2      # upstream baseline the branch was cut from
-    pin_commit: f9087fe98346763a7c6777299043450a32023d4f
-    live_server: 12.1.41.97
+    pin_commit: 97d62c9a8a209a5f702b24b5198ae49e43173b65
+    live_server: 12.1.41.98
 
   - component: portal          # Nuxt/Vue/TypeScript user portal
     upstream_repo: YunoHost/yunohost-portal
@@ -90,13 +90,13 @@ libraries:
     repo: imattau/nostrhost-catalog
     path: libs/nostrhost-catalog
     branch: main
-    pin_commit: 301352ea3c41aeafb7eeae9571c4886675e66014
+    pin_commit: ae42138b365119100c273b4b1818d023b190f21c
 
   - component: control         # control plane: local relay + event model (Phase 2)
     repo: imattau/nostrhost-control
     path: libs/nostrhost-control
     branch: main
-    pin_commit: 07f378c8fbfdfd3fa9a131c74595ece532358a3c
+    pin_commit: 2b965142c5cfd8881d2296a26aa1a44f5aecb30b
     stack: khatru-based Go relay (NIP-11/42/77/86/98)
     event_protocol: libs/nostrhost-control/EVENT-PROTOCOL.md
     selection: docs/RELAY-SELECTION.md
@@ -105,7 +105,7 @@ libraries:
     repo: imattau/nostrhost-agent
     path: libs/nostrhost-agent
     branch: main
-    pin_commit: 09a8f69b01f7a843e78ffca2df8053b8be7cdede
+    pin_commit: b6f7ba6ec8b85a24302620aae4cf83ab6b7d14fb
     stack: Go
 
   - component: yunohost-mcp    # FROZEN reference implementation (MCP transition §2, docs/MCP-TRANSITION.md)

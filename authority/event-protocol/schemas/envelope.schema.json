@@ -1,0 +1,16 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/imattau/nostrhost/blob/main/authority/event-protocol/schemas/envelope.schema.json",
+  "title": "NostrHost addressable-document envelope",
+  "description": "Canonical definition of the shared envelope fields (authority/event-protocol/envelope.md §1). Kind schemas inline these fields so they resolve without a cross-file $ref registry.",
+  "type": "object",
+  "properties": {
+    "schema": { "type": "integer", "minimum": 1, "description": "Document schema version; absent means 1." },
+    "server": { "type": "string", "pattern": "^[0-9a-fA-F]{64}$", "description": "Stable server public key." },
+    "subject": { "type": "string", "description": "Stable resource id, mirrored in the d tag." },
+    "enabled": { "type": "boolean", "description": "Explicit active/disabled state where revocation is meaningful." },
+    "revision": { "type": "integer", "minimum": 0, "description": "Monotonic logical revision scoped to the address." },
+    "updated_by": { "type": "string", "description": "Initiating event id when it differs from the signer." },
+    "reason": { "type": "string", "description": "Optional bounded, non-secret operator explanation." }
+  }
+}
