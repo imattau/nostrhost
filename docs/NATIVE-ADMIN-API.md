@@ -61,6 +61,7 @@ approval) must be checked, HTTP 200 does not mean success.
 | `/package/agent` | Resident admin agent status/mode, MCP capability grants, local model management, contribution export/submit |
 | `/package/mcp` | MCP endpoint config, CA bundle export |
 | `/package/capability` | Capability grant/list/revoke, delegation |
+| `/package/notify` | Remote-signer push targets: list, register the caller's own signer (`bunker://`), remove it, and node-initiated `nostrconnect://` pairing (start + poll). Admin-only; never returns a signer secret |
 | `/package/plan` | Package manifest planning (read-only; `docs/../schema/package.schema.json`) |
 | `/package/network`, `/package/reconcile` | Public IP lookup, state reconciliation |
 

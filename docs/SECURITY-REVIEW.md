@@ -90,6 +90,20 @@ opt-in "remember key" is chosen — this is an explicit, documented trade-off
 only third-party-controlled HTML vector (app descriptions) is now sanitized.
 Consider moving the saved key behind a master-password prompt or sessionStorage.
 
+**Remote-signer note (node-side approvals).** The admin console can register
+the *node* with an administrator's NIP-46 signer (`POST /package/notify/signers`
+and the `nostrconnect://` pairing flow) so parked approvals are pushed to the
+signer without a browser session. This does **not** give the server signing
+power: it holds only its own NIP-46 client key (`nostr-signerd`'s
+`signer_client_sk`); the `nostrconnect` direction stores no signer secret at
+all, and the `bunker://` direction stores only the signer's pairing secret
+(root-only, `0600`). Every signature is still confirmed inside the signer app,
+and the bridge only accepts approvals whose returned pubkey matches the
+registered admin identity. Registration is admin-only and restricted to the
+authenticated admin's own identity (a caller cannot register or remove another
+admin's signer), so it cannot be used to redirect another administrator's
+approval prompts.
+
 ### H4 — Admin API reachable on every domain with a domain-wide cookie; no `forward_auth` on `/package/*`
 `caddy_domain.conf:38-40`, `caddy_admin.py:234-239`, `ldap_ynhuser.py:230`
 

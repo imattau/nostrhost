@@ -36,14 +36,34 @@ configuration and send a test event.
 ## Remote signers for approvals
 
 Notifications can tell an owner that an operation needs approval, but approval
-is a separate signature. Configure NIP-46 signer targets with:
+is a separate signature. `nostr-signerd` pushes parked approvals to any
+registered NIP-46 signer whose identity is a configured administrator, so an
+approval can be signed in the signer app without a particular browser session
+open.
 
-```bash
-nostrhost signer --help
-```
+There are two ways an administrator can give the node a signer:
 
+- **Approve from anywhere (recommended).** In the admin console's **Operations**
+  screen, open **Approve from anywhere** and either scan the generated
+  `nostrconnect://` QR or paste a `bunker://` URI. The node's own NIP-46 client
+  key is what the signer authorises, so the signer's signing key never reaches
+  the server; with `nostrconnect` no secret is stored at all. Only the
+  signed-in administrator's own identity can be registered.
+- **CLI.** The same targets can be managed head-lessly:
+
+  ```bash
+  nostrhost notify signer pair      # node-initiated nostrconnect pairing
+  nostrhost notify signer add ...   # register a bunker:// URI
+  nostrhost notify signer list
+  nostrhost notify signer remove ...
+  ```
+
+`nostr-signerd` re-reads the target file before each notice, so a registration
+or removal made in the console takes effect immediately (no service restart).
 Prefer `nostrconnect` pairing, protect any stored bunker secret, and remove
-unused targets.
+unused targets. A browser can also connect a signer just for itself (the
+"Remote signer (this browser)" card); that connection is stored in the browser
+and is intentionally **not** shared across browsers.
 
 ## Troubleshooting
 

@@ -327,7 +327,7 @@ packages:
   # ------------------------------------------------------------- web SPA ----
   - name: nostrhost-admin
     kind: spa
-    version: "0.1.25"                     # Restic restore points + Recovery screen
+    version: "0.1.26"                     # Remote-signer registration (approve from anywhere)
     source:
       repo: imattau/nostrhost-admin
       submodule: forks/admin

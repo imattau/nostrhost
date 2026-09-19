@@ -30,7 +30,7 @@ exercises (`forks/yunohost/src/nostrhost/api.py`, the `ToolSpec` registry in
 | Diagnosis | `/diagnosis` | `diagnosis.run/ignored/ignore/unignore` | Per-category health checks; admin-gated ignore-filter controls. |
 | Settings | `/settings` | `settings.list/get/set/reset/reset_all` | Global YunoHost settings; reset-all requires typed confirmation. |
 | Power | `/power` | `system.reboot/shutdown` | Reboot (disruptive) and shutdown (destructive, typed confirmation). |
-| History & approvals | `/operations` | `audit.list/get`, approve/reject | Every submitted operation with its outcome; approve or reject anything parked pending approval. |
+| History & approvals | `/operations` | `audit.list/get`, approve/reject, `/package/notify/signers` | Every submitted operation with its outcome; approve or reject anything parked pending approval. Register the node with the admin's own NIP-46 signer (`bunker://` or `nostrconnect://` QR) so approvals reach it from any browser/session. |
 | AI management | `/ai` | agent status/mode, MCP capability grants, model download, contribution settings | Resident admin agent control, MCP-connected agent scopes, local model management, data-sharing settings. |
 
 ## Known gaps
