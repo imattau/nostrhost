@@ -70,6 +70,10 @@ approval) must be checked, HTTP 200 does not mean success.
 `POST /package/plan` validates a package manifest against the checked-in
 [JSON Schema](../schema/package.schema.json) and returns a deterministic,
 read-only resource plan (identity, manifest digest, plan digest, operations).
+An optional `domain`/`path` pair applies install-time `[web].domain`/`[web].path`
+overrides (the same override `nostrhost app install --domain/--path` applies),
+so a manifest that omits `[web].domain` can be planned for a chosen host; the
+override runs before planning and never mutates the verified manifest.
 It never applies anything — the request contains data only, never a shell
 command, local path, or arbitrary operation envelope. App install/upgrade/
 remove/settings follow the same plan-then-apply shape: an `apply` call
