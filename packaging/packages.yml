@@ -201,7 +201,7 @@ packages:
   # and disabled by default; enabled per deployment (D3 hosted mode, §28).
   - name: nostrhost-nsite
     kind: golang
-    version: "0.2.1"
+    version: "0.2.2"
     source:
       repo: imattau/nostrhost-nsite
       submodule: libs/nostrhost-nsite

@@ -204,7 +204,7 @@ sensitivity = "private"
 target_authority = "ngit:nostrhost-state"
 retention = "desired state; reviewable diffs"
 recovery = "restore the state repository, then reconcile"
-notes = "gateway.json, sites/*, domains/*. WP7 target: render nsite.toml from this."
+notes = "gateway.json, sites/*, domains/*. WP7 done: nsite.toml is rendered provenance-tracked from this desired state."
 
 # ---------------------------------------------------------------------------
 # Secret authority (local root-only material; never event/Git published)
@@ -288,6 +288,7 @@ sensitivity = "secret"
 target_authority = "secret-store"
 retention = "permanent NIP-17 signing key"
 recovery = "restore the notifier key"
+notes = "WP7: non-secret fields (relay, paths, digest_interval, outbound_relays) are rendered provenance-tracked by nostrhost/service_projection.py; the notifier_private_key is resolved from operator config at render time and never appears in desired state. Provenance sidecar: /etc/nostrhost/notify.toml.source.json."
 
 [[state]]
 id = "signer-client-key"
@@ -352,15 +353,28 @@ recovery = "re-enter provider credentials"
 [[state]]
 id = "oidc-config"
 path = "/etc/nostrhost/oidc.toml"
-class = "secret"
-owner = "forks/yunohost/src/nostr_oidc.py"
+class = "projection"
+owner = "forks/yunohost/src/nostrhost/policy_projection.py"
 readers = ["forks/yunohost/src/nostr_oidc.py"]
-writers = []
+writers = ["forks/yunohost/src/nostrhost/policy_projection.py"]
 sensitivity = "secret"
-target_authority = "secret-store"
-retention = "operator-managed; client secrets"
-recovery = "restore or re-register OIDC clients"
-notes = "WP7 target: non-secret client registrations become rendered projections."
+target_authority = "secret-store (client_secret) + events:31101:nostrhost:oidc-clients (registrations)"
+retention = "rendered service config; client secrets resolved at render"
+recovery = "re-fold the kind-31101 oidc-clients document (secrets re-generated or restored from the credential store)"
+notes = "WP7: non-secret client registrations (id + redirect_uris) are rendered provenance-tracked from the kind-31101 oidc-clients document by nostr-policyd; each client_secret is resolved from the root-only credential store (secret:oidc/<id>) at render time and never appears in the document. Provenance sidecar: /etc/nostrhost/oidc.toml.source.json."
+
+[[state]]
+id = "oidc-config-desired"
+path = "/var/lib/nostrhost/state/nsites"  # placeholder; desired state is the relay document
+class = "event"
+owner = "forks/yunohost/src/nostrhost/policy_projection.py"
+readers = ["forks/yunohost/src/nostrhost/policy_projection.py"]
+writers = []
+sensitivity = "public"
+target_authority = "events:31101:nostrhost:oidc-clients"
+retention = "authoritative document (non-secret)"
+recovery = "replay the relay"
+notes = "The oidc-clients document itself carries no secrets; see oidc-config."
 
 [[state]]
 id = "oidc-signing-key"
@@ -467,28 +481,28 @@ recovery = "regenerate MCP endpoint env"
 [[state]]
 id = "security-config"
 path = "/etc/nostrhost/security.toml"
-class = "bootstrap"
+class = "projection"
 owner = "forks/yunohost/src/nostr_security.py"
 readers = ["forks/yunohost/src/nostr_security.py"]
-writers = []
+writers = ["forks/yunohost/src/nostrhost/cli.py", "forks/yunohost/src/nostrhost/service_projection.py"]
 sensitivity = "private"
-target_authority = "local:bootstrap"
-retention = "operator-managed"
-recovery = "regenerate security config"
-notes = "WP7 target: desired security schedule becomes a rendered projection."
+target_authority = "derived:operator"
+retention = "rendered service config"
+recovery = "re-render from operator defaults"
+notes = "WP7 done: the non-secret security schedule (severity mapping, interval, max_alerts) is rendered provenance-tracked by nostrhost/service_projection.py (sidecar security.toml.source.json); no secrets live in the file."
 
 [[state]]
 id = "ddns-config"
 path = "/etc/nostrhost/ddns.toml"
-class = "bootstrap"
+class = "projection"
 owner = "forks/yunohost/src/nostr_ddnswatch.py"
 readers = ["forks/yunohost/src/nostr_ddnswatch.py"]
-writers = []
+writers = ["forks/yunohost/src/nostrhost/cli.py", "forks/yunohost/src/nostrhost/service_projection.py"]
 sensitivity = "private"
-target_authority = "local:bootstrap"
-retention = "operator-managed"
-recovery = "regenerate DDNS config"
-notes = "Desired configuration only; provider tokens live in the credential store (WP6)."
+target_authority = "derived:operator"
+retention = "rendered service config"
+recovery = "re-render from operator defaults"
+notes = "WP7 done: the desired [watch] schedule is rendered provenance-tracked (sidecar ddns.toml.source.json); provider tokens live in the credential store (WP6) and never appear in the file."
 
 # ---------------------------------------------------------------------------
 # Projections / caches (rebuildable)
@@ -681,10 +695,47 @@ writers = [
   "forks/yunohost/src/nostrhost/connectivity.py",
 ]
 sensitivity = "public"
-target_authority = "local:rendered-projection"
+target_authority = "ngit:state/nsites"
 retention = "rendered service config"
 recovery = "re-render from nsite desired state"
-notes = "WP7 target: provenance-tracked projection with native config validation."
+notes = "WP7 done: provenance-tracked projection (sidecar nsite.toml.source.json) validated with the gateway's native `nostrhost-nsite -check-config` before atomic replace, then SIGHUP-reloaded."
+
+[[state]]
+id = "nsite-provenance"
+path = "/etc/nostrhost/nsite.toml.source.json"
+class = "projection"
+owner = "forks/yunohost/src/nostrhost/service_projection.py"
+readers = ["forks/yunohost/src/nostrhost/service_projection.py", "forks/yunohost/src/nostrhost/native_ops.py"]
+writers = ["forks/yunohost/src/nostrhost/service_projection.py"]
+sensitivity = "public"
+target_authority = "derived:rendered digest"
+retention = "rendered-file provenance record"
+recovery = "re-render the file"
+notes = "WP7: every generated service config records its source revision + rendered sha256 + reload result here (nsite/notify/oidc/security/ddns sidecars); `service.config.status` reports drift against it."
+
+[[state]]
+id = "security-provenance"
+path = "/etc/nostrhost/security.toml.source.json"
+class = "projection"
+owner = "forks/yunohost/src/nostrhost/service_projection.py"
+readers = ["forks/yunohost/src/nostrhost/service_projection.py", "forks/yunohost/src/nostrhost/native_ops.py"]
+writers = ["forks/yunohost/src/nostrhost/service_projection.py"]
+sensitivity = "public"
+target_authority = "derived:rendered digest"
+retention = "rendered-file provenance record"
+recovery = "re-render the file"
+
+[[state]]
+id = "ddns-provenance"
+path = "/etc/nostrhost/ddns.toml.source.json"
+class = "projection"
+owner = "forks/yunohost/src/nostrhost/service_projection.py"
+readers = ["forks/yunohost/src/nostrhost/service_projection.py", "forks/yunohost/src/nostrhost/native_ops.py"]
+writers = ["forks/yunohost/src/nostrhost/service_projection.py"]
+sensitivity = "public"
+target_authority = "derived:rendered digest"
+retention = "rendered-file provenance record"
+recovery = "re-render the file"
 
 [[state]]
 id = "catalogue-cache"

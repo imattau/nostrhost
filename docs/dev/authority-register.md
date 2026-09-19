@@ -1,6 +1,6 @@
 # Authority register
 
-**Status:** WP0–WP4 (complete) of
+**Status:** WP0–WP7 (complete) of
 [`docs/RELAY-STATE-MIGRATION-PLAN.md`](../RELAY-STATE-MIGRATION-PLAN.md). The
 projector framework is documented in
 [projector-framework.md](projector-framework.md).
@@ -231,6 +231,57 @@ What the cutover established:
 5. **Secrets never travel in documents.** A policy document carries only
    desired, non-secret state. Restic repo/password and provider tokens stay in
    the secret store; no relay fixture or state commit introduces a credential.
+
+## WP7 — generated service configuration as a projection
+
+**Exit gate:** every generated configuration identifies its source revision,
+manual edits are detected as drift, and reconcile safely restores the desired
+version.
+
+What the cutover established (`nostrhost/service_specs.py` +
+`nostrhost/service_projection.py`):
+
+1. **Provenance-tracked rendering.** `render_managed` writes each generated
+   service config atomically, records a sidecar (`<target>.source.json`) with
+   the source (`event:31101:…`, `ngit:state/nsites` or `derived:…`), the
+   source revision, and the sha256 of the exact bytes written. `check_drift`
+   compares the on-disk file to that digest; `nostr-projector verify service`
+   and `service.config.status` report drift, and `nostr-projector reconcile
+   service` re-renders from the authority.
+2. **nsite.toml is a native-validated projection.** `NsiteService.render_config`
+   now renders through the framework: the candidate is validated with the
+   gateway's own Go checker (`nostrhost-nsite -check-config`,
+   `config.Load`+`Validate`) before an atomic replace, the source revision is
+   the ngit desired-state revision, and the gateway is SIGHUP-reloaded on
+   change. A config the gateway would refuse is never installed.
+3. **notify.toml splits non-secret config from its secret.** The daemon's
+   config is rendered provenance-tracked; `notifier_private_key` is resolved
+   from the operator secret store at render time and never appears in desired
+   state or the sidecar.
+4. **OIDC client registrations are a 31101 document.** A new operator-authored
+   `oidc-clients` family (client `id` + `redirect_uris`) is folded by
+   `nostr-policyd` and rendered to `/etc/nostrhost/oidc.toml`. Each
+   `client_secret` is resolved from the root-only credential store
+   (`secret:oidc/<client_id>`, generated on first render) — never in the event
+   document. The credential broker gained a generic namespace
+   (`secret:<namespace>/<name>` alongside `secret:dns/…`).
+5. **Reload rather than restart where supported.** nsite reloads on SIGHUP;
+   catalogue already `try-restart`s after connectivity changes; consumers that
+   read config only at startup (notify) are restarted on change.
+6. **security.toml and ddns.toml are operator-derived projections.** The
+   nostr-securityd schedule/severity mapping and the nostr-ddnswatchd
+   `[watch]` interval are rendered provenance-tracked through the same
+   framework (`cli._render_security_config` / `cli._render_ddns_config`);
+   provider tokens stay in the credential store (`secret:dns/<provider>/<name>`,
+   WP6) and never appear in these files.
+7. **Post-reload health check + rollback.** `render_managed` accepts a
+   `health_check`; after the reload action the consumer is polled and, if it
+   fails to come up healthy, the previous bytes and sidecar are restored — a
+   config that breaks the service is never left installed.
+8. **Reload outcome is recorded.** The sidecar and the render report carry the
+   reload action + result; `service.config.reconcile` re-renders from
+   authority through the operation chain, so the reconcile is recorded in the
+   `2200`-series audit history.
 
 ## Adding an entry
 

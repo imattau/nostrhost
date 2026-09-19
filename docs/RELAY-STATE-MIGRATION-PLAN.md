@@ -8,12 +8,15 @@ freshness), WP4 (NIP-51/NIP-78 list and preference projection, self-service
 preferences), WP5 (catalogue + audit read models: NIP-77 negentropy
 rebuild/verify for the catalogue, relay-derived endorsement/announcement/
 profile reads with no local ledgers, signer-anomaly-annotated audit folding
-with bounded `until` pagination) and WP6 (kind-31101 policy declarations:
+with bounded `until` pagination), WP6 (kind-31101 policy declarations:
 notification-rules / restic-policy / host-policy folded by nostr-policyd,
 Restic desired state separated from its secrets, DDNS/security tokens already
-in the credential broker) are implemented — see `authority/`,
-`docs/dev/authority-register.md` and `docs/dev/projector-framework.md`.
-WP7 onward remain proposed.  
+in the credential broker) and WP7 (generated service configuration as a
+provenance-tracked projection: nsite.toml / notify.toml / oidc.toml /
+security.toml / ddns.toml with native validation, reload + post-reload
+health-check rollback, and drift/reconcile tooling) are implemented — see
+`authority/`, `docs/dev/authority-register.md` and
+`docs/dev/projector-framework.md`. WP8 onward remain proposed.  
 **Scope:** migrate NostrHost control-plane authority from overlapping TOML,
 JSON and database stores to signed relay events or the ngit state repository,
 while retaining local projections, secrets and bootstrap state where required.
@@ -480,7 +483,31 @@ ngit repository and are referenced by an applied-commit event instead.
 deleting and rebuilding their projections; no secret appears in event
 fixtures, relay queries or state commits.
 
-### WP7 — Make generated service configuration a projection
+### WP7 — Make generated service configuration a projection  ✅ complete
+
+Delivered: a declarative `ServiceSpec` registry (`nostrhost/service_specs.py`)
+plus a shared `render_managed`/`check_drift`/`reconcile` framework
+(`nostrhost/service_projection.py`) that treats every generated service config
+as a provenance-tracked projection — see `docs/dev/authority-register.md`.
+
+- `nsite.toml` is rendered from the ngit desired-state revision, validated
+  with the gateway's own Go checker (`nostrhost-nsite -check-config`), written
+  atomically and SIGHUP-reloaded.
+- `notify.toml` renders the non-secret fields provenance-tracked; the notifier
+  private key is resolved from the local secret store at render time.
+- Non-secret OIDC client registrations are a kind-31101 `oidc-clients`
+  document folded into `oidc.toml`; each `client_secret` is resolved from the
+  root-only credential store (`secret:oidc/<id>`) and never appears in the
+  document.
+- `security.toml` and `ddns.toml` (operator-derived schedules, no secrets) are
+  rendered provenance-tracked through the same framework.
+- Every render records a `<target>.source.json` sidecar (source revision +
+  rendered sha256 + reload outcome); a post-reload health check rolls the file
+  back when the consumer fails to come up healthy.
+- Drift and reconcile are surfaced by `nostr-projector verify/reconcile
+  service`, the `service.config.status` / `service.config.reconcile`
+  operations (the latter records the reconcile in the operation chain), and
+  the `/package/service/configs` API endpoint.
 
 **Targets**
 
