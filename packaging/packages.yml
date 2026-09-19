@@ -223,7 +223,7 @@ packages:
   # packages until its provisioning and operational lifecycle is mature.
   - name: nostrhost-agent
     kind: golang
-    version: "0.1.11"                 # regenerated catalogue: list.*/projection.status/audit tools (WP2-WP5)
+    version: "0.1.12"                 # regenerated catalogue: policy.read/policy.publish tools (WP6)
     source:
       repo: imattau/nostrhost-agent
       submodule: libs/nostrhost-agent

@@ -5,12 +5,15 @@ protocol, schemas, conformance corpus), WP2 (shared projector framework,
 rebuild/verify/shadow, projection health), WP3 (durable capability
 projection, identity rebuild, operationsd on the shared runtime, authorization
 freshness), WP4 (NIP-51/NIP-78 list and preference projection, self-service
-preferences) and WP5 (catalogue + audit read models: NIP-77 negentropy
+preferences), WP5 (catalogue + audit read models: NIP-77 negentropy
 rebuild/verify for the catalogue, relay-derived endorsement/announcement/
 profile reads with no local ledgers, signer-anomaly-annotated audit folding
-with bounded `until` pagination) are implemented — see `authority/`,
+with bounded `until` pagination) and WP6 (kind-31101 policy declarations:
+notification-rules / restic-policy / host-policy folded by nostr-policyd,
+Restic desired state separated from its secrets, DDNS/security tokens already
+in the credential broker) are implemented — see `authority/`,
 `docs/dev/authority-register.md` and `docs/dev/projector-framework.md`.
-WP6 onward remain proposed.  
+WP7 onward remain proposed.  
 **Scope:** migrate NostrHost control-plane authority from overlapping TOML,
 JSON and database stores to signed relay events or the ngit state repository,
 while retaining local projections, secrets and bootstrap state where required.
@@ -449,17 +452,26 @@ not an independently editable second manifest.
 **Exit gate:** removal and rebuild of catalogue/audit indexes preserve the
 same trusted catalogue and operation terminal states.
 
-### WP6 — Migrate notification and small policy documents
+### WP6 — Migrate notification and small policy documents ✅
 
 **Deliverables**
 
-- Final decision on private NIP-51 versus encrypted addressable recipients.
-- Addressable, schema-versioned notification rule document.
-- Projectors rendering current notification TOML inputs for compatibility.
-- `31101` policy declarations for small independent non-secret rules.
-- Separation of desired Restic schedule/retention/paths from the local
-  repository credential and password.
-- Separation of DDNS/security desired configuration from provider tokens.
+- Final decision: recipients/rules are an **addressable, schema-versioned
+  kind-31101 document** (public, NIP-42-gated on the control relay), not a
+  private NIP-51 or encrypted NIP-59 wrapper — the npubs and delivery rules are
+  non-secret, and the frozen event protocol already standardises 31101.
+- Addressable `notification-rules` document with the WP1 envelope
+  (`schema`/`revision`/`value`).
+- `nostr-policyd` projector renders the current notification TOML inputs
+  (`recipients.toml`/`policy.toml`) for the Go daemon, so delivery is unchanged.
+- `31101` policy declarations for small independent non-secret rules: the host
+  operation safeguards (`host-policy`) are a 31101 document rendered back to
+  `/etc/nostrhost/policy.toml`.
+- Restic desired schedule/retention/paths are separated into the `restic-policy`
+  31101 document; repo URL + password stay in the root-only `restic.toml`.
+- DDNS/security desired config remains bootstrap; provider tokens already live
+  in the credential broker (`secret:dns/<provider>/<name>`), never in the
+  desired config.
 
 Policy documents that must change atomically with machine state remain in the
 ngit repository and are referenced by an applied-commit event instead.

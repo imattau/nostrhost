@@ -133,6 +133,31 @@ rebuild|verify|shadow lists` are wired. Compatibility files are rendered by
 `catalogue.env`, portal settings → the per-domain portal files, preserving the
 permission-owned `apps` key).
 
+## Policy declaration projection (WP6)
+
+`forks/yunohost/src/nostrhost/policy_projection.py` projects the host's
+kind-31101 policy documents through one `PolicyProjector` into
+`/etc/nostrhost/policy-projection.json`. Families are declared in
+`forks/yunohost/src/nostrhost/policy_specs.py`:
+
+- `notification-rules` → renders the Go notify daemon's `recipients.toml` +
+  `policy.toml` inputs unchanged;
+- `restic-policy` → merges the desired `paths`/`retention`/`schedule` into the
+  root-only `/etc/nostrhost/restic.toml`, preserving the secret `repo` +
+  `password` verbatim;
+- `host-policy` → renders the non-secret operation-safeguard overrides into
+  `/etc/nostrhost/policy.toml` for the policy library.
+
+Fold semantics are the WP1 addressable rule: greatest `revision` wins,
+equal-revision tie-break `(created_at, event_id)`, `enabled:false` revokes,
+and a missing envelope `schema` is quarantined (never folded). All families are
+operator-authored; a non-admin author is quarantined. `bin/nostr-policyd` runs
+the projector on `ProjectionRuntime`; `bin/nostr-projector
+rebuild|verify|shadow policy` are wired. The operator publish path is the
+`policy.publish` native op (and `backup.policy.set` for the Restic family);
+`nostrhost notify sync` seeds the initial `notification-rules` document. No
+document carries a secret — the secret-first invariant is structural.
+
 ## Verify semantics
 
 `verify(projector, expected)` refolds the event set on a **fresh clone** of

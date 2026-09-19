@@ -256,14 +256,14 @@ recovery = "operator-held recovery material"
 id = "restic-config"
 path = "/etc/nostrhost/restic.toml"
 class = "secret"
-owner = "forks/yunohost/src/nostrhost/cli.py"
+owner = "forks/yunohost/src/nostrhost/policy_projection.py"
 readers = ["forks/yunohost/src/nostr_restic.py", "forks/yunohost/src/nostr_operationsd.py"]
-writers = ["forks/yunohost/src/nostrhost/cli.py", "forks/yunohost/src/nostr_restic.py"]
+writers = ["forks/yunohost/src/nostrhost/cli.py", "forks/yunohost/src/nostr_restic.py", "forks/yunohost/src/nostrhost/policy_projection.py"]
 sensitivity = "secret"
 target_authority = "secret-store"
 retention = "permanent; holds the repository password"
 recovery = "restore the Restic password and repository credential"
-notes = "Desired schedule/retention/paths are separable (WP6); the password stays secret."
+notes = "WP6: repo + password stay secret here (root-only); desired paths/retention/schedule are rendered in by the policy projection from the kind-31101 restic-policy document and preserved verbatim alongside the secrets."
 
 [[state]]
 id = "dns-credentials"
@@ -418,14 +418,27 @@ notes = "WP8 target: emit a protected audit event per NIP-86 mutation and add a 
 id = "host-policy"
 path = "/etc/nostrhost/policy.toml"
 class = "bootstrap"
-owner = "forks/yunohost/src/nostrhost/cli.py"
+owner = "forks/yunohost/src/nostrhost/policy_projection.py"
 readers = ["forks/yunohost/src/nostrhost_native_policy.py"]
-writers = ["forks/yunohost/src/nostrhost/cli.py"]
+writers = ["forks/yunohost/src/nostrhost/policy_projection.py"]
 sensitivity = "private"
-target_authority = "local:bootstrap"
-retention = "root-owned; deterministic safeguards"
-recovery = "regenerate from defaults"
-notes = "WP6 target: small non-secret rules become kind-31101 declarations."
+target_authority = "events:31101"
+retention = "rendered compatibility output; regenerated from kind-31101 host-policy"
+recovery = "re-fold the 31101 host-policy document"
+notes = "WP6: rendered by the policy projection from the kind-31101 host-policy document; the operator publishes the declaration (policy.publish) and the projection writes this file."
+
+[[state]]
+id = "notify-state"
+path = "/var/lib/nostrhost/state/notifications/{recipients,policy}.toml"
+class = "projection"
+owner = "forks/yunohost/src/nostrhost/policy_projection.py"
+readers = ["libs/nostrhost-control/internal/notify/service.go"]
+writers = ["forks/yunohost/src/nostrhost/policy_projection.py"]
+sensitivity = "private"
+target_authority = "events:31101"
+retention = "rendered compatibility output; regenerated from kind-31101 notification-rules"
+recovery = "re-fold the 31101 notification-rules document"
+notes = "WP6: the Go notify daemon keeps reading these TOML files; the policy projection now renders them from the kind-31101 notification-rules document instead of the old direct-write seeding."
 
 [[state]]
 id = "mcp-config"
@@ -523,6 +536,25 @@ target_authority = "events:10000,10002,10006,30000,30078"
 retention = "projection; disposable, rebuilt from the relay"
 recovery = "replay kinds 10000/10002/10006/30000/30078 (nostr-projector rebuild lists)"
 notes = "WP4: folded NIP-51/NIP-65/NIP-78 lists and preferences (trusted publishers, approved repos, blocked relays, portal settings, per-user preferences)."
+
+[[state]]
+id = "policy-projection"
+path = "/etc/nostrhost/policy-projection.json"
+class = "projection"
+owner = "forks/yunohost/src/nostrhost/policy_projection.py"
+readers = [
+  "forks/yunohost/src/nostrhost/policy_projection.py",
+  "forks/yunohost/src/nostrhost/native_ops.py",
+]
+writers = [
+  "forks/yunohost/src/nostrhost/policy_projection.py",
+  "forks/yunohost/src/nostr_policyd.py",
+]
+sensitivity = "private"
+target_authority = "events:31101"
+retention = "projection; disposable, rebuilt from the relay"
+recovery = "replay kind 31101 (nostr-projector rebuild policy)"
+notes = "WP6: folded kind-31101 policy documents (notification-rules, restic-policy, host-policy); renders the compatibility files the existing services read."
 
 [[state]]
 id = "portal-settings"

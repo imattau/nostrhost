@@ -63,7 +63,7 @@ registry so a rename or removal is caught. Each maps to a later work package.
 | `signer_sessions.db` | `forks/yunohost/src/nostr_account.py:343,397,415` | local runtime by design (transactional) |
 | NIP-86 `policy.db` | `libs/nostrhost-control/internal/policy/store.go`, `.../internal/relay/server.go:369-404` | WP8 — audit event per mutation + signed snapshot |
 | catalogue derived index (endorsements `30079`, announcements `1`, profile `0` read back from the control relay; no local files) | `forks/yunohost/src/nostrhost/native_ops.py:1216-1300` | WP5 — done (relay-derived; replaceable `d`-tag/`version`-tag idempotency) |
-| notification `recipients.toml` / `policy.toml` | `forks/yunohost/src/nostrhost/cli.py:1416-1417` | WP6 — addressable notification document |
+| notification `recipients.toml` / `policy.toml` | `forks/yunohost/src/nostrhost/policy_projection.py` | WP6 — done (rendered from the kind-31101 `notification-rules` document; `nostr-policyd` keeps the Go daemon's TOML inputs current) |
 | rendered service config (`nsite.toml`, `catalogue.env`, `connectivity.json`) | `forks/yunohost/src/nostrhost/nsites/service.py`, `.../connectivity.py`, `.../cli.py` | WP7 — provenance-tracked projections |
 | bootstrap config (`relay.toml`, `operator.toml`, `policy.toml`, `portal.toml`) | `forks/yunohost/src/nostr_identity.py:280-348`, `forks/yunohost/src/nostrhost/cli.py` | bootstrap/secret authority (intentional) |
 
@@ -81,11 +81,14 @@ here so the register stays honest about current overlap:
    (`config.go:41`; no use in `server.go`).
 3. **Three policy concepts** — host `/etc/nostrhost/policy.toml` (operation
    safeguards), relay `policy.db` (relay access), and notification
-   `state/notifications/policy.toml` (delivery) are independent. WP6/WP8
-   assign each one authority.
-4. **Unused trust primitive** — kind `31101` is defined, schema-validated and
-   admin-gated in `nostrhost-control`, but has no producer or projector.
-   WP1/WP6 make it real.
+   `state/notifications/policy.toml` (delivery) are independent. WP6 gives the
+   host and notification policies an event authority (kind-31101 documents
+   folded by `nostr-policyd`); the relay NIP-86 `policy.db` remains WP8.
+4. **Unused trust primitive** — kind `31101` was defined, schema-validated and
+   admin-gated in `nostrhost-control` but had no producer or projector. WP6
+   makes it real: `policy.publish` produces the notification-rules /
+   restic-policy / host-policy documents and `nostr-policyd` folds them into
+   the compatibility files.
 5. **Ledger duplication** — the two catalogue ledgers (attestations,
    announcements) and the profile cache duplicated the node's own
    already-relayed events. WP5 removed them: endorsements/announcements/profile
@@ -186,6 +189,48 @@ What the cutover established:
    never grant themselves a capability.
 5. **Permission membership** (kind 30000) stays operator-authored and is
    merged additively with LDAP membership; the projector now has direct tests.
+
+## WP5 — catalogue + audit read models
+
+See the plan §WP5. Catalogue endorsements/announcements/profile are read back
+from the control relay (no local ledgers); audit folds the 2200-2205 chain with
+bounded `until` pagination and signer-anomaly annotation.
+
+## WP6 — notification and small policy documents
+
+**Exit gate:** notification delivery and policy evaluation continue after
+deleting and rebuilding their projections; no secret appears in event
+fixtures, relay queries or state commits.
+
+What the cutover established:
+
+1. **A 31101 producer + projector.** `nostrhost/policy_specs.py` declares the
+   three families (`notification-rules`, `restic-policy`, `host-policy`), all
+   operator-authored, addressable, schema-versioned kind-31101 documents.
+   `nostrhost/policy_projection.py` folds them (greatest `revision` wins,
+   equal-revision `(created_at, event_id)` tie-break, `enabled:false` revoke,
+   missing-`schema` quarantined) into `PolicyStore`
+   (`/etc/nostrhost/policy-projection.json`) and renders the compatibility
+   files the existing services read. `nostr-policyd` runs the projection on the
+   shared runtime; `bin/nostr-projector` gained the `policy` adapter.
+2. **Notification rules are event-sourced.** The Go `nostrhost-notify` daemon
+   keeps reading `recipients.toml` + `policy.toml`, but those are now rendered
+   from the `notification-rules` document instead of the old direct-write
+   seeding. `nostrhost notify sync` publishes an initial document when none
+   exists.
+3. **Restic desired state is separated from its secrets.** The kind-31101
+   `restic-policy` document carries only `paths`/`retention`/`schedule`; the
+   projector merges them into `/etc/nostrhost/restic.toml` preserving the
+   root-only `repo` + `password` verbatim. `backup.policy.set` now also
+   publishes the document.
+4. **Host safeguards are a 31101 document.** The non-secret overrides in
+   `/etc/nostrhost/policy.toml` (`require_confirmation`, `require_backup`,
+   `minimum_free_space`, `max_backup_age`, `require_owner_signature`) are
+   published as `host-policy` and rendered back by the projector; the policy
+   library evaluates the rendered file unchanged.
+5. **Secrets never travel in documents.** A policy document carries only
+   desired, non-secret state. Restic repo/password and provider tokens stay in
+   the secret store; no relay fixture or state commit introduces a credential.
 
 ## Adding an entry
 

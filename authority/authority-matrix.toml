@@ -40,9 +40,9 @@ self_service = false
 schema = "authority/event-protocol/schemas/31101-policy.schema.json"
 encryption = "nip42-gated"
 retention = "replaceable"
-projection = "pending:WP6"
+projection = "policy"
 replication = "local-only"
-notes = "Schema-versioned small non-secret policy document. Envelope 'schema' is required. No producer yet."
+notes = "Schema-versioned small non-secret policy document (notification-rules, restic-policy, host-policy). Envelope 'schema' is required. Producer: policy.publish / nostrhost.policy_projection; projector: nostr-policyd (WP6)."
 
 [[kind]]
 kind = 31102
