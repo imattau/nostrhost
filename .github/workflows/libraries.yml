@@ -115,6 +115,7 @@ jobs:
           pip install -q -e libs/nostrhost-protocol/python
           pip install -q -e libs/nostrhost-auth
           pip install -q -e libs/nostrhost-policy
+          pip install -q -e libs/nostrhost-projection
 
       - name: Verify the agent operation-catalogue snapshot is current
         # The resident agent embeds a generated catalogue + digest; a stale
@@ -124,6 +125,8 @@ jobs:
         #   python libs/nostrhost-agent/scripts/generate_operation_registry.py \
         #     --fork-src forks/yunohost/src \
         #     --output libs/nostrhost-agent/agent/catalog_generated.go
+        env:
+          PYTHONPATH: libs/nostrhost-protocol/python/src:libs/nostrhost-auth/src:libs/nostrhost-policy/src:libs/nostrhost-projection/src
         run: |
           python libs/nostrhost-agent/scripts/generate_operation_registry.py \
             --fork-src forks/yunohost/src \
