@@ -19,13 +19,18 @@ jobs:
           python-version: "3.11"
 
       - name: Install validation dependencies
-        run: python -m pip install "pytest==8.3.5" "jsonschema>=4"
+        run: |
+          python -m pip install "pytest==8.3.5" "jsonschema>=4"
+          python -m pip install -e libs/nostrhost-protocol/python
 
       - name: Check every persistent path is registered
         run: python tools/authority_registry.py check
 
-      - name: Event-protocol conformance corpus (Python reference)
+      - name: Event-protocol conformance corpus (Python binding)
         run: python tools/event_protocol.py conformance
+
+      - name: Protocol drift guard (no new local kind definitions / copied fixtures)
+        run: python tools/protocol_drift_guard.py
 
       - name: Authority register and event-protocol contract tests
         run: python -m pytest -q tools/tests/test_authority_registry.py tools/tests/test_event_protocol.py

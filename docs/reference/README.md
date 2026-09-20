@@ -24,7 +24,7 @@ Some contracts are best consumed directly by tools:
 - `packaging/compatibility.yml` defines component version constraints.
 - `forks/yunohost/src/nostrhost/native_ops.py` defines operation schemas,
   scopes, risk, reversibility, and handlers.
-- `libs/nostrhost-control/internal/eventmodel/` validates custom event kinds.
+- `libs/nostrhost-protocol/go/` validates custom event kinds (extracted from the relay event model).
 
 Generated clients should use exported schemas or catalogues rather than parse
 human documentation.

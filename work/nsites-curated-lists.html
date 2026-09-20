@@ -1,0 +1,244 @@
+<div id="nsites-collection-mock" aria-label="NostrHost curated nsite collection mockup">
+  <style>
+    #nsites-collection-mock {
+      --nh-bg: light-dark(#f5f6f3, #131512);
+      --nh-panel: light-dark(#ffffff, #1d201c);
+      --nh-panel-soft: light-dark(#eef1eb, #252924);
+      --nh-text: light-dark(#1b211b, #eff4ec);
+      --nh-muted: light-dark(#667064, #a9b3a6);
+      --nh-line: light-dark(#dfe4dc, #343a33);
+      --nh-accent: #6b8f47;
+      --nh-accent-soft: color-mix(in srgb, var(--nh-accent) 15%, var(--nh-panel));
+      --nh-warn: light-dark(#9b6a22, #e7b764);
+      --nh-radius: 16px;
+      color: var(--nh-text);
+      background: var(--nh-bg);
+      border-radius: 20px;
+      overflow: hidden;
+      font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+      min-height: 650px;
+      box-shadow: 0 18px 50px color-mix(in srgb, var(--nh-text) 10%, transparent);
+    }
+    #nsites-collection-mock * { box-sizing: border-box; }
+    #nsites-collection-mock button { font: inherit; }
+    #nsites-collection-mock .nh-topbar {
+      height: 58px;
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      padding: 0 22px;
+      background: var(--nh-panel);
+      border-bottom: 1px solid var(--nh-line);
+    }
+    #nsites-collection-mock .nh-brand { font-weight: 500; letter-spacing: -.02em; }
+    #nsites-collection-mock .nh-nav { display: flex; gap: 6px; margin-left: 16px; }
+    #nsites-collection-mock .nh-nav span {
+      color: var(--nh-muted);
+      padding: 7px 10px;
+      border-radius: 9px;
+      font-size: 13px;
+    }
+    #nsites-collection-mock .nh-nav .active { color: var(--nh-text); background: var(--nh-panel-soft); }
+    #nsites-collection-mock .nh-signer {
+      margin-left: auto;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      font-size: 12px;
+      color: var(--nh-muted);
+    }
+    #nsites-collection-mock .nh-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--nh-accent); }
+    #nsites-collection-mock .nh-shell { display: grid; grid-template-columns: 190px minmax(0, 1fr); }
+    #nsites-collection-mock .nh-sidebar {
+      padding: 22px 14px;
+      border-right: 1px solid var(--nh-line);
+      background: var(--nh-panel);
+    }
+    #nsites-collection-mock .nh-side-label {
+      margin: 0 9px 9px;
+      color: var(--nh-muted);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: .09em;
+    }
+    #nsites-collection-mock .nh-side-item {
+      display: flex;
+      gap: 9px;
+      align-items: center;
+      padding: 10px;
+      border-radius: 10px;
+      color: var(--nh-muted);
+      font-size: 13px;
+      margin-bottom: 3px;
+    }
+    #nsites-collection-mock .nh-side-item.active { color: var(--nh-text); background: var(--nh-accent-soft); }
+    #nsites-collection-mock .nh-side-item svg { width: 16px; height: 16px; }
+    #nsites-collection-mock .nh-main { padding: 30px; min-width: 0; }
+    #nsites-collection-mock .nh-crumb { color: var(--nh-muted); font-size: 12px; margin-bottom: 18px; }
+    #nsites-collection-mock .nh-hero { display: grid; grid-template-columns: 1fr auto; gap: 20px; align-items: start; }
+    #nsites-collection-mock h1 { margin: 0 0 8px; font-size: 28px; line-height: 1.15; font-weight: 500; letter-spacing: -.035em; }
+    #nsites-collection-mock .nh-description { margin: 0; max-width: 620px; color: var(--nh-muted); line-height: 1.5; font-size: 14px; }
+    #nsites-collection-mock .nh-meta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 15px; color: var(--nh-muted); font-size: 12px; }
+    #nsites-collection-mock .nh-meta span { display: inline-flex; gap: 6px; align-items: center; }
+    #nsites-collection-mock .nh-meta svg { width: 14px; height: 14px; }
+    #nsites-collection-mock .nh-actions { display: flex; gap: 8px; }
+    #nsites-collection-mock .nh-button {
+      border: 1px solid var(--nh-line);
+      background: var(--nh-panel);
+      color: var(--nh-text);
+      border-radius: 10px;
+      padding: 9px 12px;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      min-height: 38px;
+    }
+    #nsites-collection-mock .nh-button.primary { background: var(--nh-accent); color: #fff; border-color: transparent; }
+    #nsites-collection-mock .nh-button svg { width: 15px; height: 15px; }
+    #nsites-collection-mock .nh-divider { height: 1px; background: var(--nh-line); margin: 26px 0 20px; }
+    #nsites-collection-mock .nh-list-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+    #nsites-collection-mock .nh-list-head h2 { margin: 0; font-size: 14px; font-weight: 500; }
+    #nsites-collection-mock .nh-entry-count { color: var(--nh-muted); font-size: 12px; }
+    #nsites-collection-mock .nh-entry {
+      display: grid;
+      grid-template-columns: 42px minmax(0, 1fr) auto;
+      gap: 13px;
+      align-items: center;
+      background: var(--nh-panel);
+      border: 1px solid var(--nh-line);
+      border-radius: var(--nh-radius);
+      padding: 14px;
+      margin-bottom: 10px;
+    }
+    #nsites-collection-mock .nh-index {
+      width: 42px;
+      height: 42px;
+      display: grid;
+      place-items: center;
+      border-radius: 12px;
+      background: var(--nh-panel-soft);
+      color: var(--nh-muted);
+      font-size: 13px;
+    }
+    #nsites-collection-mock .nh-title-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    #nsites-collection-mock .nh-site-title { font-size: 14px; font-weight: 500; }
+    #nsites-collection-mock .nh-chip { padding: 3px 7px; border-radius: 999px; font-size: 11px; background: var(--nh-accent-soft); color: var(--nh-accent); }
+    #nsites-collection-mock .nh-chip.pinned { color: var(--nh-warn); background: color-mix(in srgb, var(--nh-warn) 13%, var(--nh-panel)); }
+    #nsites-collection-mock .nh-site-copy { color: var(--nh-muted); font-size: 12px; margin-top: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    #nsites-collection-mock .nh-entry-actions { display: flex; gap: 7px; }
+    #nsites-collection-mock .nh-icon-button {
+      width: 34px;
+      height: 34px;
+      border-radius: 9px;
+      border: 1px solid var(--nh-line);
+      background: transparent;
+      color: var(--nh-muted);
+      display: grid;
+      place-items: center;
+    }
+    #nsites-collection-mock .nh-icon-button svg { width: 15px; height: 15px; }
+    #nsites-collection-mock .nh-relays {
+      margin-top: 18px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--nh-muted);
+      font-size: 12px;
+      padding: 12px 14px;
+      border-radius: 12px;
+      background: var(--nh-panel-soft);
+    }
+    #nsites-collection-mock .nh-relays strong { color: var(--nh-text); font-weight: 500; }
+    #nsites-collection-mock .nh-relay-dots { display: flex; gap: 5px; margin-left: auto; }
+    #nsites-collection-mock .nh-relay-dots span { width: 8px; height: 8px; border-radius: 50%; background: var(--nh-accent); }
+    #nsites-collection-mock .nh-relay-dots .late { background: var(--nh-warn); }
+    #nsites-collection-mock.compact .nh-entry { padding: 9px 12px; margin-bottom: 7px; }
+    #nsites-collection-mock.compact .nh-index { width: 34px; height: 34px; }
+    @media (max-width: 700px) {
+      #nsites-collection-mock .nh-sidebar { display: none; }
+      #nsites-collection-mock .nh-shell { grid-template-columns: 1fr; }
+      #nsites-collection-mock .nh-main { padding: 22px 16px; }
+      #nsites-collection-mock .nh-nav { display: none; }
+      #nsites-collection-mock .nh-hero { grid-template-columns: 1fr; }
+      #nsites-collection-mock .nh-actions { justify-content: flex-start; }
+      #nsites-collection-mock .nh-entry { grid-template-columns: 38px minmax(0,1fr); }
+      #nsites-collection-mock .nh-entry-actions { grid-column: 2; }
+    }
+  </style>
+  <header class="nh-topbar">
+    <span class="nh-brand">NostrHost</span>
+    <nav class="nh-nav" aria-label="Primary">
+      <span>Overview</span><span class="active">Catalogue</span><span>Sites</span><span>Operations</span>
+    </nav>
+    <span class="nh-signer"><span class="nh-dot"></span>Signer connected</span>
+  </header>
+  <div class="nh-shell">
+    <aside class="nh-sidebar">
+      <p class="nh-side-label">Browse</p>
+      <div class="nh-side-item"><i data-lucide="layout-grid" aria-hidden="true"></i>All</div>
+      <div class="nh-side-item"><i data-lucide="box" aria-hidden="true"></i>Apps</div>
+      <div class="nh-side-item"><i data-lucide="globe-2" aria-hidden="true"></i>Nsites</div>
+      <div class="nh-side-item active"><i data-lucide="list-tree" aria-hidden="true"></i>Collections</div>
+      <p class="nh-side-label" style="margin-top:26px">Yours</p>
+      <div class="nh-side-item"><i data-lucide="plus" aria-hidden="true"></i>New collection</div>
+    </aside>
+    <main class="nh-main">
+      <div class="nh-crumb">Catalogue / Collections / Small independent sites</div>
+      <section class="nh-hero">
+        <div>
+          <h1>Small independent sites</h1>
+          <p class="nh-description">Personal sites, tiny tools, and experiments worth wandering through—curated by npub1lost…cause.</p>
+          <div class="nh-meta">
+            <span><i data-lucide="list" aria-hidden="true"></i>12 sites</span>
+            <span><i data-lucide="clock-3" aria-hidden="true"></i>Updated 2h ago</span>
+            <span><i data-lucide="radio" aria-hidden="true"></i>3 external relays</span>
+          </div>
+        </div>
+        <div class="nh-actions">
+          <button class="nh-button" type="button"><i data-lucide="copy" aria-hidden="true"></i>Copy naddr</button>
+          <button class="nh-button primary" type="button"><i data-lucide="plus" aria-hidden="true"></i>Add site</button>
+        </div>
+      </section>
+      <div class="nh-divider"></div>
+      <div class="nh-list-head"><h2>Curated sites</h2><span class="nh-entry-count">Ordered by curator</span></div>
+      <article class="nh-entry">
+        <div class="nh-index">01</div>
+        <div><div class="nh-title-row"><span class="nh-site-title">Field Notes</span><span class="nh-chip">Live site</span></div><div class="nh-site-copy">A quiet field journal, rebuilt whenever its author publishes a new manifest.</div></div>
+        <div class="nh-entry-actions"><button class="nh-icon-button" aria-label="Open Field Notes"><i data-lucide="external-link" aria-hidden="true"></i></button><button class="nh-icon-button" aria-label="More options for Field Notes"><i data-lucide="ellipsis" aria-hidden="true"></i></button></div>
+      </article>
+      <article class="nh-entry">
+        <div class="nh-index">02</div>
+        <div><div class="nh-title-row"><span class="nh-site-title">Pocket Weather</span><span class="nh-chip pinned">Pinned snapshot</span></div><div class="nh-site-copy">Version captured on 18 Sep 2026 · immutable kind-5128 snapshot.</div></div>
+        <div class="nh-entry-actions"><button class="nh-icon-button" aria-label="Open Pocket Weather"><i data-lucide="external-link" aria-hidden="true"></i></button><button class="nh-icon-button" aria-label="More options for Pocket Weather"><i data-lucide="ellipsis" aria-hidden="true"></i></button></div>
+      </article>
+      <article class="nh-entry">
+        <div class="nh-index">03</div>
+        <div><div class="nh-title-row"><span class="nh-site-title">One-page Radio</span><span class="nh-chip">Live site</span></div><div class="nh-site-copy">A named nsite that follows the latest valid manifest from its author.</div></div>
+        <div class="nh-entry-actions"><button class="nh-icon-button" aria-label="Open One-page Radio"><i data-lucide="external-link" aria-hidden="true"></i></button><button class="nh-icon-button" aria-label="More options for One-page Radio"><i data-lucide="ellipsis" aria-hidden="true"></i></button></div>
+      </article>
+      <div class="nh-relays" aria-live="polite">
+        <i data-lucide="radio-tower" aria-hidden="true"></i>
+        <span><strong>Published externally</strong> · 2 accepted, 1 delayed</span>
+        <span class="nh-relay-dots" aria-label="Two relays accepted and one delayed"><span></span><span></span><span class="late"></span></span>
+      </div>
+    </main>
+  </div>
+  <script>
+    (() => {
+      const root = document.getElementById('nsites-collection-mock');
+      const state = { density: 'comfortable', relayHealth: true, accent: '#6b8f47' };
+      const render = () => {
+        root.classList.toggle('compact', state.density === 'compact');
+        root.querySelector('.nh-relays').hidden = !state.relayHealth;
+        root.style.setProperty('--nh-accent', state.accent);
+      };
+      render();
+      if (globalThis.Tweak) {
+        const tweak = new Tweak({ container: root, onChange: render });
+        tweak.addSelect(state, 'density', { label: 'List density', options: ['comfortable', 'compact'], reference: 'collection.density' });
+        tweak.addToggle(state, 'relayHealth', { label: 'Show relay health', reference: 'collection.relay-health' });
+        tweak.addColorPicker(state, 'accent', { label: 'Accent', reference: '--nh-accent' });
+      }
+    })();
+  </script>
+</div>

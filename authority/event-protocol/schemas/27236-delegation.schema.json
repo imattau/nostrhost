@@ -1,8 +1,0 @@
-{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://github.com/imattau/nostrhost/blob/main/authority/event-protocol/schemas/27236-delegation.schema.json",
-  "title": "kind 27236 — capability delegation",
-  "description": "Regular, immutable. Tags are the contract: p=delegate (64-hex), server=<server pubkey 64-hex>, expiry=<unix seconds>, one or more scope=<scope>. Content is empty. Enforced by code, not by content schema.",
-  "type": ["object", "null"],
-  "additionalProperties": false
-}

@@ -7,9 +7,10 @@ NostrHost. It implements WP0 of
 
 - `registry.toml` — one `[[state]]` entry per persistent fact.
 - `authority-matrix.toml` — one `[[kind]]` row per event kind/address family.
-- `event-protocol/` — frozen envelope, per-kind schemas, and the cross-language
-  conformance corpus consumed by `tools/event_protocol.py` and the Go
-  `eventprotocol` package (WP1).
+- `event-protocol/` — compatibility marker; the envelope, per-kind schemas, and
+  the cross-language conformance corpus now live in the reusable
+  `libs/nostrhost-protocol` library (`spec/`, `python/`, `go/`), consumed by
+  `tools/event_protocol.py` and the Go binding (WP1).
 
 The human guide, including the direct-write inventory, is
 [`docs/dev/authority-register.md`](../docs/dev/authority-register.md).

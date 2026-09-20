@@ -36,3 +36,7 @@
 [submodule "libs/nostrhost-nsite"]
 	path = libs/nostrhost-nsite
 	url = https://github.com/imattau/nostrhost-nsite.git
+[submodule "libs/nostrhost-protocol"]
+	path = libs/nostrhost-protocol
+	url = https://github.com/imattau/nostrhost-protocol.git
+	branch = main

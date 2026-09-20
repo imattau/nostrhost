@@ -1,33 +1,30 @@
-"""Contract tests for the WP1 event-protocol corpus and the Python reference."""
+"""Contract tests for the event-protocol corpus and the nostrhost-protocol library."""
 
 from __future__ import annotations
 
-import importlib.util
 import json
-import sys
 from pathlib import Path
 
 import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
 
-
-def _load_module():
-    spec = importlib.util.spec_from_file_location(
-        "event_protocol", ROOT / "tools" / "event_protocol.py"
-    )
-    assert spec is not None and spec.loader is not None
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[spec.name] = module
-    spec.loader.exec_module(module)
-    return module
+SPEC_DIR = ROOT / "libs/nostrhost-protocol/spec"
+FIXTURES_DIR = SPEC_DIR / "fixtures"
+SCHEMAS_DIR = SPEC_DIR / "schemas"
 
 
-ep = _load_module()
+def _protocol():
+    import nostrhost_protocol as p
+
+    return p
+
+
+ep = _protocol()
 
 
 def test_verdict_corpus_is_wellformed() -> None:
-    fixtures = ep.load_fixtures(ROOT / "authority/event-protocol/fixtures/verdicts.json")
+    fixtures = ep.load_verdicts()
     assert len(fixtures) >= 30
     ids = [f["id"] for f in fixtures]
     assert len(ids) == len(set(ids)), "duplicate fixture ids"
@@ -40,7 +37,7 @@ def test_verdict_corpus_is_wellformed() -> None:
 
 
 def test_fold_corpus_is_wellformed() -> None:
-    fixtures = ep.load_fixtures(ROOT / "authority/event-protocol/fixtures/folds.json")
+    fixtures = ep.load_folds()
     assert fixtures
     for fixture in fixtures:
         assert fixture["events"], fixture["id"]
@@ -48,27 +45,19 @@ def test_fold_corpus_is_wellformed() -> None:
 
 
 def test_python_reference_matches_corpus() -> None:
-    problems = (
-        ep._verdict_mismatches(ep.run_verdicts(ROOT))
-        + ep._fold_mismatches(ep.run_folds(ROOT))
-    )
-    assert problems == []
+    result = ep.conformance("python")
+    assert result["problems"] == [], result["problems"]
 
 
 def test_schemas_validate_accepted_content() -> None:
     jsonschema = pytest.importorskip("jsonschema")
     checked = 0
-    for fixture in ep.load_fixtures(
-        ROOT / "authority/event-protocol/fixtures/verdicts.json"
-    ):
+    for fixture in ep.load_verdicts():
         if not fixture["expect"]["accept"]:
             continue
         kind = int(fixture["event"]["kind"])
-        schema_path = next(
-            iter(sorted((ROOT / "authority/event-protocol/schemas").glob(f"{kind}-*.schema.json"))),
-            None,
-        )
-        if schema_path is None:
+        schema = ep.load_schema(kind)
+        if schema is None:
             continue
         raw = fixture["event"].get("content") or ""
         if raw == "":
@@ -76,14 +65,13 @@ def test_schemas_validate_accepted_content() -> None:
         body = json.loads(raw)
         if not isinstance(body, dict):
             continue
-        schema = json.loads(schema_path.read_text(encoding="utf-8"))
         jsonschema.Draft7Validator(schema).validate(body)
         checked += 1
     assert checked > 0, "no accepted fixtures exercised a content schema"
 
 
 def test_every_kind_has_a_schema() -> None:
-    schemas = {p.stem.split("-")[0] for p in (ROOT / "authority/event-protocol/schemas").glob("*.schema.json")}
+    schemas = {p.stem.split("-")[0] for p in SCHEMAS_DIR.glob("*.schema.json")}
     assert {"31100", "31101", "31102", "27236", "27237"} <= schemas
 
 
@@ -112,7 +100,7 @@ def test_matrix_covers_required_custom_kinds() -> None:
 
 def test_matrix_fixtures_cover_go_validated_kinds() -> None:
     matrix_kinds = {str(row["kind"]) for row in _load_matrix()["kind"]}
-    fixtures = ep.load_fixtures(ROOT / "authority/event-protocol/fixtures/verdicts.json")
+    fixtures = ep.load_verdicts()
     go_kinds = {str(f["event"]["kind"]) for f in fixtures if "go" in f["validators"]}
     assert go_kinds <= matrix_kinds, f"matrix missing kinds: {go_kinds - matrix_kinds}"
 
@@ -120,17 +108,36 @@ def test_matrix_fixtures_cover_go_validated_kinds() -> None:
 def test_go_testdata_mirror_is_identical() -> None:
     """The Go module bundles a mirror of the canonical corpus for standalone
     builds; it must stay byte-identical or the CI conformance checks diverge."""
-    canonical = ROOT / "authority/event-protocol/fixtures"
-    mirror = ROOT / "libs/nostrhost-control/internal/eventprotocol/testdata"
+    canonical = FIXTURES_DIR
+    mirror = ROOT / "libs/nostrhost-protocol/go/testdata"
     for name in ("verdicts.json", "folds.json"):
         assert (mirror / name).read_bytes() == (canonical / name).read_bytes(), (
-            f"Go testdata mirror of {name} has drifted from authority/event-protocol/fixtures"
+            f"Go testdata mirror of {name} has drifted from libs/nostrhost-protocol/spec/fixtures"
         )
 
 
+def test_python_package_data_mirror_is_identical() -> None:
+    canonical = FIXTURES_DIR
+    mirror = ROOT / "libs/nostrhost-protocol/python/src/nostrhost_protocol/spec/fixtures"
+    for name in ("verdicts.json", "folds.json"):
+        assert (mirror / name).read_bytes() == (canonical / name).read_bytes(), (
+            f"Python package-data mirror of {name} has drifted"
+        )
+
+
+def test_authority_event_protocol_is_compat_readme_only() -> None:
+    """The old authority/event-protocol path now holds only a compat README."""
+    legacy = ROOT / "authority/event-protocol"
+    readme = legacy / "README.md"
+    assert readme.exists()
+    assert "nostrhost-protocol" in readme.read_text()
+    for leftover in ("fixtures", "schemas"):
+        assert not (legacy / leftover).exists(), f"stale {leftover} at authority/event-protocol"
+
+
 def test_rejections_carry_stable_codes() -> None:
-    results = ep.run_verdicts(ROOT)
-    for item in results:
+    result = ep.conformance("python")
+    for item in result["verdicts"]:
         if not item["accept"]:
             assert item["code"], item["id"]
 
@@ -152,7 +159,7 @@ def test_fold_revision_prefers_protocol_over_time() -> None:
             "content": '{"type":"agent","scopes":["y"],"revision":1}',
         },
     ]
-    result = ep.fold(31100, events)
+    result = ep.fold_events(31100, events)
     assert result.revision == 2
     assert result.fact["scopes"] == ["x"]
 
@@ -174,4 +181,15 @@ def test_legacy_documents_do_not_conflict() -> None:
             "content": '{"type":"agent","scopes":["y"]}',
         },
     ]
-    assert ep.fold(31100, events).conflicts == 0
+    assert ep.fold_events(31100, events).conflicts == 0
+
+
+def test_manifest_is_machine_readable() -> None:
+    manifest = json.loads(Path(ep.manifest_path()).read_text())
+    assert manifest["schema"] == 1
+    kinds = [row["kind"] for row in manifest["kinds"]]
+    assert len(kinds) == len(set(kinds)), "duplicate kinds in manifest"
+    for row in manifest["kinds"]:
+        assert row["name"], row
+        assert row["category"], row
+        assert isinstance(row["rejection_codes"], list), row

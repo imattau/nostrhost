@@ -205,7 +205,7 @@ service). It must exist and be operational before Phase 2 of that document
 |---|---|
 | Architecture / event class mapping (this document) | ✓ done |
 | Notification policy state schema | ✓ implemented (as local TOML; `state/` wiring per §18.6 still open) |
-| Notice class/severity/summary convention on kinds 2210-2213 | ✓ implemented — `nostrhost-control` `EVENT-PROTOCOL.md` §2.3, `eventmodel.Notice`/`Validate` |
+| Notice class/severity/summary convention on kinds 2210-2213 | ✓ implemented — the `nostrhost-protocol` spec §2.3, binding `Notice`/`Validate` |
 | Notification service implementation | ✓ `nostrhost-notify` binary (`nostrhost-control` repo, `main`) — subscribes to the operation chain + notices, matches policy, delivers via NIP-17/59 |
 | Wired to certificate/backup/cron sources (Mail phase 2) | ⏳ blocked on those subsystems actually publishing 2210-2213 events; the service itself is ready to consume them |
 | Wired to a security-event source | ✓ the **security projector** (`nostrhost-securityd`, `forks/yunohost` `src/nostr_security.py`) is live: CrowdSec alert → kind-2213 `class="security"` published on the local relay. **`nostrhost-notify` is deployed and verified end to end on the testbed** (2026-09-11): a login-401 ban → 2213 (recurring `critical`) → immediate NIP-17/NIP-59 DM delivered to the configured outbound relay and unwrapped with the operator key. Deployment fixes: NIP-42 read auth (notifier key) since `ProtectedKinds` guard the notice kinds, and a persisted last-seen cursor (`state_path`, 0600) so restarts don't replay history into DMs; the relay now rejects protected kinds with the `auth-required:` prefix so go-nostr clients retry. |

@@ -48,7 +48,7 @@ Regression tests added: `test_nip98_rejects_non_27235_event`,
 ## HIGH
 
 ### H1 — Relay/projector: server-authoritative addressable kinds have no author authorization → forged capability grants
-`nostr_operationsd.py:296-310`, `eventmodel.go:145-171`, `relay/server.go`,
+`nostr_operationsd.py:296-310`, the protocol binding `nostrhost-protocol/go` (`validate.go`), `relay/server.go`,
 `config.example.toml`
 
 Any pubkey that could write kind 31100 could grant itself arbitrary scopes;

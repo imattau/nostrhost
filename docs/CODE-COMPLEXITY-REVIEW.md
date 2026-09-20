@@ -219,7 +219,7 @@ Schema. Branching: 563 `if`, 70 `for`, 2 `switch`.
 `internal/relay/server.go` (474 l) = **khatru**-based local relay with NIP-42
 read/write gates (`requireAuthPolicy` `:275–283`, `requireAuthForRead`
 `:330–340`), protected kinds, badger store capped `MaxLimit: 20000` (`:120`).
-`internal/eventmodel/eventmodel.go` 447 l. `internal/policy/store.go` 391 l
+the `nostrhost-protocol` Go binding (`go/validate.go`) + `internal/policy/store.go` 391 l
 (bbolt-backed). `internal/notify` NIP-17/NIP-59 DM sender via `nip17` with
 persisted `Since` cursor (`cmd/nostrhost-notify/main.go:89–111`).
 `eventprotocol.go` `codeFor` 62 l. Branching: 391 `if`, 45 `for`, 17 `switch`.
@@ -460,7 +460,7 @@ benefit, compatibility constraints, and confidence.
 - **Atomic-write/locking helpers** — fork `locking.py` (flock), state-file
   atomic rename patterns; replace only the *duplicated* policy lock (D2).
 - **Domain-specific event folding** — `tools/event_protocol.py` `fold`,
-  `nostr_operationsd` result folding, control `eventmodel`.
+  `nostr_operationsd` result folding, the `nostrhost-protocol` binding.
 
 ### RETIRE (no new logic inside frozen component)
 

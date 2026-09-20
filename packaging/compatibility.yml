@@ -29,6 +29,7 @@ interfaces:
       nostrhost-control: ">= 1"
       nostrhost-catalog: ">= 1"
       nostrhost-notify: ">= 1"
+      python3-nostrhost-protocol: ">= 0.1.0"
 
   # The portalapi / admin HTTP surface exposed by nostrhost-core to the SPAs.
   core-api:

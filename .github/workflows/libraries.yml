@@ -7,7 +7,7 @@ on:
 
 jobs:
   python-libs:
-    name: Python libs (auth, policy)
+    name: Python libs (protocol, auth, policy)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -16,6 +16,10 @@ jobs:
 
       - name: Install uv
         uses: astral-sh/setup-uv@v6
+
+      - name: nostrhost-protocol tests
+        working-directory: libs/nostrhost-protocol/python
+        run: uv sync --all-groups && uv run pytest -q
 
       - name: nostrhost-auth tests
         working-directory: libs/nostrhost-auth
@@ -31,6 +35,8 @@ jobs:
     strategy:
       matrix:
         include:
+          - name: protocol binding
+            dir: libs/nostrhost-protocol/go
           - name: catalog lib
             dir: libs/nostrhost-catalog
           - name: nsite gateway (nostrhost-nsite)
@@ -74,13 +80,14 @@ jobs:
           pip install -q pytest nostr-sdk websockets httpx2 fastapi uvicorn PyJWT typer \
             tomli-w pyyaml jinja2 packaging passlib cryptography publicsuffix2 \
             psutil dnspython python-debian email-validator pyopenssl
+          pip install -q -e libs/nostrhost-protocol/python
           pip install -q -e libs/nostrhost-auth
           pip install -q -e libs/nostrhost-policy
 
       - name: Run nostr identity tests (fork, nostrhost branch)
         working-directory: forks/yunohost
         env:
-          PYTHONPATH: src:../../libs/nostrhost-policy/src:../../libs/nostrhost-auth/src
+          PYTHONPATH: src:../../libs/nostrhost-protocol/python/src:../../libs/nostrhost-policy/src:../../libs/nostrhost-auth/src
         run: python -m pytest -c /dev/null tests_nostr/ -q
 
   agent-catalog:
@@ -100,6 +107,7 @@ jobs:
           pip install -q pydantic nostr-sdk websockets httpx2 fastapi uvicorn PyJWT typer \
             tomli-w pyyaml jinja2 packaging passlib cryptography publicsuffix2 \
             psutil dnspython python-debian email-validator pyopenssl
+          pip install -q -e libs/nostrhost-protocol/python
           pip install -q -e libs/nostrhost-auth
           pip install -q -e libs/nostrhost-policy
 

@@ -76,15 +76,22 @@ libraries:
     repo: imattau/nostrhost-auth
     path: libs/nostrhost-auth
     branch: main
-    pin_commit: 6d9c4b1b65e49be25bf95521e9df5e736989f6e3
+    pin_commit: bcb20f963885e1590be81609c831fa63bfb55a58
     extracted_from: imattau/yunohost-nostr-auth
 
   - component: policy          # roles/scopes/NIP-98/delegation/approvals/owner/audit
     repo: imattau/nostrhost-policy
     path: libs/nostrhost-policy
     branch: main
-    pin_commit: 77b6ed791c0480194c8f2815da8dd7e514ec6d4a
+    pin_commit: aba111fec0a39428efb62b4c324f2e771b6b897d
     extracted_from: imattau/yunohost-mcp
+
+  - component: protocol        # cross-language control-plane event protocol: spec + Python/Go bindings
+    repo: imattau/nostrhost-protocol
+    path: libs/nostrhost-protocol
+    branch: main
+    pin_commit: 7d55e85ddaa6419f3886dbd9ce48d0674b49f0ab
+    extracted_from: authority/event-protocol
 
   - component: catalog         # catalogue event schema/relay/publisher/attestation/trust/repository
     repo: imattau/nostrhost-catalog
@@ -96,16 +103,16 @@ libraries:
     repo: imattau/nostrhost-control
     path: libs/nostrhost-control
     branch: main
-    pin_commit: 2b965142c5cfd8881d2296a26aa1a44f5aecb30b
+    pin_commit: f0c0721b8373d57c8c3cc372bbabb8b67d8ac578
     stack: khatru-based Go relay (NIP-11/42/77/86/98)
-    event_protocol: libs/nostrhost-control/EVENT-PROTOCOL.md
+    event_protocol: libs/nostrhost-protocol/spec/envelope.md
     selection: docs/RELAY-SELECTION.md
 
   - component: agent           # policy-bound local administrator and audited cycle engine
     repo: imattau/nostrhost-agent
     path: libs/nostrhost-agent
     branch: main
-    pin_commit: 97f6b1d5e05d9e9101d35fbe9e97fbead2d4cf22
+    pin_commit: bc2be3662bfa897e260645d171fff5945d06b8b8
     stack: Go
 
   - component: yunohost-mcp    # FROZEN reference implementation (MCP transition §2, docs/MCP-TRANSITION.md)

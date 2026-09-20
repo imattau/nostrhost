@@ -12,11 +12,12 @@ the same effective state.
 
 - Machine-readable data: [`authority/registry.toml`](../../authority/registry.toml)
 - Event authority matrix: [`authority/authority-matrix.toml`](../../authority/authority-matrix.toml)
-- Event protocol (schemas + conformance corpus): [`authority/event-protocol/`](../../authority/event-protocol/README.md)
+- Event protocol (schemas + conformance corpus): [`libs/nostrhost-protocol`](../../libs/nostrhost-protocol/README.md)
+  (compat marker at [`authority/event-protocol/`](../../authority/event-protocol/README.md))
 - Contract: [`schema/authority-registry.schema.json`](../../schema/authority-registry.schema.json)
 - Guards: `tools/authority_registry.py` and `tools/event_protocol.py`
-  (run by `.github/workflows/authority.yml`); the Go reference
-  `libs/nostrhost-control/internal/eventprotocol` runs in `libraries.yml`.
+  (run by `.github/workflows/authority.yml`); the Go binding
+  `libs/nostrhost-protocol/go` runs in `libraries.yml`.
 
 ## Class model
 
@@ -103,22 +104,24 @@ here so the register stays honest about current overlap:
 
 ## WP1 — frozen event protocol
 
-[`authority/event-protocol/`](../../authority/event-protocol/README.md) freezes
-the common envelope, the revision/conflict/revocation rules, the schema-version
-compatibility policy, and a cross-language conformance corpus.
+[`libs/nostrhost-protocol`](../../libs/nostrhost-protocol/README.md) is the
+reusable cross-language event-protocol library (extracted from the former
+`authority/event-protocol/` and the relay's `eventmodel`): the common envelope,
+the revision/conflict/revocation rules, the schema-version compatibility policy,
+a machine-readable kind manifest, and a cross-language conformance corpus.
 
-The corpus is the source of truth. Two references consume it and must agree:
+The corpus is the source of truth. The two bindings consume it and must agree:
 
 | Reference | Command |
 |---|---|
 | Python | `python tools/event_protocol.py conformance` |
-| Go | `go test ./internal/eventprotocol/...` (in `libs/nostrhost-control`) |
+| Go | `go test ./...` (in `libs/nostrhost-protocol/go`) |
 
 Writing the corpus exposed a real gap: the Python reference and the corpus were
 stricter than the relay's `eventmodel`. The relay accepted several documents the
-frozen contract rejects. WP1 therefore **tightened `eventmodel`** to enforce the
-contract, so the relay and the corpus now agree by construction (the Go
-`eventprotocol` package delegates to `eventmodel`). Changes:
+frozen contract rejects. WP1 therefore **tightened** the relay event model to
+enforce the contract, so the relay and the corpus now agree by construction.
+Changes:
 
 - the shared envelope (`schema >= 1`, `revision >= 0`, `subject` mirrors `d`);
 - `31100`: `d` hex-64, non-empty `type`, `scopes` must be an array of strings;
@@ -126,9 +129,9 @@ contract, so the relay and the corpus now agree by construction (the Go
 - `31102`: `enabled`/`admin` must be booleans when present, `signer_type` enum;
 - `27236`: `expiry` must be a positive integer.
 
-The Go module is standalone, so it bundles a byte-identical fixture mirror under
-`libs/nostrhost-control/internal/eventprotocol/testdata/`; a test fails on
-drift. Regenerate it with `python tools/event_protocol.py sync-mirror`.
+The Go binding is standalone, so it bundles a byte-identical fixture mirror under
+`libs/nostrhost-protocol/go/testdata/`; a test fails on drift. Regenerate it
+with `python tools/event_protocol.py sync-mirror`.
 
 ## WP3 — identity and capability reference cutover
 

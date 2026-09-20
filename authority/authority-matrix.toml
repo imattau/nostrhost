@@ -10,7 +10,7 @@
 #   authors         who may author (scoped to this server)
 #   scope           NostrHost capability scope required, if any
 #   self_service    may the subject author its own document?
-#   schema          checked-in content schema (authority/event-protocol/schemas/)
+#   schema          checked-in content schema (libs/nostrhost-protocol/spec/schemas/)
 #   encryption      "plain" | "nip44" | "nip42-gated"
 #   retention       "immutable" | "replaceable" | "ephemeral"
 #   projection      owner that materialises the read model
@@ -24,7 +24,7 @@ address = "addressable:subject-pubkey"
 authors = ["server-admin"]
 scope = "capability.write"
 self_service = false
-schema = "authority/event-protocol/schemas/31100-capability.schema.json"
+schema = "libs/nostrhost-protocol/spec/schemas/31100-capability.schema.json"
 encryption = "nip42-gated"
 retention = "replaceable"
 projection = "forks/yunohost/src/nostr_operationsd.py"
@@ -37,7 +37,7 @@ address = "addressable:document"
 authors = ["server-admin"]
 scope = "policy.write"
 self_service = false
-schema = "authority/event-protocol/schemas/31101-policy.schema.json"
+schema = "libs/nostrhost-protocol/spec/schemas/31101-policy.schema.json"
 encryption = "nip42-gated"
 retention = "replaceable"
 projection = "policy"
@@ -50,7 +50,7 @@ address = "addressable:subject-pubkey"
 authors = ["server-admin"]
 scope = "identity.write"
 self_service = false
-schema = "authority/event-protocol/schemas/31102-identity.schema.json"
+schema = "libs/nostrhost-protocol/spec/schemas/31102-identity.schema.json"
 encryption = "nip42-gated"
 retention = "replaceable"
 projection = "forks/yunohost/src/nostr_identityd.py"
@@ -63,7 +63,7 @@ address = "regular"
 authors = ["server-admin", "delegator"]
 scope = "capability.delegate"
 self_service = true
-schema = "authority/event-protocol/schemas/27236-delegation.schema.json"
+schema = "libs/nostrhost-protocol/spec/schemas/27236-delegation.schema.json"
 encryption = "nip42-gated"
 retention = "immutable"
 projection = "forks/yunohost/src/nostr_operationsd.py"
@@ -76,7 +76,7 @@ address = "regular"
 authors = ["delegator", "server-admin"]
 scope = "capability.delegate"
 self_service = true
-schema = "authority/event-protocol/schemas/27237-revocation.schema.json"
+schema = "libs/nostrhost-protocol/spec/schemas/27237-revocation.schema.json"
 encryption = "nip42-gated"
 retention = "immutable"
 projection = "forks/yunohost/src/nostr_operationsd.py"
@@ -115,7 +115,7 @@ address = "addressable:permission"
 authors = ["server-admin"]
 scope = "permission.modify"
 self_service = false
-schema = "authority/event-protocol/schemas/30000-permission-set.schema.json"
+schema = "libs/nostrhost-protocol/spec/schemas/30000-permission-set.schema.json"
 encryption = "nip44"
 retention = "replaceable"
 projection = "forks/yunohost/src/nostr_permissiond.py"
@@ -128,7 +128,7 @@ address = "replaceable"
 authors = ["server-admin"]
 scope = "nsites.admin"
 self_service = false
-schema = "authority/event-protocol/schemas/10000-mute-list.schema.json"
+schema = "libs/nostrhost-protocol/spec/schemas/10000-mute-list.schema.json"
 encryption = "nip42-gated"
 retention = "replaceable"
 projection = "forks/yunohost/src/nostrhost/nsites/blocklist.py"
@@ -141,7 +141,7 @@ address = "replaceable"
 authors = ["server-admin", "end-user"]
 scope = ""
 self_service = true
-schema = "authority/event-protocol/schemas/10002-relay-list.schema.json"
+schema = "libs/nostrhost-protocol/spec/schemas/10002-relay-list.schema.json"
 encryption = "plain"
 retention = "replaceable"
 projection = "libs/nostrhost-auth/src/nostrhost_auth/identity/relays.py"
@@ -154,7 +154,7 @@ address = "addressable:key"
 authors = ["server-admin", "end-user"]
 scope = ""
 self_service = true
-schema = "authority/event-protocol/schemas/30078-app-data.schema.json"
+schema = "libs/nostrhost-protocol/spec/schemas/30078-app-data.schema.json"
 encryption = "nip42-gated"
 retention = "replaceable"
 projection = "pending:WP4"
