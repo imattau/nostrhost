@@ -93,6 +93,13 @@ libraries:
     pin_commit: 0fa32ba33f6e2e7f2f37b2c8a1d9b1c8d6f7a9b0
     extracted_from: authority/event-protocol
 
+  - component: projection      # shared projector framework: lifecycle + replay runtime + rebuild/verify/shadow
+    repo: imattau/nostrhost-projection
+    path: libs/nostrhost-projection
+    branch: main
+    pin_commit: 2755573073baefaf4b761c1cf3f6941d152153e4
+    extracted_from: forks/yunohost/src/nostr_projector.py
+
   - component: catalog         # catalogue event schema/relay/publisher/attestation/trust/repository
     repo: imattau/nostrhost-catalog
     path: libs/nostrhost-catalog

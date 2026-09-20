@@ -40,3 +40,7 @@
 	path = libs/nostrhost-protocol
 	url = https://github.com/imattau/nostrhost-protocol.git
 	branch = main
+[submodule "libs/nostrhost-projection"]
+	path = libs/nostrhost-projection
+	url = https://github.com/imattau/nostrhost-projection.git
+	branch = main

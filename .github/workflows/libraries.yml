@@ -7,7 +7,7 @@ on:
 
 jobs:
   python-libs:
-    name: Python libs (protocol, auth, policy)
+    name: Python libs (protocol, auth, policy, projection)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -27,6 +27,10 @@ jobs:
 
       - name: nostrhost-policy tests
         working-directory: libs/nostrhost-policy
+        run: uv sync --all-groups && uv run pytest -q
+
+      - name: nostrhost-projection tests
+        working-directory: libs/nostrhost-projection
         run: uv sync --all-groups && uv run pytest -q
 
   go-libs:
@@ -83,11 +87,12 @@ jobs:
           pip install -q -e libs/nostrhost-protocol/python
           pip install -q -e libs/nostrhost-auth
           pip install -q -e libs/nostrhost-policy
+          pip install -q -e libs/nostrhost-projection
 
       - name: Run nostr identity tests (fork, nostrhost branch)
         working-directory: forks/yunohost
         env:
-          PYTHONPATH: src:../../libs/nostrhost-protocol/python/src:../../libs/nostrhost-policy/src:../../libs/nostrhost-auth/src
+          PYTHONPATH: src:../../libs/nostrhost-protocol/python/src:../../libs/nostrhost-policy/src:../../libs/nostrhost-auth/src:../../libs/nostrhost-projection/src
         run: python -m pytest -c /dev/null tests_nostr/ -q
 
   agent-catalog:

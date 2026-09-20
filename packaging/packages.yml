@@ -60,6 +60,7 @@ packages:
       - nostrhost-security-config
       - python3-nostrhost-auth
       - python3-nostrhost-policy
+      - python3-nostrhost-projection
       - nostrhost-runtime
 
   # ------------------------------------------------------------- core ------
@@ -78,6 +79,7 @@ packages:
       - python3-nostrhost
       - python3-nostrhost-auth
       - python3-nostrhost-policy
+      - python3-nostrhost-projection
       - nostrhost-caddy
       - nostrhost-security-config
       - nftables
@@ -314,6 +316,19 @@ packages:
     summary: NostrHost control-plane event protocol library (Python binding)
     # Pure-python; the spec (schemas + fixtures) ships as package data.
     depends: []
+    provides: []
+    breaks: []
+
+  - name: python3-nostrhost-projection
+    kind: python
+    version: "0.1.0"
+    source:
+      repo: imattau/nostrhost-projection
+      submodule: libs/nostrhost-projection
+    summary: NostrHost projection framework (projector lifecycle, replay runtime, rebuild/verify/shadow)
+    depends:
+      - python3-nostrhost-auth (>= 0.2.0)
+      - python3-nostrhost-protocol (>= 0.1.0)
     provides: []
     breaks: []
 
