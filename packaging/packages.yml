@@ -365,7 +365,7 @@ packages:
   # ------------------------------------------------------------- web SPA ----
   - name: nostrhost-admin
     kind: spa
-    version: "0.1.26"                     # Remote-signer registration (approve from anywhere)
+    version: "0.1.27"                     # Nostr settings rename (route/view + IA reorganisation)
     source:
       repo: imattau/nostrhost-admin
       submodule: forks/admin
