@@ -10,10 +10,13 @@ FORK_PAIRS=(
 
 # get_pin <component> -> prints the pin_commit recorded for <component> in
 # $PINS (baseline/pins.yml). Requires the caller to have set PINS.
+#
+# The component matcher is anchored to a word boundary so `yunohost` does not
+# also match the `yunohost-mcp` library entry.
 get_pin() {
   awk -v c="$1" '
-    $0 ~ "component: " c { found=1 }
+    $0 ~ "component: " c "([ \t]|$)" { found=1 }
     found && $0 ~ "pin_commit:" { print $2; exit }
-    found && $0 ~ "^  - " && $0 !~ "component: " c { exit }
+    found && $0 ~ "^  - " && $0 !~ "component: " c "([ \t]|$)" { exit }
   ' "$PINS"
 }

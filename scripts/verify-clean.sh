@@ -39,13 +39,15 @@ fetch_upstream_tag() {
 }
 
 # is_derivative <component> -> prints "true" when pins.yml marks the fork
-# as diverged onto its own derivative branch.
+# as diverged onto its own derivative branch. The component matcher is
+# anchored to a word boundary so `yunohost` does not also match the
+# `yunohost-mcp` library entry.
 is_derivative() {
   local component="$1"
   awk -v c="$component" '
-    $0 ~ "component: " c { found=1 }
+    $0 ~ "component: " c "([ \t]|$)" { found=1 }
     found && $0 ~ "derivative:" { print $2; exit }
-    found && $0 ~ "^  - " && $0 !~ "component: " c { exit }
+    found && $0 ~ "^  - " && $0 !~ "component: " c "([ \t]|$)" { exit }
   ' "$PINS"
 }
 
