@@ -31,17 +31,25 @@ jobs:
         with:
           submodules: recursive
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
       - name: Portal build (pinned ref)
+        # Both SPAs are Yarn 1.22 projects (yarn.lock); corepack dispatches
+        # the pinned yarn version exactly like packaging/scripts/build-package.
         working-directory: forks/portal
         run: |
-          npm install --no-audit --no-fund
-          npm run build
+          corepack enable yarn
+          yarn install --frozen-lockfile --non-interactive
+          yarn generate
 
       - name: Admin build (pinned ref)
         working-directory: forks/admin/app
         run: |
-          npm install --no-audit --no-fund
-          npm run build
+          corepack enable yarn
+          yarn install --frozen-lockfile --non-interactive
+          yarn build
 
       - name: Yunohost core unit tests (pinned ref)
         working-directory: forks/yunohost

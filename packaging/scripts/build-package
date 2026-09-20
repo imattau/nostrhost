@@ -191,6 +191,9 @@ def build_python(pkg: dict, version: str, outdir: Path) -> Path:
     name = pkg["name"]
     src = pkg["source"]
     sub = UMBRELLA / src["submodule"]
+    # Some libraries keep their Python package in a subdirectory (e.g.
+    # nostrhost-protocol's wheel under python/); honor build_dir when present.
+    build_dir = sub / src["build_dir"] if src.get("build_dir") else sub
     arch = "all"
     staging = Path(tempfile.mkdtemp(prefix="nostrhost-pydeb-"))
     try:
@@ -198,7 +201,7 @@ def build_python(pkg: dict, version: str, outdir: Path) -> Path:
         # path /usr/lib/python3/dist-packages inside the staging root.
         wheeldir = staging / "wheels"
         wheeldir.mkdir()
-        run(["python3", "-m", "build", "--wheel", "--outdir", str(wheeldir)], sub)
+        run(["python3", "-m", "build", "--wheel", "--outdir", str(wheeldir)], build_dir)
         wheel = next(wheeldir.glob("*.whl"))
 
         target = Path(tempfile.mkdtemp(prefix="nostrhost-pyinstall-"))
