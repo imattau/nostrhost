@@ -298,6 +298,8 @@ packages:
       - nostrhost-runtime
       - nostrhost-core
       - python3-venv
+      - python3-nostrhost-auth (>= 0.2.0)
+      - python3-nostrhost-protocol (>= 0.1.0)
     provides: []
     breaks: []
 
@@ -317,13 +319,13 @@ packages:
 
   - name: python3-nostrhost-auth
     kind: python
-    version: "0.1.2"
+    version: "0.2.0"
     source:
       repo: imattau/nostrhost-auth
       submodule: libs/nostrhost-auth
     summary: NostrHost authentication/identity library
-    # Runtime python deps (nostr-sdk, nostrhost-protocol) are not in Debian
-    # bookworm and are provisioned from PyPI — see packaging/README.md.
+    # Runtime python deps (nostr-sdk, nostrhost-protocol, pydantic v2) are not
+    # in Debian bookworm and are provisioned from PyPI — see packaging/README.md.
     depends:
       - python3-nostrhost-protocol (>= 0.1.0)
     provides: []
@@ -331,16 +333,17 @@ packages:
 
   - name: python3-nostrhost-policy
     kind: python
-    version: "0.1.4"
+    version: "0.2.0"
     source:
       repo: imattau/nostrhost-policy
       submodule: libs/nostrhost-policy
     summary: NostrHost authorisation/policy library
-    # Runtime python deps (nostr-sdk, pydantic v2, nostrhost-protocol) are not
-    # available in Debian bookworm (pydantic only ships v1 there) and are
-    # provisioned from PyPI — see packaging/README.md.
+    # Runtime python deps (nostr-sdk, pydantic v2, nostrhost-protocol,
+    # nostrhost-auth) are not available in Debian bookworm (pydantic only
+    # ships v1 there) and are provisioned from PyPI — see packaging/README.md.
     depends:
       - python3-nostrhost-protocol (>= 0.1.0)
+      - python3-nostrhost-auth (>= 0.2.0)
     provides: []
     breaks: []
 

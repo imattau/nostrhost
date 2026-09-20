@@ -76,21 +76,21 @@ libraries:
     repo: imattau/nostrhost-auth
     path: libs/nostrhost-auth
     branch: main
-    pin_commit: bcb20f963885e1590be81609c831fa63bfb55a58
+    pin_commit: 257ee5b80f2be15290b90e6db7f2fef60d66db2e
     extracted_from: imattau/yunohost-nostr-auth
 
   - component: policy          # roles/scopes/NIP-98/delegation/approvals/owner/audit
     repo: imattau/nostrhost-policy
     path: libs/nostrhost-policy
     branch: main
-    pin_commit: aba111fec0a39428efb62b4c324f2e771b6b897d
+    pin_commit: a5a825693be93861dd054bb63fe8868534caf763
     extracted_from: imattau/yunohost-mcp
 
   - component: protocol        # cross-language control-plane event protocol: spec + Python/Go bindings
     repo: imattau/nostrhost-protocol
     path: libs/nostrhost-protocol
     branch: main
-    pin_commit: 7d55e85ddaa6419f3886dbd9ce48d0674b49f0ab
+    pin_commit: 0fa32ba33f6e2e7f2f37b2c8a1d9b1c8d6f7a9b0
     extracted_from: authority/event-protocol
 
   - component: catalog         # catalogue event schema/relay/publisher/attestation/trust/repository
@@ -126,5 +126,5 @@ libraries:
     repo: imattau/nostrhost-mcp
     path: libs/nostrhost-mcp
     branch: main
-    pin_commit: e7896d8651f1dbecd044f1e2011c1d0c579633cc
+    pin_commit: 6ede98d81992fb3631cd5f6fd2be91decd5a48e1
     stack: Python (mcp SDK v2)
