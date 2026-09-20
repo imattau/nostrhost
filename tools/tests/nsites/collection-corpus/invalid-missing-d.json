@@ -1,0 +1,28 @@
+{
+  "name": "invalid-missing-d",
+  "description": "No d tag.",
+  "event": {
+    "id": "433890de002659b8f5c16d3ea5e66ea05db6f13919eccb1867ea5964d9c78a84",
+    "pubkey": "b6c048759734c1ef1b3ba0acfd1cd862b394eaab1bc15b7bf6c7f357986d9732",
+    "created_at": 1750000100,
+    "kind": 30004,
+    "tags": [
+      [
+        "title",
+        "t"
+      ],
+      [
+        "t",
+        "nsite"
+      ]
+    ],
+    "content": "",
+    "sig": "66885ca8afe98f1d86b994b201f921e419c931186fb0589dc7cadf58f6eaaeb8e3432f47c6c1b2a393222a4a5c04adccf78d7bc33873b25d6281a7d1bcd31697"
+  },
+  "expect": {
+    "valid": false,
+    "errors": [
+      "missing_d"
+    ]
+  }
+}

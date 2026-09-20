@@ -1,0 +1,55 @@
+{
+  "name": "valid-mixed",
+  "description": "Kind 30004 collection with t=nsite, a live-root/a live-named/e pinned entries.",
+  "event": {
+    "id": "0df68ab8382c64f3a2ba3bf9e45dfac8f30ca5969e7669e35b3b7cfc59521f1c",
+    "pubkey": "b6c048759734c1ef1b3ba0acfd1cd862b394eaab1bc15b7bf6c7f357986d9732",
+    "created_at": 1750000100,
+    "kind": 30004,
+    "tags": [
+      [
+        "d",
+        "indie-web"
+      ],
+      [
+        "title",
+        "Small independent sites"
+      ],
+      [
+        "description",
+        "Personal sites and experiments worth wandering through."
+      ],
+      [
+        "image",
+        "https://cdn.example/indie-web-cover.webp"
+      ],
+      [
+        "t",
+        "nsite"
+      ],
+      [
+        "a",
+        "15128:266815e0c9210dfa324c6cba3573b14bee49da4209a9456f9484e5106cd408a5:",
+        "wss://relay.example"
+      ],
+      [
+        "a",
+        "35128:266815e0c9210dfa324c6cba3573b14bee49da4209a9456f9484e5106cd408a5:blog"
+      ],
+      [
+        "e",
+        "5c8ed07b8c33b5d1e2d1c1dcec4d1d1a1e1f1a1b1c1d1e1f2021222324252627",
+        "wss://relay.example"
+      ]
+    ],
+    "content": "",
+    "sig": "ade9302165940ccb39dbc878f31a107c0318c07aee381ba8b8aa76db362a82bbbf58201400d65d5cd8ad1c1f3b67341bb0b3daded6bed0c3dcfaaab740786de1"
+  },
+  "expect": {
+    "valid": true,
+    "d": "indie-web",
+    "coordinate": "30004:b6c048759734c1ef1b3ba0acfd1cd862b394eaab1bc15b7bf6c7f357986d9732:indie-web",
+    "title": "Small independent sites",
+    "entries": 3
+  }
+}

@@ -228,6 +228,10 @@ def build_python_cli(pkg: dict, version: str, outdir: Path) -> Path:
     reqfile = UMBRELLA / src["requirements"]
     command = src["command"]
     venv = src["venv"]
+    app_wheel = src.get("app_wheel") or name
+    # python-cli installs the project wheel itself; glob the built wheel name
+    # (normalised: dashes -> underscores, the sdists/pyproject project name).
+    app_wheel_glob = f"*{app_wheel.replace('-', '_')}-*.whl"
     if not reqfile.is_file():
         raise SystemExit(f"build-package: Python CLI requirements not found: {reqfile}")
     if not (sub / "pyproject.toml").is_file():
@@ -265,7 +269,7 @@ def build_python_cli(pkg: dict, version: str, outdir: Path) -> Path:
         write_control(staging, pkg, version, arch)
         debian = staging / "DEBIAN"
         postinst = render_venv_postinst(
-            venv, f"/usr/share/{name}/wheels", "*yunohost_mcp_connect-*.whl",
+            venv, f"/usr/share/{name}/wheels", app_wheel_glob,
             system_site_packages=False, reqs_file=f"/usr/share/{name}/requirements.txt",
         )
         (debian / "postinst").write_text(postinst, encoding="utf-8")

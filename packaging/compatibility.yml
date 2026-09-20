@@ -41,7 +41,12 @@ interfaces:
 # Known incompatibilities. Keep this list minimal and evidence-backed.
 # Format: {package: "<constraint>"} describing when THAT package version
 # breaks against the installing package's counterpart.
-breaks: {}
+breaks:
+  # MCP-TRANSITION Phase 8: the standalone stdio bridge is renamed from the
+  # frozen `yunohost-mcp-connect` to the native `nostrhost-mcp-connect`
+  # (command `nostrhost-mcp serve --stdio`). The old package name must not
+  # coexist with the replacement.
+  yunohost-mcp-connect: "= 0.8.51"
 
 # Core rename plan (Stage 1 → Stage 2) — COMPLETE.
 #

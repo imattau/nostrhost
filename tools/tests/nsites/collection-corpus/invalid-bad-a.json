@@ -1,0 +1,36 @@
+{
+  "name": "invalid-bad-a",
+  "description": "a tag coordinate has a non-hex pubkey.",
+  "event": {
+    "id": "b7ec52928b9ebf457be8b892945bfff4632043e0316d7b3104be6c5a39c2efa8",
+    "pubkey": "b6c048759734c1ef1b3ba0acfd1cd862b394eaab1bc15b7bf6c7f357986d9732",
+    "created_at": 1750000100,
+    "kind": 30004,
+    "tags": [
+      [
+        "d",
+        "x"
+      ],
+      [
+        "title",
+        "t"
+      ],
+      [
+        "t",
+        "nsite"
+      ],
+      [
+        "a",
+        "15128:not-hex:"
+      ]
+    ],
+    "content": "",
+    "sig": "1118e43790b1dc9b37d00040d0d09f6d3756e7e0d967f4805355107e799624f426e2e69d215d66a7e6fa105e8691c29e10001a430aa865bf9a7ec0a5a7e27327"
+  },
+  "expect": {
+    "valid": false,
+    "errors": [
+      "bad_a_shape"
+    ]
+  }
+}

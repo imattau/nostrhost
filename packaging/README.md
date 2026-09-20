@@ -25,7 +25,7 @@ each built from its own component repo (held here as pinned submodules).
 | `nostrhost-caddy` | Caddy + `caddy-l4` | — |
 | `nostrhost-security-config` | CrowdSec acquisition/scenarios/bouncer config | crowdsec, crowdsec-firewall-bouncer |
 | `nostrhost-runtime` | private venv `/opt/nostrhost/venv` + bundled wheels | python3-venv, python3-pip |
-| `yunohost-mcp-connect` | standalone local stdio/NIP-98 bridge CLI for MCP clients | python3-venv, ca-certificates |
+| `nostrhost-mcp-connect` | standalone local stdio/NIP-98 bridge CLI for MCP clients | python3-venv, ca-certificates |
 
 `crowdsec`, `nftables`, `slapd` and normal Python/system
 libraries stay ordinary external Debian packages — never repackaged here.
@@ -45,13 +45,14 @@ root-managed config via a systemd credential copy. Package removal retains the
 config, account, and audit journal; `apt purge nostrhost-agent` removes package
 config and state.
 
-`yunohost-mcp-connect` is a client-side tool and is also intentionally outside
-the server meta-packages. Install it on a Debian 12 amd64 machine after adding
-the NostrHost APT source, then configure an MCP client to run
-`/usr/bin/yunohost-mcp-connect`. The package carries its locked Python wheels
-and installs them offline into `/opt/yunohost-mcp-connect/venv`; no `uvx`, pip,
-or network access is needed after the APT package is downloaded. Generate a
-separate key for each client with `yunohost-mcp-connect --generate-key PATH`.
+`nostrhost-mcp-connect` is a client-side tool and is also intentionally outside
+the server meta-packages. It is the native replacement for the retired frozen
+`yunohost-mcp-connect` bridge (`nostrhost-mcp serve --stdio`). Install it on a
+Debian 12 amd64 machine after adding the NostrHost APT source, then configure
+an MCP client to run `/usr/bin/nostrhost-mcp serve --stdio`. The package
+carries its locked Python wheels and installs them offline into
+`/opt/nostrhost-mcp-connect/venv`; no `uvx`, pip, or network access is needed
+after the APT package is downloaded.
 
 Some Python runtime deps are **not in Debian bookworm** (or only in an
 incompatible version): `nostr-sdk` (for `python3-nostrhost-auth`),

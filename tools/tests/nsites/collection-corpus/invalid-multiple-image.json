@@ -1,0 +1,40 @@
+{
+  "name": "invalid-multiple-image",
+  "description": "More than one image tag.",
+  "event": {
+    "id": "d87618013ed7e57b79089b23711910e6303f1f9b4427f0760b0a8ff3be0a7197",
+    "pubkey": "b6c048759734c1ef1b3ba0acfd1cd862b394eaab1bc15b7bf6c7f357986d9732",
+    "created_at": 1750000100,
+    "kind": 30004,
+    "tags": [
+      [
+        "d",
+        "x"
+      ],
+      [
+        "title",
+        "t"
+      ],
+      [
+        "t",
+        "nsite"
+      ],
+      [
+        "image",
+        "https://cdn.example/a.webp"
+      ],
+      [
+        "image",
+        "https://cdn.example/b.webp"
+      ]
+    ],
+    "content": "",
+    "sig": "67f54e0d8fd3086107d617c165e0e855149bf3a96bac031bf5a463052f465103c4b9e01cc878f2f0f5678175e20aeaf9d3fe2f35f0e7c42c65adba0045668c99"
+  },
+  "expect": {
+    "valid": false,
+    "errors": [
+      "multiple_image"
+    ]
+  }
+}

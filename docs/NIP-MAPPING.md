@@ -47,6 +47,7 @@ Guiding philosophy (roadmap §3 / `CONTROL-PLANE.md` §2.0):
 | Operation request / approval / rejection / execution | — | **YunoHost operation chain** (regular kinds; the audit trail) | genuinely NostrHost semantics |
 | Audit log | — | operation chain + derived index/read model | authority = signed events; no bespoke audit DB |
 | Catalogue: software discovery | NIP-89 (31989/31990) + kind 32267 software-application; kind 30267 app-curation sets | — | *to verify:* how the existing nostr-yunohost schema (`1100`, `30078–30080`) relates to 32267/30063/30267; possible migration |
+| Nsite curated collections | NIP-51 kind 30004 extension profile (`t = nsite`), with `a` references for live 15128/35128 sites and `e` references for 5128 snapshots | — | exploratory: externally shareable today, but NIP-51 currently lists notes/articles as the expected 30004 targets; seek upstream standardisation before claiming general interoperability |
 | Catalogue: releases / artifacts | kind 30063 release-artifact sets (references kind 1063 file metadata) | — | *to verify* |
 | Catalogue: build / CI attestations | — | package attestation events (if 32267/30063/CI standards don't fit) | *to verify* |
 | Catalogue: local cache | the local relay + NIP-77 sync | — | bespoke catalogue DB/API redundant |

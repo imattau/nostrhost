@@ -257,21 +257,26 @@ packages:
 
   # Client-side NIP-98 stdio bridge. This is intentionally a standalone
   # package: installing the server meta-packages must not install client
-  # credentials or tooling on the host.
-  - name: yunohost-mcp-connect
+  # credentials or tooling on the host. Built from the native nostrhost-mcp
+  # adapter (the frozen yunohost-mcp bridge is retired; see
+  # docs/MCP-TRANSITION.md Phase 8). `nostrhost-mcp serve --stdio` is the
+  # drop-in stdio replacement.
+  - name: nostrhost-mcp-connect
     kind: python-cli
-    version: "0.8.51"
-    summary: Local stdio bridge for authenticated YunoHost MCP connections
+    version: "0.1.2"
+    summary: Local stdio bridge for authenticated NostrHost MCP connections
     source:
-      repo: imattau/yunohost-mcp
-      submodule: libs/yunohost-mcp
-      requirements: packaging/runtime/yunohost-mcp-connect-requirements.txt
-      command: yunohost-mcp-connect
-      venv: /opt/yunohost-mcp-connect/venv
+      repo: imattau/nostrhost-mcp
+      submodule: libs/nostrhost-mcp
+      app_wheel: nostrhost-mcp
+      requirements: packaging/runtime/nostrhost-mcp-connect-requirements.txt
+      command: nostrhost-mcp
+      venv: /opt/nostrhost-mcp-connect/venv
     depends:
       - python3-venv
     provides: []
-    breaks: []
+    breaks:
+      - yunohost-mcp-connect
 
   # Server-side MCP adapter. Installs the nostrhost_mcp wheel into the shared
   # /opt/nostrhost/venv (which bundles the mcp SDK wheels via

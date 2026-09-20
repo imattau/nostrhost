@@ -1,0 +1,35 @@
+{
+  "name": "valid-minimal",
+  "description": "Minimal collection: d, title, t=nsite, one live root entry, no image or hints.",
+  "event": {
+    "id": "0016363156b93abbdd1ad45a3ac1c3780f8536a7b5d5c61ace90afabd1087f24",
+    "pubkey": "b6c048759734c1ef1b3ba0acfd1cd862b394eaab1bc15b7bf6c7f357986d9732",
+    "created_at": 1750000100,
+    "kind": 30004,
+    "tags": [
+      [
+        "d",
+        "tools"
+      ],
+      [
+        "title",
+        "Nostr tools"
+      ],
+      [
+        "t",
+        "nsite"
+      ],
+      [
+        "a",
+        "15128:266815e0c9210dfa324c6cba3573b14bee49da4209a9456f9484e5106cd408a5:"
+      ]
+    ],
+    "content": "",
+    "sig": "e2b5c4080cd6e5b5c9fef090fcf5dfebf8fabe1ceb5b76fe89924839ba84e54ae4ea8e51443356e0b9a474944beb2db9892ea9a1d69ed7e6e02ebe7c5573b8f0"
+  },
+  "expect": {
+    "valid": true,
+    "d": "tools",
+    "coordinate": "30004:b6c048759734c1ef1b3ba0acfd1cd862b394eaab1bc15b7bf6c7f357986d9732:tools"
+  }
+}

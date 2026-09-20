@@ -1,0 +1,32 @@
+{
+  "name": "invalid-forbidden-signer",
+  "description": "Collection signed by a pubkey the validator treats as a host key.",
+  "event": {
+    "id": "c3512c6d0577e909f735b3e7d3893d5f4e5e1ec708bcfe3a209a160e271ae953",
+    "pubkey": "c6b754b20826eb925e052ee2c25285b162b51fdca732bcf67e39d647fb6830ae",
+    "created_at": 1750000100,
+    "kind": 30004,
+    "tags": [
+      [
+        "d",
+        "x"
+      ],
+      [
+        "title",
+        "t"
+      ],
+      [
+        "t",
+        "nsite"
+      ]
+    ],
+    "content": "",
+    "sig": "06868b3aeb53992bb31cfbc542ac0915a87f73d5b3c03d477820d0095323a119fdbd9a12468d8cb036d9394b2593a4a23c71e2f559999b32f22d85d9d62888ce"
+  },
+  "expect": {
+    "valid": false,
+    "errors": [
+      "forbidden_signer"
+    ]
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "name": "invalid-bad-e",
+  "description": "e tag reference is not a 64-hex event id.",
+  "event": {
+    "id": "e5dcc30001456ec386d0770f5fa14c9e2ca5f0fdfdc9bdd7bd2c897a581983da",
+    "pubkey": "b6c048759734c1ef1b3ba0acfd1cd862b394eaab1bc15b7bf6c7f357986d9732",
+    "created_at": 1750000100,
+    "kind": 30004,
+    "tags": [
+      [
+        "d",
+        "x"
+      ],
+      [
+        "title",
+        "t"
+      ],
+      [
+        "t",
+        "nsite"
+      ],
+      [
+        "e",
+        "not-hex"
+      ]
+    ],
+    "content": "",
+    "sig": "84b105d0fb10f310b1bbf64ec3299a3a9a6a8b1814fa12df4083fe7e5c40d1b6a8f11d905b0ab5ab1f423d63a07a56abd7dc7a7630bbe722e436de48b1a8df15"
+  },
+  "expect": {
+    "valid": false,
+    "errors": [
+      "bad_e_shape"
+    ]
+  }
+}

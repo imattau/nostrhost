@@ -1,0 +1,57 @@
+{
+  "name": "invalid-oversize-entry-count",
+  "description": "More entries than the validator's max_entries (5 in this fixture).",
+  "event": {
+    "id": "ca7d2dcfe42af0bbed548b02c9b633ce7f6663a1d784cdc753d7919ec19d36e5",
+    "pubkey": "b6c048759734c1ef1b3ba0acfd1cd862b394eaab1bc15b7bf6c7f357986d9732",
+    "created_at": 1750000100,
+    "kind": 30004,
+    "tags": [
+      [
+        "d",
+        "x"
+      ],
+      [
+        "title",
+        "t"
+      ],
+      [
+        "t",
+        "nsite"
+      ],
+      [
+        "a",
+        "15128:266815e0c9210dfa324c6cba3573b14bee49da4209a9456f9484e5106cd408a5:"
+      ],
+      [
+        "a",
+        "35128:266815e0c9210dfa324c6cba3573b14bee49da4209a9456f9484e5106cd408a5:d0"
+      ],
+      [
+        "a",
+        "15128:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:"
+      ],
+      [
+        "a",
+        "35128:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:d1"
+      ],
+      [
+        "a",
+        "15128:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb:"
+      ],
+      [
+        "a",
+        "35128:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb:d2"
+      ]
+    ],
+    "content": "",
+    "sig": "bf82e62ba305ee133b1e9e26715a1460a5f967cf79e16c6ae7eba2eefff19db45a0ee9202a298c6da6386ac358f0dd924b07e1b22a668965a7be4d4f0cda2caf"
+  },
+  "expect": {
+    "valid": false,
+    "errors": [
+      "oversize_entry_count"
+    ],
+    "max_entries": 5
+  }
+}

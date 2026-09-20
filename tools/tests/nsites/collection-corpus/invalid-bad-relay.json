@@ -1,0 +1,37 @@
+{
+  "name": "invalid-bad-relay",
+  "description": "Relay hint is not a ws/wss URL.",
+  "event": {
+    "id": "a39f3063237d25f6ca0bdf30400524b7dde93ef739d138f496aac4f21d648d50",
+    "pubkey": "b6c048759734c1ef1b3ba0acfd1cd862b394eaab1bc15b7bf6c7f357986d9732",
+    "created_at": 1750000100,
+    "kind": 30004,
+    "tags": [
+      [
+        "d",
+        "x"
+      ],
+      [
+        "title",
+        "t"
+      ],
+      [
+        "t",
+        "nsite"
+      ],
+      [
+        "a",
+        "15128:266815e0c9210dfa324c6cba3573b14bee49da4209a9456f9484e5106cd408a5:",
+        "http://relay.example"
+      ]
+    ],
+    "content": "",
+    "sig": "34907a2bd4f8f43c498fbca263f65fe88647cf2519af9d485b1cd43c47b06a45942432b4e9e288efc7515b392152936252ea22f0c30073cdf1598b84cb045241"
+  },
+  "expect": {
+    "valid": false,
+    "errors": [
+      "bad_relay"
+    ]
+  }
+}

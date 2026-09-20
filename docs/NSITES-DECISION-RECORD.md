@@ -489,3 +489,56 @@ All/Apps/Nsites filter.
 - **Deferred (unchanged):** local Blossom (D4) and Git/NIP-34 sources (D6).
   Subpath-based site addressing stays out of scope — nsites remain
   label-subdomain based per NIP-5A.
+
+## Follow-on appendix — curated nsite collections (kind 30004)
+
+Product + protocol exploration `docs/NSITES-CURATED-LISTS.md` is now implemented
+as an **extension profile** per that doc. Decisions confirmed with the
+maintainer: kind-30004 NIP-51 curation set marked `t = nsite` (not a dedicated
+assigned kind — an upstream NIP-51/5A discussion is tracked as a follow-up);
+Admin Catalogue Browse only (no portal "My site" surface); full authoring
+including "save a copy"; cover images fetched directly by the browser (no
+server-side image proxy). Scope of this release:
+
+- **Wire profile** — kind `30004`, tags `d` (≤64), `title` (≤120), `description`
+  (≤500), optional single https `image`, `t = nsite` marker; ordered entries:
+  `a` = `15128:<pubkey>:` / `35128:<pubkey>:<d>` (live) or `e` = 64-hex kind-5128
+  event id (pinned), third tag value an optional relay hint; max 100 entries,
+  duplicate coordinates/event ids rejected.
+- **`nsite.collection.*` operations** — `validate` / `get` / `discover`
+  (`nsites.read`, no approval) and `publish.plan` (`nsites.read`, no approval,
+  builds the unsigned event + `plan_sha256` binding pubkey, `d`, metadata and
+  the *ordered* entries plus the relay set) and `publish` (`nsites.publish`,
+  approval-gated). `publish` verifies id/signature/kind/bounds/digest (stale-
+  plan rejection) and the signer guard, broadcasts with per-relay results (D5:
+  ≥1 relay OK = success-with-warnings), and writes **no local state** — the
+  signed event on external relays is the authority. `get` resolves the newest
+  valid event for the coordinate and each ordered entry (live and pinned) with
+  bounded per-entry availability. `discover` scans the catalogue + lookup relays
+  for `{"kinds":[30004], "#t":["nsite"]}`, dedupes by coordinate with an
+  event-id tie-break, applies the operator mute list, and caches for 5 minutes
+  like `nsite.discover`.
+- **Fork/registry/API/CLI** — ToolSpecs + `NATIVE_TOOLS`-generated surface,
+  `NSITE_ROUTE_SCOPES` entries, `GET /package/nsite/collection/{get,discover}` +
+  `POST /package/nsite/collection/{validate,publish/plan,publish}`, and
+  `nostrhost nsite collection-*` commands. No new policy scopes: the existing
+  `nsites.read`/`nsites.publish` gates apply and `nsites.publish` is already
+  confirmation-gated in `rules.py`.
+- **MCP** — `_redact_nsite` extended to also redact collection `description`
+  and `image` alongside `content`/`title`; a redaction test covers
+  `nsite.collection.get`.
+- **Admin** — `nativeNsites.ts` client, `lib/nsite/collection.ts` +
+  `collectionPublish.ts` (digest parity with the fork, unit-tested), and a
+  **Collections** filter in the Catalogue Browse flow: discovery grid, a
+  collection detail view (ordered live/pinned entries, Open, Copy naddr via
+  `nostr-tools/nip19.naddrEncode`, Save a copy), and a 5-step authoring wizard
+  (identity/metadata → entries → relays → review → NIP-07 sign & publish).
+  Server never sees a curator key.
+- **Corpus** — `tools/tests/nsites/collection-corpus/` (18 signed cases) with a
+  dependency-free sanity gate; the fork validates it like the NIP-5A corpus.
+- **Tests** — 38 validator + 14 ops + 3 admin client + 5 admin lib tests, all
+  green; full fork nsite suite 233 passed; MCP 40 passed; policy 176 passed.
+
+Explicitly deferred per the doc: upstream standardisation, per-item
+reviews/rankings, private/unlisted lists, tombstones, and a server-side image
+proxy.

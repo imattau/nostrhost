@@ -1,0 +1,32 @@
+{
+  "name": "invalid-bad-d",
+  "description": "d tag violates ^[a-zA-Z0-9_-]{1,64}$.",
+  "event": {
+    "id": "7fcc5ce75ffee20a5d65e9c75716c9bd3f4d668187fda6df5619b96a212943b6",
+    "pubkey": "b6c048759734c1ef1b3ba0acfd1cd862b394eaab1bc15b7bf6c7f357986d9732",
+    "created_at": 1750000100,
+    "kind": 30004,
+    "tags": [
+      [
+        "d",
+        "has space"
+      ],
+      [
+        "title",
+        "t"
+      ],
+      [
+        "t",
+        "nsite"
+      ]
+    ],
+    "content": "",
+    "sig": "509815f26fc7796c42fe5a7fbc512ea723bb0b77b2ff592ea950804550fca4c9ff213db847539a96268008580e3c4c4f290a496157cc1c38cc9e4af2bcb42aa7"
+  },
+  "expect": {
+    "valid": false,
+    "errors": [
+      "bad_d"
+    ]
+  }
+}

@@ -549,6 +549,15 @@ configuration of limits and exposure.
 "create my copy" with `a`/`A` tags, optional local Blossom component, open
 gateway mode with wildcard DNS-01.
 
+### Follow-on exploration — curated nsite lists
+
+User-authored, externally shared collections are explored in
+[`NSITES-CURATED-LISTS.md`](NSITES-CURATED-LISTS.md). The proposed first
+profile uses NIP-51 kind `30004`, marked with `t = nsite`, and distinguishes
+live `a`-coordinate entries from pinned kind-`5128` snapshot `e` entries. It
+must remain an explicit extension profile until NIP-51/NIP-5A standardises
+nsite targets or assigns a dedicated set kind.
+
 ## 8. Test matrix
 
 | Layer | Where | Runs |

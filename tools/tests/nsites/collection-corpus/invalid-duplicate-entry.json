@@ -1,0 +1,40 @@
+{
+  "name": "invalid-duplicate-entry",
+  "description": "Same live-site coordinate twice.",
+  "event": {
+    "id": "8e432d00b6a185c57fa4538eb062494063e0af59d9a8dcfb52dc89f37cb55143",
+    "pubkey": "b6c048759734c1ef1b3ba0acfd1cd862b394eaab1bc15b7bf6c7f357986d9732",
+    "created_at": 1750000100,
+    "kind": 30004,
+    "tags": [
+      [
+        "d",
+        "x"
+      ],
+      [
+        "title",
+        "t"
+      ],
+      [
+        "t",
+        "nsite"
+      ],
+      [
+        "a",
+        "15128:266815e0c9210dfa324c6cba3573b14bee49da4209a9456f9484e5106cd408a5:"
+      ],
+      [
+        "a",
+        "15128:266815e0c9210dfa324c6cba3573b14bee49da4209a9456f9484e5106cd408a5:"
+      ]
+    ],
+    "content": "",
+    "sig": "c8003468e003000ead8e39dd06a2fcd8aca36f9d3e3241a24285e08d68e2bad9e00830f3f6088df3dd6044535278f17f1dedb733a3c59cc13264e4ecff7c010f"
+  },
+  "expect": {
+    "valid": false,
+    "errors": [
+      "duplicate_entry"
+    ]
+  }
+}

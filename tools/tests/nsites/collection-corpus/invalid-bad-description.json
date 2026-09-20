@@ -1,0 +1,36 @@
+{
+  "name": "invalid-bad-description",
+  "description": "Description exceeds the 500-character bound.",
+  "event": {
+    "id": "a7e2e8822814c96f87914e81fc087b1f4b9f51b770957880eb7cff43bf977699",
+    "pubkey": "b6c048759734c1ef1b3ba0acfd1cd862b394eaab1bc15b7bf6c7f357986d9732",
+    "created_at": 1750000100,
+    "kind": 30004,
+    "tags": [
+      [
+        "d",
+        "x"
+      ],
+      [
+        "title",
+        "t"
+      ],
+      [
+        "description",
+        "ddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      ],
+      [
+        "t",
+        "nsite"
+      ]
+    ],
+    "content": "",
+    "sig": "e23d67dc23c0aa95c71ef9e628cbb46f7a56fe473ae5b3634fbb6f8e1b955db54f1aa87de3eaf9d80da011dba3ce82f830d35ece3b5ca3ac0f62d87f9a0c95b5"
+  },
+  "expect": {
+    "valid": false,
+    "errors": [
+      "bad_description"
+    ]
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "name": "invalid-bad-image",
+  "description": "image is not an https URL.",
+  "event": {
+    "id": "9c46f1685740d43f3d1213aecab19afd919f6ee3dcf96a05e5f316f3451a5c13",
+    "pubkey": "b6c048759734c1ef1b3ba0acfd1cd862b394eaab1bc15b7bf6c7f357986d9732",
+    "created_at": 1750000100,
+    "kind": 30004,
+    "tags": [
+      [
+        "d",
+        "x"
+      ],
+      [
+        "title",
+        "t"
+      ],
+      [
+        "t",
+        "nsite"
+      ],
+      [
+        "image",
+        "http://cdn.example/a.webp"
+      ]
+    ],
+    "content": "",
+    "sig": "4f7929a32e45c3805471f07496200aa14f95ce7ba4cda385a8cd1e22c3f8f06f14ba4d8b5e6e1ffd870c9c25fa9f1dea1efd10e7503c2df69b5462afa7b6fdd5"
+  },
+  "expect": {
+    "valid": false,
+    "errors": [
+      "bad_image"
+    ]
+  }
+}

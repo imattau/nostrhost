@@ -1,0 +1,32 @@
+{
+  "name": "invalid-bad-title",
+  "description": "Title exceeds the 120-character bound.",
+  "event": {
+    "id": "8aed8ff433e71ed34a7fe7905947dda42a2614ceed6e688043d4d549eb9f7db6",
+    "pubkey": "b6c048759734c1ef1b3ba0acfd1cd862b394eaab1bc15b7bf6c7f357986d9732",
+    "created_at": 1750000100,
+    "kind": 30004,
+    "tags": [
+      [
+        "d",
+        "x"
+      ],
+      [
+        "title",
+        "ttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttt"
+      ],
+      [
+        "t",
+        "nsite"
+      ]
+    ],
+    "content": "",
+    "sig": "1476c40f37f5b36fd8bfd108941dff81fc5d8e2d190c253665e381100cbbe0c248f83067cc0d436e2874b0388fd1856f6312b67a46edf9693bc1d43006f77f55"
+  },
+  "expect": {
+    "valid": false,
+    "errors": [
+      "bad_title"
+    ]
+  }
+}

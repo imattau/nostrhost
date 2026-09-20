@@ -1,0 +1,32 @@
+{
+  "name": "invalid-wrong-kind",
+  "description": "Kind is not 30004.",
+  "event": {
+    "id": "287883c3593240758501f4cc3933f906c9c7bb4f33d61a11703c803d5c8455d4",
+    "pubkey": "b6c048759734c1ef1b3ba0acfd1cd862b394eaab1bc15b7bf6c7f357986d9732",
+    "created_at": 1750000100,
+    "kind": 30023,
+    "tags": [
+      [
+        "d",
+        "x"
+      ],
+      [
+        "title",
+        "Article"
+      ],
+      [
+        "t",
+        "nsite"
+      ]
+    ],
+    "content": "",
+    "sig": "35c615272c3fe57b4d3b79ffc60edce28130fb4687b183d988ecdba30bb38dc3ceba55860c151d6a9ce5e4ff568c535c4f7bf5f854f20efbeec01d7e76655e33"
+  },
+  "expect": {
+    "valid": false,
+    "errors": [
+      "bad_kind"
+    ]
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "name": "invalid-bad-signature",
+  "description": "Signature does not verify against the event fields.",
+  "event": {
+    "id": "10137bdd6936928361446f7ca226c9f4eb369d9f03914e068ea486524cc81fa2",
+    "pubkey": "b6c048759734c1ef1b3ba0acfd1cd862b394eaab1bc15b7bf6c7f357986d9732",
+    "created_at": 1750000100,
+    "kind": 30004,
+    "tags": [
+      [
+        "d",
+        "x"
+      ],
+      [
+        "title",
+        "t"
+      ],
+      [
+        "t",
+        "nsite"
+      ]
+    ],
+    "content": "",
+    "sig": "0f76525e29b9eb0a36eff5cfd3a5b0c145c2162f04a0be0f870486b7c5707a8e3d138d750fdef02c264014a4703f529751879df3e139d0fd5f70a65f677383ed"
+  },
+  "expect": {
+    "valid": false,
+    "errors": [
+      "bad_signature"
+    ]
+  }
+}

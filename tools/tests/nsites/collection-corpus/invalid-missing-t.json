@@ -1,0 +1,32 @@
+{
+  "name": "invalid-missing-t",
+  "description": "No t=nsite marker; this is not an nsite collection.",
+  "event": {
+    "id": "11d472f8c52349945468943775d98339190360244ba4a9c02ea65983c4aae9b0",
+    "pubkey": "b6c048759734c1ef1b3ba0acfd1cd862b394eaab1bc15b7bf6c7f357986d9732",
+    "created_at": 1750000100,
+    "kind": 30004,
+    "tags": [
+      [
+        "d",
+        "x"
+      ],
+      [
+        "title",
+        "t"
+      ],
+      [
+        "a",
+        "15128:266815e0c9210dfa324c6cba3573b14bee49da4209a9456f9484e5106cd408a5:"
+      ]
+    ],
+    "content": "",
+    "sig": "cdd36ec2ea207ad7a46982ea5a9e25c21eb152b1bde460e788a291d750f1ad400b1a66e424bf7cf5bdb44634433292cf23a417f91b543d3bda5d759a62ba8d35"
+  },
+  "expect": {
+    "valid": false,
+    "errors": [
+      "missing_t"
+    ]
+  }
+}
