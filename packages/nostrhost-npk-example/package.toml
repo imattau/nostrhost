@@ -1,0 +1,56 @@
+# Native NostrHost package with npk distribution.
+#
+# This package demonstrates the npack-based release flow: the payload in
+# payload/ is packed into a deterministic .npk archive together with the
+# canonical native manifest (embedded under .npack/nostrhost/manifest.json),
+# then published as a publisher-signed kind-9900 release whose artifact is
+# stored on a Blossom server. The resource engine plans and applies the
+# resources below from the verified artifact (hybrid staged store).
+#
+# Build it with:
+#
+#   NPACK_BIN=/path/to/npack nostrhost-package build-npk package.toml \
+#     --payload payload \
+#     --output nostrhost-npk-example-0.1.0.npk \
+#     --publisher <npub-or-hex>
+#
+# The [app] version must be valid SemVer (npack requires it).
+
+[app]
+id = "nostrhost-npk-example"
+version = "0.1.0"
+
+[directories.install]
+path = "/var/www/nostrhost-npk-example"
+mode = 0o755
+
+[config.index]
+destination = "/var/www/nostrhost-npk-example/index.html"
+mode = 0o644
+content = """<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>nostrhost-npk-example</title></head>
+<body><h1>nostrhost-npk-example ok</h1><p>installed from a verified .npk artifact</p></body>
+</html>
+"""
+
+[web]
+domain = "nostrhost.test"
+path = "/nostrhost-npk-example/"
+file_root = "/var/www/nostrhost-npk-example"
+auth = "nostrhost"
+https = "automatic"
+
+[permissions.main]
+url = "/"
+allowed = ["all_users"]
+auth_request = true
+
+[health]
+type = "http"
+path = "/nostrhost-npk-example/"
+timeout = 5
+retries = 2
+
+[backup]
+paths = ["/var/www/nostrhost-npk-example"]
+database = false

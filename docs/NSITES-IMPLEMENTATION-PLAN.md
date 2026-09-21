@@ -173,10 +173,11 @@ Default limits for hosted mode are in §4.4.
   also the initial host default list. The list is operator-editable
   configuration, not a code constant, and the spike report records whether
   either server needs replacing.
-- A NostrHost-hosted Blossom server is a separate optional component with
-  its own quota, abuse and retention contract (plan Phase 5). It would also
-  make the fetch-boundary rules apply to a loopback destination, which the
-  gateway's SSRF policy must then allow explicitly.
+- A NostrHost-hosted Blossom server is a separate optional component with its
+  own quota, abuse and retention contract (Phase 5, D4 — landed). It also
+  makes the fetch-boundary rules apply to a loopback destination, which the
+  gateway's SSRF policy allows explicitly for that exact listener
+  (`blossom.local.listen`), never a blanket loopback open.
 
 ### D5. Relays: **user's NIP-65 write relays + host defaults for publishing; lookup relays + hints for resolution**
 
@@ -327,6 +328,9 @@ internal/resolve/           relay client (go-nostr), 10002/10063 lookup,
                             manifest fetch with per-site cache + TTL, hosted allowlist
 internal/blossom/           safe fetcher: scheme allowlist, resolved-IP policy,
                             redirect policy, byte/time caps, streaming sha256 verify
+internal/blossomsrv/        optional local Blossom server (D4): BUD-01 GET/HEAD,
+                            BUD-02 PUT /upload with kind-24242 auth, quota,
+                            per-blob cap, retention sweep (loopback listener)
 internal/cache/             content-addressed blob store on disk, LRU with quota,
                             manifest cache, negative cache
 internal/server/            public handler (host parse → site → path → blob),
@@ -386,6 +390,15 @@ negative_ttl_seconds = 60
 [blossom]
 fallback_servers = []
 allow_http = false
+
+[blossom.local]                 # optional local Blossom server (D4, Phase 5)
+enabled = false                 # loopback-only BUD-01/BUD-02 store
+listen = "127.0.0.1:8197"
+data_dir = "/var/lib/nostrhost-nsite/blossom"
+quota_bytes = 1073741824        # 1 GiB
+max_blob_bytes = 33554432       # 32 MiB (cap 128 MiB)
+retention_days = 30             # 0 = keep forever
+allow_pubkeys = []              # empty = admit any valid kind-24242 upload auth
 
 [limits]
 max_blob_bytes = 33554432             # 32 MiB
@@ -533,6 +546,40 @@ Parity test: the same `nsite.publish` plan submitted via MCP and via Admin
 yields identical operation results; a read-only MCP session cannot cause a
 write; a stale plan digest is rejected.
 
+### Phase 3c — Single-artifact npk distribution (npack)
+
+A site can also be distributed as a signed npack release (kind-9900) whose
+`.npk` bundle contains the whole site root, so the gateway serves one
+content-addressed artifact instead of N per-path Blossom blobs. The
+kind-15128/35128 manifest remains authoritative for labels, registration,
+allowlist and per-path hashes; the npk release supplies transport only.
+
+- **Publish** (`nsite.publish.plan --npk` / `nsite.publish --npk-release`):
+  the site owner packs the site root (index.html, assets…) into a
+  deterministic `.npk` with the `npack` binary (the server packs the
+  server-side draft area), signs a kind-9900 release (name = `root` for a
+  root site, or the named site's `d`) that commits to the artifact sha256,
+  and publishes it alongside the manifest. The server verifies the release
+  (kind, site-owner signature, publisher/name/artifact match), re-packs
+  deterministically (same sha256 → stale-plan protection), uploads the
+  `.npk` to the manifest's Blossom servers, and broadcasts both events.
+- **Gateway**: `internal/npk` package (release resolution via kind-9900,
+  tar.zst unpack with path-traversal checks, content-addressed `BundleStore`
+  keyed by archive sha256). `serveSite` tries the bundle first and falls back
+  to per-path blobs. Controlled by `[npk]` in `nsite.toml`
+  (`enabled`, `cache_path`, `release_ttl_seconds`).
+- **Admin/fork**: gateway enable/configure exposes `npk_enabled`;
+  `/internal/status` reports `npk_enabled`; the Admin API client carries the
+  `npk`/`npk_release_event` fields.
+
+Tests: unpack a real tar.zst fixture, reject hash mismatch and traversal/
+symlink members, never expose `.npack` metadata, serve `/index.html` from a
+pre-populated bundle with a cached release (no relay contact), 404 for a
+bundle path missing from the manifest, publish a plan with `--npk` (returns
+the release template + artifact sha256), publish with a signed release
+(verifies + uploads + broadcasts), and reject a release with a mismatched
+artifact/name before any upload.
+
 ### Phase 4 — Lifecycle and custom domains (L)
 
 `nsite.domain.attach/detach`: ownership proof (a TXT challenge under
@@ -543,11 +590,43 @@ detach removes the route and marker only. Snapshot/restore semantics in the
 Admin (a root manifest is mutable; a snapshot is immutable). Operator
 configuration of limits and exposure.
 
+**Status: landed.** Custom domains are served by the gateway through its
+`custom_domains` config (Host-header match + `tls-ask` allow); the fork
+renders the mapping into `nsite.toml`, owns the Caddy route, and re-verifies
+ownership live on attach. Snapshot: `nsite.snapshot` records a client-signed
+kind-5128 event id on the site record; the Admin Sites view lists a site's
+snapshot count (immutable history) and offers a "Snapshot" action that
+builds and signs a kind-5128 of the current manifest inventory. Limits:
+`nsite.gateway.enable/configure` reject `max_blob_bytes` > 128 MiB and
+`cache_quota_bytes` > 50% of the filesystem's free space before the plan is
+approved (mirroring the gateway's own config checker); exposure is the
+hosted/open mode switch.
+
 ### Phase 5 — Catalogue and ecosystem (M, later)
 
 `app` tag linkage to kind `32267`, "open nsite" from the catalogue view,
 "create my copy" with `a`/`A` tags, optional local Blossom component, open
 gateway mode with wildcard DNS-01.
+
+**Status: largely landed.** The `app` tag links a published site to its
+kind-32267 catalogue declaration: `nsite.publish.plan --app <kind:pubkey:d>`
+carries an `app` tag on the unsigned event (excluded from the plan digest,
+like `a`/`A`), `nsite.publish` records it on the site record, and the
+catalogue listing annotates matching kind-32267 entries with an "open nsite"
+URL (`catalogue_nsite_links`). The Admin catalogue view renders that button,
+the publish wizard exposes the app-link field, and `nsite.publish.plan
+--copy-of` produces genuine `a`/`A` copies with the "Create my copy" Admin
+surface. Open gateway mode (any decodable label, wildcard DNS-01 through the
+operator's ACME DNS-01 token) is enabled via `nsite.gateway.enable/configure
+--mode open` and the Admin Gateway section's mode selector. The optional
+**local Blossom component (D4)** is landed: a BUD-01/BUD-02 content-addressed
+store (`internal/blossomsrv`) served by the gateway binary on a loopback-only
+listener with its own quota/per-blob/retention contract, enabled via
+`nsite.blossom.enable/configure/disable/status` (Admin Blossom section). When
+enabled, the gateway grants its SSRF fetch boundary an explicit allowance for
+that exact listener address. The non-admin "My site" portal surface (D8) is
+also landed (`forks/portal` `pages/my-site.vue` + the scope-aware nsite API
+routes in `NSITE_ROUTE_SCOPES`). Remaining: Git/NIP-34 sources (D6).
 
 ### Follow-on exploration — curated nsite lists
 
@@ -596,11 +675,11 @@ nsite targets or assigns a dedicated set kind.
 | D1 | Gateway implementation | Native Go component `nostrhost-nsite`; upstream Deno gateway is the Phase 0 oracle only. |
 | D2 | Hostname and TLS | Dedicated gateway domain; Caddy On-Demand TLS with the gateway's `tls-ask` endpoint; wildcard DNS-01 deferred to open mode. |
 | D3 | Exposure | Disabled by default; `hosted` allowlisted mode when enabled; `open` mode deferred to Phase 5. §4.4 default limits accepted. |
-| D4 | Blossom | External servers only. Spike and initial defaults: `https://blossom.primal.net`, `https://blossom.band`. No local Blossom service before Phase 5. |
+| D4 | Blossom | External servers only (default `https://blossom.primal.net`, `https://blossom.band`). Phase 5 adds the **optional local Blossom component**: a loopback-only BUD-01/BUD-02 store with its own quota/per-blob/retention contract, enabled via `nsite.blossom.*`; the gateway grants the fetch boundary an explicit allowance for that exact listener. |
 | D5 | Relays | Lookup: `wss://purplepag.es`, `wss://user.kindpag.es`. Publish defaults: those two plus `wss://nos.lol`, `wss://relay.damus.io`, unioned with the owner's NIP-65 write relays. No operator-specific relays. |
 | D6 | Source | Browser directory upload (Phase 3a), agent draft area (Phase 3b), Git/NIP-34 (Phase 5). |
 | D7 | Signing | NIP-07 in Admin first; NIP-46 via the portal's existing connector later; MCP and CLI submit a pre-signed manifest; the server never holds a user key. |
-| D8 | Who may publish | `nsites.publish` is a per-subject capability scope from day one (the registry already grants scopes per subject through kind `31100` capability events). Phases 3–4 grant it to admins only. A portal "My site" surface for non-admin users is a Phase 5 item, gated on the same operation and policy path; no schema change is expected. |
+| D8 | Who may publish | `nsites.publish` is a per-subject capability scope from day one (the registry already grants scopes per subject through kind `31100` capability events). Phases 3–4 grant it to admins only. The portal "My site" surface for non-admin users (Phase 5) is landed, gated on the same operation and policy path; no schema change. |
 | D9 | Package name | `nostrhost-nsite` for the package, binary, systemd unit and system user; the component carries the gateway, `tls-ask` and status roles. |
 
 Changes to any row above go through a new entry in

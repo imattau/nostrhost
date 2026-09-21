@@ -34,6 +34,58 @@ Do not embed plaintext secrets or arbitrary install, upgrade, and removal shell
 scripts. Add a typed resource and provider when the platform lacks a required
 primitive.
 
+## Distribute as an .npk artifact (npack)
+
+A native package can be published as a signed, content-addressed `.npk`
+artifact using the bundled `npack` binary (see the `forks/npack` submodule).
+This replaces repository-manifest catalogue distribution and URL `[source]`
+fetching with publisher-signed release events (kind 9900), NIP-94 artifact
+metadata, and Blossom storage. The resource engine still plans and applies
+resources; npack is the discovery, integrity, and transport layer.
+
+Build a package root whose payload sits at host-relative paths, then pack it:
+
+```bash
+cargo build --release --manifest-path forks/npack/Cargo.toml
+
+NPACK_BIN="$PWD/forks/npack/target/release/npack" \
+nostrhost-package build-npk my-app/package.toml \
+  --payload my-app/payload \
+  --output my-app-0.1.0.npk \
+  --publisher <npub-or-hex>
+```
+
+The command validates the manifest (the `[app] version` must be valid SemVer),
+embeds the canonical native manifest at `.npack/nostrhost/manifest.json`,
+runs `npack pack` (a deterministic tar.zst archive), and prints the artifact
+SHA-256. Verify the artifact with `npack verify my-app-0.1.0.npk`.
+
+## Install from a verified .npk artifact
+
+Installation uses the hybrid staged store. The `npack` binary resolves the
+publisher-signed release (kind-9900), verifies its signature, revocation state
+and SHA-256, and stages the payload into an isolated `--store` prefix at
+host-relative paths. The resource engine then plans the native resources from
+the embedded manifest (binding the artifact SHA-256 into the approved plan
+envelope) and applies them through the normal signed request -> policy ->
+approval -> execute chain, copying the staged payload into place with
+`payload.sync`.
+
+CLI:
+
+```bash
+nostrhost app install-npk <publisher>/<name>[@<version>] \
+  [--relay wss://relay.example] [--store /var/lib/nostrhost/npack-store]
+```
+
+MCP/HTTP: `package.install` stages the release and returns the plan envelope;
+submit it to the approval-gated `package.reconcile` (or the
+`/package/npk/install/plan` + `/package/npk/install/apply` HTTP endpoints).
+`npack update --check` reports available upgrades; removal reverses the
+recorded manifest (including the payload sync).
+
+See `packages/nostrhost-npk-example/` for a complete buildable example.
+
 ## Planning and application
 
 Authoring-time planning validates the TOML manifest, resolves dependencies,

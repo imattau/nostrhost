@@ -542,3 +542,43 @@ server-side image proxy). Scope of this release:
 Explicitly deferred per the doc: upstream standardisation, per-item
 reviews/rankings, private/unlisted lists, tombstones, and a server-side image
 proxy.
+
+## Phase 5 continuation appendix — local Blossom component (D4)
+
+`forks/yunohost` + `libs/nostrhost-nsite` + `forks/admin`. The optional local
+Blossom server called for in D4 is implemented as a listener of the same
+`nostrhost-nsite` unit — a separate quota/retention contract, not a separate
+process.
+
+- **Go `internal/blossomsrv`** — a BUD-01/BUD-02 content-addressed store:
+  `GET/HEAD /<sha256>` and `PUT /upload?sha256=<sha>` with a verified
+  kind-24242 auth event (BUD-02: `Authorization: Nostr <base64 event>`,
+  `x` tag covering the digest, signature + id checked, optional admission via
+  `allow_pubkeys`). The store enforces its own `quota_bytes` (refuses uploads
+  that would exceed it), `max_blob_bytes` (per-blob cap), and a retention
+  sweep (`retention_days`). Content is verified before it is stored.
+- **Config** — `[blossom.local]` (`enabled`, `listen` loopback-only, `data_dir`,
+  `quota_bytes`, `max_blob_bytes`, `retention_days`, `allow_pubkeys`); the
+  validator rejects a non-loopback listener (D4) and an oversize blob cap.
+  The systemd unit gains `ReadWritePaths=/var/lib/nostrhost-nsite` for the
+  store. On SIGHUP the gateway starts/stops the listener with the config.
+- **Fetch-boundary allowance** — when `[blossom.local]` is enabled the
+  gateway's SSRF fetcher opens loopback for **exactly** that `host:port`
+  (`AllowLoopbackAddrs`), never a blanket loopback; everything else keeps the
+  strict resolved-IP boundary. Tested at the dial level and end-to-end
+  (fetch through the allowance, refusal without it).
+- **Ops/API/CLI** — `nsite.blossom.status` (`nsites.read`, no approval) and
+  `enable`/`configure`/`disable` (`nsites.admin`, approval-gated), rendered
+  into `nsite.toml` + SIGHUP. `NSITE_ROUTE_SCOPES` entries and `nostrhost
+  nsite blossom-*` commands. No new policy scopes (D4 uses the existing
+  `nsites.read`/`nsites.admin` gates).
+- **Admin** — `nativeNsites.ts` blossom client + a **Local Blossom server**
+  card in the Sites view (status badge, enable/configure/disable forms for
+  the quota/per-blob/retention contract). Gateway must be enabled first (the
+  listener lives in the same unit).
+- **Tests** — Go: 15 `blossomsrv` unit tests (auth, hash, quota, retention,
+  idempotency, handler) + 2 server integration tests + 2 SSRF allowance +
+  1 config; fork: 13 `test_nsites_blossom.py` lifecycle/registry tests; admin:
+  4 client tests. Full fork nsite suite 318 passed.
+
+The D6 Git/NIP-34 source remains the only deferred Phase 5 item.

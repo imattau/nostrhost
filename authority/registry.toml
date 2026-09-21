@@ -762,6 +762,30 @@ retention = "cache; safe to delete"
 recovery = "re-download package manifests"
 
 [[state]]
+id = "npack-store"
+path = "/var/lib/nostrhost/npack-store"
+class = "projection"
+owner = "forks/yunohost/src/nostrhost/npk.py"
+readers = ["forks/yunohost/src/nostrhost/npk.py", "forks/yunohost/src/nostrhost/native_providers.py", "forks/yunohost/src/nostr_operations.py", "forks/yunohost/src/nostrhost/api.py", "forks/yunohost/src/nostrhost/cli.py"]
+writers = ["forks/yunohost/src/nostrhost/npk.py"]
+sensitivity = "public"
+target_authority = "projection:cache"
+retention = "verified artifact cache; safe to delete (re-resolve and re-stage)"
+recovery = "re-resolve the npack release and re-stage into the store"
+
+[[state]]
+id = "payload-state"
+path = "/var/lib/nostrhost/state/payloads"
+class = "projection"
+owner = "forks/yunohost/src/nostrhost/native_providers.py"
+readers = ["forks/yunohost/src/nostrhost/native_providers.py"]
+writers = ["forks/yunohost/src/nostrhost/native_providers.py"]
+sensitivity = "public"
+target_authority = "program:state"
+retention = "authoritative; delete only with the app"
+recovery = "re-run payload.sync from the staged artifact"
+
+[[state]]
 id = "nsite-blob-cache"
 path = "/var/cache/nostrhost-nsite"
 class = "projection"
@@ -772,6 +796,31 @@ sensitivity = "public"
 target_authority = "projection:cache"
 retention = "cache; safe to delete"
 recovery = "re-fetch blobs from Blossom"
+
+[[state]]
+id = "nsite-npk-bundle-cache"
+path = "/var/cache/nostrhost-nsite/npk"
+class = "projection"
+owner = "forks/yunohost/src/nostrhost/nsites/models.py"
+readers = ["libs/nostrhost-nsite"]
+writers = ["libs/nostrhost-nsite"]
+sensitivity = "public"
+target_authority = "projection:cache"
+retention = "cache; safe to delete"
+recovery = "re-resolve the npack release and re-fetch the .npk bundle"
+
+[[state]]
+id = "nsite-blossom-store"
+path = "/var/lib/nostrhost-nsite/blossom"
+class = "projection"
+owner = "forks/yunohost/src/nostrhost/nsites/models.py"
+readers = ["libs/nostrhost-nsite"]
+writers = ["libs/nostrhost-nsite"]
+sensitivity = "public"
+target_authority = "derived:sha256 digest"
+retention = "blob store; removed only by the configured retention sweep"
+recovery = "re-upload the site blobs to this server"
+notes = "D4: content-addressed store served by the optional local Blossom server (internal/blossomsrv) on the loopback [blossom.local] listener; the systemd unit's StateDirectory=nostrhost-nsite makes /var/lib/nostrhost-nsite writable for it."
 
 # ---------------------------------------------------------------------------
 # Transactional runtime (short-lived, atomic, or process-local)

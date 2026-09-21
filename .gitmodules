@@ -44,3 +44,6 @@
 	path = libs/nostrhost-projection
 	url = https://github.com/imattau/nostrhost-projection.git
 	branch = main
+[submodule "forks/npack"]
+	path = forks/npack
+	url = https://github.com/imattau/npack.git

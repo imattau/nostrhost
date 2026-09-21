@@ -7,9 +7,20 @@ import os
 import subprocess
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[2]
 CLI = ROOT / "forks/yunohost/bin/nostrhost-package"
 ENV = {**os.environ, "PYTHONPATH": str(ROOT / "forks/yunohost/src")}
+
+# The fork's pinned npack submodule binary; skip tests that shell out to npack
+# when it has not been built (cargo build in forks/npack).
+NPACK = ROOT / "forks/npack/target/release/npack"
+NEEDS_NPACK = pytest.mark.skipif(
+    not NPACK.is_file(), reason="npack binary not built (cargo build --release in forks/npack)"
+)
+
+PUBLISHER = "3bf0c63fcb93463407af97a5e5ee64fa883d107ef9e558472c4eb9aaaefa459d"
 
 
 def run_cli(*args: str) -> subprocess.CompletedProcess[str]:
@@ -83,3 +94,94 @@ def test_init_refuses_to_overwrite_existing_package(tmp_path: Path) -> None:
     result = run_cli("init", "already", "--directory", str(tmp_path), "--template", "minimal")
     assert result.returncode == 2
     assert target.read_text(encoding="utf-8") == "keep me"
+
+
+@NEEDS_NPACK
+def test_build_npk_produces_a_verified_content_addressed_archive(tmp_path: Path) -> None:
+    app_dir = tmp_path / "myapp"
+    (app_dir / "var/www/myapp").mkdir(parents=True)
+    (app_dir / "var/www/myapp/index.html").write_text("<h1>ok</h1>\n", encoding="utf-8")
+    package_file = app_dir / "package.toml"
+    package_file.write_text(
+        '[app]\nid = "myapp"\nversion = "0.1.0"\n\n'
+        '[directories.install]\npath = "/var/www/myapp"\nmode = 0o755\n',
+        encoding="utf-8",
+    )
+
+    artifact = tmp_path / "myapp-0.1.0.npk"
+    env = {**ENV, "NPACK_BIN": str(NPACK)}
+    result = subprocess.run(
+        [str(CLI), "build-npk", str(package_file), "--payload", str(app_dir), "--output", str(artifact), "--publisher", PUBLISHER],
+        cwd=ROOT, env=env, text=True, capture_output=True, check=False,
+    )
+    assert result.returncode == 0, result.stderr
+
+    body = json.loads(result.stdout)
+    assert body["name"] == "myapp"
+    assert body["version"] == "0.1.0"
+    assert body["publisher"] == PUBLISHER
+    assert len(body["sha256"]) == 64
+    assert artifact.is_file()
+
+    verified = subprocess.run(
+        [str(NPACK), "verify", str(artifact)], text=True, capture_output=True, check=False
+    )
+    assert verified.returncode == 0, verified.stderr
+    assert "myapp 0.1.0" in verified.stdout
+
+
+@NEEDS_NPACK
+def test_build_npk_embeds_the_canonical_native_manifest(tmp_path: Path) -> None:
+    import tarfile
+    import tempfile
+
+    app_dir = tmp_path / "myapp"
+    (app_dir / "var/www/myapp").mkdir(parents=True)
+    (app_dir / "var/www/myapp/index.html").write_text("<h1>ok</h1>\n", encoding="utf-8")
+    package_file = app_dir / "package.toml"
+    package_file.write_text(
+        '[app]\nid = "myapp"\nversion = "0.1.0"\n\n'
+        '[config.index]\ndestination = "/var/www/myapp/index.html"\n'
+        'content = "managed"\n',
+        encoding="utf-8",
+    )
+
+    artifact = tmp_path / "myapp-0.1.0.npk"
+    env = {**ENV, "NPACK_BIN": str(NPACK)}
+    result = subprocess.run(
+        [str(CLI), "build-npk", str(package_file), "--payload", str(app_dir), "--output", str(artifact), "--publisher", PUBLISHER],
+        cwd=ROOT, env=env, text=True, capture_output=True, check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    body = json.loads(result.stdout)
+    assert body["embedded_manifest"] == ".npack/nostrhost/manifest.json"
+
+    raw = artifact.read_bytes()
+    assert raw[:4] == b"\x28\xb5\x2f\xfd", "expected a zstd-compressed .npk (deterministic tar.zst)"
+
+    with tempfile.TemporaryDirectory() as scratch:
+        decompressed = Path(scratch) / "archive.tar"
+        subprocess.run(
+            ["zstd", "-d", "-o", str(decompressed), str(artifact)], check=True, capture_output=True
+        )
+        with tarfile.open(decompressed) as archive:
+            member = ".npack/nostrhost/manifest.json"
+            assert member in archive.getnames(), archive.getnames()
+            embedded = json.loads(archive.extractfile(member).read().decode("utf-8"))  # type: ignore[union-attr]
+    assert embedded["app"] == {"id": "myapp", "version": "0.1.0"}
+    assert embedded["config"]["index"]["destination"] == "/var/www/myapp/index.html"
+
+
+@NEEDS_NPACK
+def test_build_npk_rejects_non_semver_versions(tmp_path: Path) -> None:
+    package_file = tmp_path / "package.toml"
+    package_file.write_text('[app]\nid = "myapp"\nversion = "0.1"\n', encoding="utf-8")
+    env = {**ENV, "NPACK_BIN": str(NPACK)}
+    result = subprocess.run(
+        [str(CLI), "build-npk", str(package_file), "--publisher", PUBLISHER],
+        cwd=ROOT, env=env, text=True, capture_output=True, check=False,
+    )
+    assert result.returncode == 1
+    body = json.loads(result.stdout)
+    assert body["valid"] is False
+    assert "SemVer" in body["error"]
