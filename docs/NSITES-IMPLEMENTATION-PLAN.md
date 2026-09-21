@@ -568,6 +568,13 @@ allowlist and per-path hashes; the npk release supplies transport only.
   keyed by archive sha256). `serveSite` tries the bundle first and falls back
   to per-path blobs. Controlled by `[npk]` in `nsite.toml`
   (`enabled`, `cache_path`, `release_ttl_seconds`).
+- **Local catalogue cache**: `npk.catalogue_path` (optional) points at the
+  `catalogue.json` that `npack refresh` produces. Release resolution consults
+  it first — no relay round trip for npk-served sites — and only falls back to
+  the lookup relays on a miss. A missing or unreadable file is never fatal
+  (logged, relay fallback); the gateway reloads it on SIGHUP alongside the
+  config. Operator refreshes with
+  `npack refresh --store /var/cache/nostrhost-nsite/npk --relay …`.
 - **Admin/fork**: gateway enable/configure exposes `npk_enabled`;
   `/internal/status` reports `npk_enabled`; the Admin API client carries the
   `npk`/`npk_release_event` fields.
