@@ -203,7 +203,7 @@ packages:
   # and disabled by default; enabled per deployment (D3 hosted mode, §28).
   - name: nostrhost-nsite
     kind: golang
-    version: "0.2.2"
+    version: "0.2.3"                    # npk local catalogue cache (npack 0.3.0 refresh) + Phase 5 D4
     source:
       repo: imattau/nostrhost-nsite
       submodule: libs/nostrhost-nsite
@@ -225,7 +225,7 @@ packages:
   # packages until its provisioning and operational lifecycle is mature.
   - name: nostrhost-agent
     kind: golang
-    version: "0.1.12"                 # regenerated catalogue: policy.read/policy.publish tools (WP6)
+    version: "0.1.13"                 # regenerated catalogue: nsite.blossom.* tools (Phase 5 D4)
     source:
       repo: imattau/nostrhost-agent
       submodule: libs/nostrhost-agent
@@ -365,7 +365,7 @@ packages:
   # ------------------------------------------------------------- web SPA ----
   - name: nostrhost-admin
     kind: spa
-    version: "0.1.27"                     # Nostr settings rename (route/view + IA reorganisation)
+    version: "0.1.28"                     # nsites Phase 5: Blossom section (D4) + app-link publish field + gateway mode selector
     source:
       repo: imattau/nostrhost-admin
       submodule: forks/admin
