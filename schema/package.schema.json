@@ -298,6 +298,71 @@
       "title": "HookResource",
       "type": "object"
     },
+    "InstallInputField": {
+      "description": "A publisher-declared, install-time value the operator supplies before\na package is planned. Unlike ``[settings]`` (post-install config-panel\nstate), these parametrize the package's own declarative resources at\nplan time - see :func:`bind_install_values`. ``bind`` is a fixed set of\nresource-field targets (not a general path resolver) so validation stays\na simple match instead of a reflective setter with its own injection\nsurface.",
+      "properties": {
+        "bind": {
+          "enum": [
+            "web.domain",
+            "web.path",
+            "database.name",
+            "permissions.allowed",
+            "ports.named",
+            "config.context",
+            "secret.supplied"
+          ],
+          "title": "Bind",
+          "type": "string"
+        },
+        "choices": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Choices",
+          "type": "array"
+        },
+        "constraints": {
+          "title": "Constraints",
+          "type": "object"
+        },
+        "description": {
+          "default": "",
+          "title": "Description",
+          "type": "string"
+        },
+        "label": {
+          "title": "Label",
+          "type": "string"
+        },
+        "required": {
+          "default": false,
+          "title": "Required",
+          "type": "boolean"
+        },
+        "sensitive": {
+          "default": false,
+          "title": "Sensitive",
+          "type": "boolean"
+        },
+        "type": {
+          "enum": [
+            "string",
+            "integer",
+            "number",
+            "boolean",
+            "enum"
+          ],
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "bind"
+      ],
+      "title": "InstallInputField",
+      "type": "object"
+    },
     "PackagesResource": {
       "properties": {
         "apt": {
@@ -1011,6 +1076,13 @@
       },
       "description": "Restricted Python hook references for behavior not expressible as a resource; hooks are not shell snippets.",
       "title": "Hooks",
+      "type": "object"
+    },
+    "install_inputs": {
+      "additionalProperties": {
+        "$ref": "#/definitions/InstallInputField"
+      },
+      "title": "Install Inputs",
       "type": "object"
     },
     "installation_class": {
