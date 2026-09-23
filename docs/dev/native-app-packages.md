@@ -86,6 +86,25 @@ recorded manifest (including the payload sync).
 
 See `packages/nostrhost-npk-example/` for a complete buildable example.
 
+### Pre-install setup values (not yet wired into nostrhost)
+
+Upstream npack (`forks/npack`, pinned at `81d9de1` "Add extensible install
+input metadata") added a publisher-signed `app.install_inputs[]` descriptor
+array (id, namespaced `value_type`, `required`, `sensitive`, `description`,
+`constraints`), discoverable through `resolve`/`GetPackage` and validated
+against a new `install_values{}` map on the npackd daemon's `Install` RPC.
+This is a *pre-install* setup contract — distinct from this repo's own
+`[settings]` package.toml section, which is *post-install* config-panel state
+(`app.config.read/set`, webadmin).
+
+Nothing in nostrhost populates or consumes `install_inputs` yet:
+`build_npk_artifact` (`forks/yunohost/src/nostrhost/package_authoring.py`)
+calls `npack init`/`npack pack` without setting them, and `npk.py::stage()`
+shells out to the `npack` CLI `install` subcommand, which upstream did not
+extend to accept `install_values` (only the daemon RPC path was). Treat this
+as a known gap, not a bug, until a package.toml section, build-pipeline
+plumbing, and an install-time value-collection step are designed.
+
 ## Planning and application
 
 Authoring-time planning validates the TOML manifest, resolves dependencies,
