@@ -14,6 +14,21 @@
 # member gets their own OS identity, small state directory, and process,
 # spawned on first connection and reaped when idle. See
 # docs/ROLE-AND-APP-ACCESS-DESIGN.md for the installation_class design.
+#
+# Distribute as an .npk artifact (npack; see docs/dev/native-app-packages.md):
+# no [source] changes needed - npack signs/transports this manifest, not the
+# payload bytes, so the [source.app] URL+SHA-256 fetch below still runs
+# unchanged at install-apply time via the resource engine's own
+# SourceProvider. --version is required because [app].version below carries
+# a YunoHost-style `~nh1` packaging-revision suffix, which isn't valid
+# SemVer (npack requires it); [app].version stays the string the upgrade
+# gate compares against, independent of the npk release version.
+#
+#   cargo build --release --manifest-path forks/npack/Cargo.toml
+#   NPACK_BIN="$PWD/forks/npack/target/release/npack" \
+#   nostrhost-package build-npk package.toml \
+#     --output opencode-web_nh-1.18.30.npk \
+#     --publisher <npub-or-hex> --version 1.18.30
 
 installation_class = "multi-tenant-runtime"
 
