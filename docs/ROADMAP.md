@@ -95,7 +95,7 @@ the **working specifications**; the plan, its phases and its status live here.
 | §21 | End-to-end native app lifecycle | ◑ | `package.plan`/`reconcile` proven on nostrhost-test; the §21 vertical loop proven on one **real** app (`opencode-web_nh`, full signed loop verified); Restic snapshot id now linked into the plan result; backup/restore CLI landed. npack distribution (additive): `nostrhost-package build-npk`, `nostrhost app install-npk` + `package.install` staging tool, and `payload.sync` staged-store provider landed |
 | §22 | YNH package migration analyser | ⏳ | manifest + Bash-AST analyser, deterministic migration, AI repair loop |
 | §23 | Behavioural equivalence testing | ⏳ | VM A/B comparison + confidence attestation |
-| §24 | Native vs compatibility boundary | ⏳ | measurable shrink (122→87→41→0 helpers) |
+| §24 | Native vs compatibility boundary | ⏳ | measurable shrink (122→87→41→0 helpers); no legacy-app compatibility fallback kept — plan in `docs/YUNOHOST-RETIREMENT-PLAN.md` |
 | §25 | LDAP dependency inventory / reduction | ✓ | LDAP retired outright: native account store (`nostrhost/accounts.py`, real Unix accounts + JSON metadata) replaces LDAP as the user/group directory; `slapd`/`python-ldap`/libnss-ldapd/libpam-ldapd removed from core; NIP-51 permission projection (`grant-nostr`/`clear-nostr`, `nostr_permissiond`, `is_admin_user`) covers the authz layer; `_sync_permissions_with_ldap` now regenerates the native projection — plan in `docs/LDAP-RETIREMENT.md` |
 | §26 | Native DNS management | ⏳ | later phase (alpha) |
 | §27 | Secrets / key lifecycle | ◑ | node-key inventory + safe keeping landed (POSTINSTALL-KEYS); rotation + Restic/DB/external/DNS/Caddy/agent secret classes remain |
@@ -1782,6 +1782,14 @@ Then make compatibility shrink measurably:
 Legacy dependency count:  122 helpers → 87 → 41 → 0
 Legacy packages:          100%       → 70% → 25% → 0%
 ```
+
+No legacy-app compatibility is being kept — apps still built on the
+Bash-script `scripts/install`/`upgrade`/`remove` model are out of scope
+going forward, matching the precedent set by LDAP retirement (§25). Full
+dependency inventory (catalogue dispatch, `app.py`'s script-execution path,
+the Bash helper library, `app_ssowatconf()`, mail conf_regen hooks, npk/
+catalogue unification, the §22 migration analyser, and open liveness checks
+on `certificate.py`/`backup.py`) and phased plan: `docs/YUNOHOST-RETIREMENT-PLAN.md`.
 
 ---
 

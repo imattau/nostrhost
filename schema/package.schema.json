@@ -1006,6 +1006,10 @@
           "title": "Route Mode",
           "type": "string"
         },
+        "spa_fallback": {
+          "title": "Spa Fallback",
+          "type": "boolean"
+        },
         "upstream": {
           "minLength": 1,
           "title": "Upstream",
