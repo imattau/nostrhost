@@ -173,6 +173,45 @@ def test_build_npk_embeds_the_canonical_native_manifest(tmp_path: Path) -> None:
 
 
 @NEEDS_NPACK
+def test_build_npk_signs_repo_and_commit_into_the_release(tmp_path: Path) -> None:
+    """--repo/--commit land in npack's own signed .npack/manifest.json (not
+    just the embedded nostrhost manifest) - nostrhost-catalog's npack-release
+    ingestion (ParseFromNpackRelease) reads them from there."""
+    import tarfile
+    import tempfile
+
+    package_file = tmp_path / "package.toml"
+    package_file.write_text('[app]\nid = "myapp"\nversion = "0.1.0"\n', encoding="utf-8")
+
+    artifact = tmp_path / "myapp-0.1.0.npk"
+    env = {**ENV, "NPACK_BIN": str(NPACK)}
+    commit = "c" * 40
+    # npack's own release signing requires repo to be a NIP-34 kind:30617
+    # address ("30617:<pubkey>:<identifier>"), not a plain URL - it rejects
+    # any other format (validate_repo_reference in sign_release_event).
+    repo = f"30617:{PUBLISHER}:myapp"
+    result = subprocess.run(
+        [
+            str(CLI), "build-npk", str(package_file), "--output", str(artifact),
+            "--publisher", PUBLISHER, "--repo", repo,
+            "--commit", commit,
+        ],
+        cwd=ROOT, env=env, text=True, capture_output=True, check=False,
+    )
+    assert result.returncode == 0, result.stderr
+
+    with tempfile.TemporaryDirectory() as scratch:
+        decompressed = Path(scratch) / "archive.tar"
+        subprocess.run(
+            ["zstd", "-d", "-o", str(decompressed), str(artifact)], check=True, capture_output=True
+        )
+        with tarfile.open(decompressed) as archive:
+            npack_manifest = json.loads(archive.extractfile(".npack/manifest.json").read().decode("utf-8"))  # type: ignore[union-attr]
+    assert npack_manifest["repo"] == repo
+    assert npack_manifest["commit"] == commit
+
+
+@NEEDS_NPACK
 def test_build_npk_rejects_non_semver_versions(tmp_path: Path) -> None:
     package_file = tmp_path / "package.toml"
     package_file.write_text('[app]\nid = "myapp"\nversion = "0.1"\n', encoding="utf-8")
