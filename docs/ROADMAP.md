@@ -81,14 +81,14 @@ the **working specifications**; the plan, its phases and its status live here.
 | §7 | State history + recovery (ngit/NIP-34, Stages A–D) | ◑ | Stage D tail (reconcile auto-apply hardening); Stages A–C ✅ |
 | §8 | Portal Nostr authentication | ✓ | real-browser passkey attestation + visual app-grid pass (headless limit only) |
 | §9 | Restic linkage + assisted rollback (Stage B) | ✅ | reverse steps for app reinstall/upgrade stay manual pending install-arg provenance |
-| §10 | Admin interface (native management views) | ◑ | native package authoring screen + planning API landed (fork `63c6eb307`); Restic restore-points + state/recovery views landed (Backups `/backups`, Recovery `/recovery`); identities/agents/delegations/approvals/catalogue/trust/audit views ⏳ |
+| §10 | Admin interface (native management views) | ◑ | native package authoring screen + planning API landed (fork `63c6eb307`); Restic restore-points + state/recovery views landed (Backups `/backups`, Recovery `/recovery`); Catalogue's Trusted Publishers tab landed (`list.read`/`list.publish` against the `trusted-publishers` people-set, fork `7be4036c`) — remaining WP4 list families (approved-repositories, blocked-relays, blocked-site-owners, preferred-relays, portal-settings) still admin-UI-less; identities/agents/delegations/approvals/catalogue/trust/audit views ⏳ |
 | §11 | Native Nostr catalogue | ✓ | `catalog.list/get/publish/verify` native ops landed (MCP Phase 5); Admin catalogue UI ⏳ |
 | §12 | Web-layer auth (Caddy `forward_auth`, SSOwat retired) | ✓ | P7 residual-reference cleanup (§20) |
 | §13 | MCP adapter | ✅ | MCP transition Phases 6–8 (below) |
 | §14 | OIDC compatibility | ◑ | client management + signing-key rotation (bridge live/VM-proven) |
 | §15 | ngit replication / DR (Stage C) | ✅ | kind-30617 announcement + kind-2214 chunked gzip state-bundle replicated outbound to control + external relays; `clone_state_repository` reconstructs the repo from relays + identity (no central forge) |
 | §16 | Declarative reconciliation (Stage D) | ✓ | — |
-| §17 | Distribution + release tooling / native self-update | ⏳ | Debian repo, installer image, signed self-update |
+| §17 | Distribution + release tooling / native self-update | ⏳ | Debian repo, installer image, signed self-update; `tools_upgrade` reliability landed (12.1.41.114–116): `apt_dpkg_lock` serializes system upgrade against app install/upgrade/remove so they no longer race for dpkg, a failed `dist-upgrade` now fails the operation instead of reporting fake success, and `nostrhost-core`'s postinst no longer synchronously restarts `nostr-operationsd` mid-upgrade (it was restarting its own parent process when the upgrade was itself driven through the operation executor, leaving the package half-configured and blocking all later upgrades on `dpkg_is_broken`) |
 | §18 | Platform simplification (messaging, mail, security) | ◑ | mail identity/UI cleanup; security-state digest cadence (§18.6) |
 | §19 | Native bootstrap / postinstall | ✓ | five-key bootstrap + recovery bundle + `--restore` CLI landed (POSTINSTALL-KEYS); `postinstall --new` is the canonical path (legacy `tools_postinstall` wizard not involved); blank-VM acceptance loop run on clean7 (incl. restic provisioning + Caddy internal-CA trust) |
 | §20 | Web cutover completion (Caddy P7) | ⏳ | Caddy storage in backup, cert state in ngit, residual nginx helpers/migrations |
@@ -959,6 +959,17 @@ plan-and-apply, drift and disaster-recovery readiness) screens. The backup
 surface is Restic-only: the legacy YunoHost archive tools/UI were removed and
 the `backup.*` registry now wraps Restic snapshots (create/list/info/restore/
 delete/check/stats) plus `backup.policy.*` and a `nostrhost-backup.timer`.
+
+Also landed: the Catalogue view's **Trusted Publishers** tab (list/add/remove
+against the `trusted-publishers` people-set via `list.read`/`list.publish`),
+closing the gap where the operator-owned WP4 list families (see
+`docs/dev/authority-register.md`) had backend support but no admin surface —
+previously the only way to allow another publisher's `.npk` releases was a
+raw `list.publish` call through the generic operation dispatcher. The
+remaining WP4 families (approved-repositories, blocked-relays,
+blocked-site-owners, preferred-relays, portal-settings) still have no
+dedicated UI; the backend `family` plumbing generalizes to all of them, so
+extending the tab is mostly a template copy.
 
 ---
 
