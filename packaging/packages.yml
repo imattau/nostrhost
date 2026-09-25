@@ -365,7 +365,7 @@ packages:
   # ------------------------------------------------------------- web SPA ----
   - name: nostrhost-admin
     kind: spa
-    version: "0.1.28"                     # nsites Phase 5: Blossom section (D4) + app-link publish field + gateway mode selector
+    version: "0.1.29"                     # Catalogue: Trusted Publishers tab (list/add/remove against the trusted-publishers people-set)
     source:
       repo: imattau/nostrhost-admin
       submodule: forks/admin
