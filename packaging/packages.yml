@@ -365,7 +365,7 @@ packages:
   # ------------------------------------------------------------- web SPA ----
   - name: nostrhost-admin
     kind: spa
-    version: "0.1.29"                     # Catalogue: Trusted Publishers tab (list/add/remove against the trusted-publishers people-set)
+    version: "0.1.30"                     # Trusted Publishers input accepts npub or hex
     source:
       repo: imattau/nostrhost-admin
       submodule: forks/admin
