@@ -187,7 +187,7 @@ packages:
 
   - name: nostrhost-catalog
     kind: golang
-    version: "0.1.9"                     # Deduplicate memoryStore by event ID - fixes an OOM kill from concurrent relay sync
+    version: "0.1.10"                    # Drop unscoped NIP-66 relay discovery - it flooded fetches with irrelevant global relays
     source:
       repo: imattau/nostrhost-catalog
       submodule: libs/nostrhost-catalog
