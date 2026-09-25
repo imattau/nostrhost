@@ -187,7 +187,7 @@ packages:
 
   - name: nostrhost-catalog
     kind: golang
-    version: "0.1.7"                     # Hard deadline around negentropy sync - one stuck relay could wedge Bootstrap() forever
+    version: "0.1.8"                     # Sync relays concurrently - a large discovered relay set no longer takes relayCount*30s
     source:
       repo: imattau/nostrhost-catalog
       submodule: libs/nostrhost-catalog
