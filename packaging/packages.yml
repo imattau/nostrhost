@@ -187,7 +187,7 @@ packages:
 
   - name: nostrhost-catalog
     kind: golang
-    version: "0.1.6"                     # NIP-77 negentropy DOWN sync + rebuild/verify (WP5)
+    version: "0.1.7"                     # Hard deadline around negentropy sync - one stuck relay could wedge Bootstrap() forever
     source:
       repo: imattau/nostrhost-catalog
       submodule: libs/nostrhost-catalog
